@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>FactorioModStudio.Core</RootNamespace>
+    <Description>Core library of Factorio Mod Studio: mod validation, packaging, profiles, log analysis.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FactorioModStudio.Tests" />
+  </ItemGroup>
+
+</Project>

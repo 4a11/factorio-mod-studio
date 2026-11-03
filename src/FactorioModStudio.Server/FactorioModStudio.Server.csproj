@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>FactorioModStudio.Server</RootNamespace>
+    <Description>Local web host for the Factorio Mod Studio UI: a thin JSON API over FactorioModStudio.Core.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\FactorioModStudio.Core\FactorioModStudio.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FactorioModStudio.Tests" />
+    <InternalsVisibleTo Include="fmstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The UI is plain HTML/CSS/JS embedded into the assembly, so `fmstudio ui` needs no extra files or build step. -->
+    <!-- Recursive (wwwroot/i18n/*.json too). The logical name keeps the relative path and always uses '/', also when building on Windows. -->
+    <EmbeddedResource Include="wwwroot\**\*" LogicalName="wwwroot/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

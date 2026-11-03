@@ -1,0 +1,48 @@
+namespace FactorioModStudio.Core;
+
+public sealed record ModSummary(
+    string? Name,
+    string? Version,
+    string? Title,
+    string? Author,
+    string? Description,
+    string? FactorioVersion,
+    IReadOnlyList<string> Dependencies);
+
+/// <param name="Category">"script", "locale", "graphics", "sound", "data", "text" or "other".</param>
+/// <param name="Role">For well-known Lua entry points, what the file is for (e.g. "Data stage: prototypes").</param>
+public sealed record ModFileEntry(string Path, long Size, string Category, string? Role);
+
+/// <param name="Icon">Path of the icon inside the mod, when the prototype's icon points into the same mod.</param>
+public sealed record PrototypeInfo(string Type, string Name, string? DisplayName, string? Icon, string File, int Line);
+
+public sealed record RecipeItem(string Type, string Name, double? Amount);
+
+public sealed record RecipeInfo(
+    string Name,
+    string? DisplayName,
+    string? Category,
+    double? EnergyRequired,
+    IReadOnlyList<RecipeItem> Ingredients,
+    IReadOnlyList<RecipeItem> Results,
+    string File,
+    int Line);
+
+/// <summary>An existing prototype (from the base game or another mod) that this mod references through <c>data.raw</c>.</summary>
+public sealed record TouchedPrototype(string Type, string Name, string File, int Line);
+
+/// <summary>Everything the studio shows about one mod. All content is derived statically; no Lua is executed.</summary>
+public sealed record ModOverview(
+    ModSummary? Info,
+    IReadOnlyList<ModFileEntry> Files,
+    IReadOnlyList<PrototypeInfo> Prototypes,
+    IReadOnlyList<RecipeInfo> Recipes,
+    IReadOnlyList<TouchedPrototype> Touched,
+    IReadOnlyList<string> Languages,
+    int DynamicEntries,
+    IReadOnlyList<ValidationIssue> Issues,
+    IReadOnlyList<string> Notes)
+{
+    /// <summary>Per-language key counts, "en" first, then alphabetical. Missing/extra are relative to the default language.</summary>
+    public IReadOnlyList<LocaleCoverage> LocaleCoverage { get; init; } = Array.Empty<LocaleCoverage>();
+}

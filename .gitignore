@@ -1,0 +1,37 @@
+# Build output
+bin/
+obj/
+*.nupkg
+TestResults/
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+
+# Factorio Mod Studio working folders
+.fmstudio/
+dist/
+
+# Local workspace for the UI (your mods under development)
+/mods/*
+!/mods/README.md
+
+# graphify (optional code knowledge graph, see docs/graphify.md): derived data and the Obsidian vault
+graphify-out/
+
+# Local-only Claude Code integration written by `tools/graphify/setup.* --hooks`:
+# CLAUDE.md and .claude/settings.json contain machine-specific hook paths (the absolute path of the
+# graphify executable), so they must never be committed.
+CLAUDE.md
+.claude/
+
+# Local backups (e.g. of the web UI before a redesign): never committed
+/backups/
+
+# Local sandbox test environment (see .sandbox/): never committed
+/.sandbox/

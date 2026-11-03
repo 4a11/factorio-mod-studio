@@ -1,0 +1,12 @@
+# Files excluded from the graphify code graph (gitignore syntax; .gitignore is respected as well).
+# See docs/graphify.md. The graph is only a navigation aid, so noise is left out.
+
+# Tests. To include them in the graph again, delete or comment out this line and run
+# tools/graphify/setup.sh --refresh (setup.ps1 -Refresh on Windows).
+tests/
+
+# Example mods
+examples/
+
+# Generated UI translation tables (very large, no useful structure)
+src/FactorioModStudio.Server/wwwroot/i18n/

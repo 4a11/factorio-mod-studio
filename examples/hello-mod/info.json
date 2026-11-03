@@ -1,0 +1,9 @@
+{
+  "name": "hello-mod",
+  "version": "0.1.0",
+  "title": "Hello Mod",
+  "author": "Example Author",
+  "description": "A minimal example mod used by Factorio Mod Studio docs and tests.",
+  "factorio_version": "2.0",
+  "dependencies": ["base >= 2.0.0"]
+}

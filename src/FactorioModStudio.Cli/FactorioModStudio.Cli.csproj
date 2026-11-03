@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>FactorioModStudio.Cli</RootNamespace>
+    <AssemblyName>fmstudio</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>fmstudio</ToolCommandName>
+    <PackageId>FactorioModStudio.Cli</PackageId>
+    <Description>Command-line toolkit for Factorio mod developers: validate, pack, run profiles, analyze logs, smoke-test.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FactorioModStudio.Core\FactorioModStudio.Core.csproj" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FactorioModStudio.Server\FactorioModStudio.Server.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Factorio Mod Studio</title>
+  <meta name="fms-token" content="{{FMS_TOKEN}}">
+  <meta name="color-scheme" content="light dark">
+  <script src="/theme-init.js"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <header class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1>Mod Studio</h1>
+          <p id="project-path" class="muted small"></p>
+        </div>
+      </header>
+      <input id="mod-search" type="search" placeholder="Search mods" aria-label="Search mods" autocomplete="off" data-i18n-placeholder="sidebar.search" data-i18n-aria-label="sidebar.search">
+      <div class="import-actions">
+        <button id="add-mod" type="button" data-i18n="sidebar.addMod">Add mod…</button>
+        <button id="new-mod" type="button" data-i18n="sidebar.newMod">New mod…</button>
+        <button id="add-folder" type="button" class="linklike" data-i18n="sidebar.addFolder">Add folder…</button>
+      </div>
+      <input id="zip-input" type="file" accept=".zip,application/zip" multiple hidden>
+      <input id="folder-input" type="file" webkitdirectory hidden>
+      <div id="import-status" class="import-status" role="status" aria-live="polite" hidden></div>
+      <nav id="mod-list" aria-label="Mods" data-i18n-aria-label="sidebar.mods"></nav>
+      <footer class="sidebar-footer">
+        <div class="live" id="live-status" role="status"></div>
+        <div class="footer-controls">
+          <select id="theme-select" data-testid="theme-select" aria-label="Theme" data-i18n-aria-label="ui.theme.label" title="Theme" data-i18n-title="ui.theme.label">
+            <option value="auto" data-i18n="ui.theme.auto">Auto</option>
+            <option value="light" data-i18n="ui.theme.light">Light</option>
+            <option value="dark" data-i18n="ui.theme.dark">Dark</option>
+          </select>
+          <select id="lang-select" aria-label="Language" data-i18n-aria-label="sidebar.language">
+            <option value="en">English</option>
+          </select>
+          <button id="palette-open" type="button" class="palette-open" data-testid="palette-open" aria-label="Quick open and commands" title="Quick open and commands" data-i18n-aria-label="ui.palette.open" data-i18n-title="ui.palette.open" data-i18n="ui.palette.openShort">Go to…</button>
+        </div>
+      </footer>
+    </aside>
+
+    <div id="sidebar-resize" class="sidebar-resize" data-testid="sidebar-resize" role="separator" aria-orientation="vertical" aria-valuemin="200" aria-valuemax="480" aria-valuenow="280" tabindex="0" aria-label="Resize sidebar" title="Resize sidebar" data-i18n-aria-label="ui.sidebar.resize" data-i18n-title="ui.sidebar.resize"></div>
+
+    <div class="main-col">
+      <div id="action-bar" class="action-bar" data-testid="action-bar" hidden></div>
+      <main class="content" id="content">
+        <div class="empty" data-i18n="content.select">Select a mod on the left to browse it.</div>
+      </main>
+    </div>
+
+    <section class="viewer" id="viewer" hidden aria-label="File viewer" data-i18n-aria-label="viewer.label">
+      <div id="editor-tabs" class="editor-tabs" data-testid="editor-tabs" role="tablist" aria-label="Open files" data-i18n-aria-label="ui.tabs.label"></div>
+      <header class="viewer-bar">
+        <button id="viewer-back" type="button" class="viewer-back" data-testid="viewer-back" title="Hide the viewer; open files stay open" data-i18n-title="ui.viewer.backTitle" data-i18n="ui.viewer.back">Back</button>
+        <strong id="viewer-title"></strong>
+        <span id="viewer-status" class="small muted" role="status"></span>
+        <button id="viewer-problems" type="button" class="problems" title="Go to next problem" data-i18n-title="viewer.nextProblem" hidden></button>
+        <span class="viewer-actions">
+          <button id="viewer-save" type="button" data-i18n="viewer.save" hidden>Save</button>
+          <button id="viewer-revert" type="button" data-i18n="viewer.revert" hidden>Revert</button>
+          <button id="viewer-close" type="button" aria-label="Close viewer" data-i18n="viewer.close" data-i18n-aria-label="viewer.closeAria">Close</button>
+        </span>
+      </header>
+      <div id="viewer-banner" class="banner" hidden></div>
+      <div id="viewer-body" class="viewer-body"></div>
+    </section>
+
+    <section id="bottom-panel" class="bottom-panel" data-testid="bottom-panel" data-open="false" hidden></section>
+    <div id="statusbar" class="statusbar"></div>
+  </div>
+  <dialog id="new-mod-dialog" aria-labelledby="nm-heading">
+    <form id="nm-form" novalidate autocomplete="off">
+      <h2 id="nm-heading" data-i18n="dialog.heading">New mod</h2>
+      <div class="nm-field">
+        <label for="nm-name" data-i18n="dialog.name">Name</label>
+        <input id="nm-name" type="text" maxlength="100" spellcheck="false" autocapitalize="off" required aria-describedby="nm-name-hint">
+        <p id="nm-name-hint" class="small muted nm-hint" aria-live="polite">Letters, digits, "-" and "_"; also the folder name.</p>
+      </div>
+      <div class="nm-field">
+        <label for="nm-version" data-i18n="newmod.version">Factorio version</label>
+        <div class="nm-version-row">
+          <select id="nm-version">
+            <option value="1.1">1.1</option>
+            <option value="2.0" selected>2.0</option>
+            <option value="2.1">2.1</option>
+            <option value="other" data-i18n="newmod.versionOther">other…</option>
+          </select>
+          <input id="nm-version-custom" type="text" maxlength="9" inputmode="decimal" spellcheck="false" autocomplete="off" placeholder="2.2" aria-label="Factorio version" data-i18n-aria-label="newmod.versionCustom" hidden>
+        </div>
+        <p id="nm-version-hint" class="small muted nm-hint" aria-live="polite"></p>
+      </div>
+      <fieldset class="nm-templates" id="nm-templates">
+        <legend data-i18n="dialog.template">Template</legend>
+        <div id="nm-template-list"></div>
+      </fieldset>
+      <div class="nm-field">
+        <label for="nm-title"><span data-i18n="dialog.title">Title</span> <span class="muted small" data-i18n="dialog.optional">(optional)</span></label>
+        <input id="nm-title" type="text" maxlength="100">
+      </div>
+      <div class="nm-field">
+        <label for="nm-author"><span data-i18n="dialog.author">Author</span> <span class="muted small" data-i18n="dialog.optionalRemembered">(optional, remembered)</span></label>
+        <input id="nm-author" type="text" maxlength="100" placeholder="Your Name" data-i18n-placeholder="dialog.authorPlaceholder">
+      </div>
+      <div class="nm-field">
+        <label for="nm-description"><span data-i18n="dialog.description">Description</span> <span class="muted small" data-i18n="dialog.optional">(optional)</span></label>
+        <textarea id="nm-description" rows="2" maxlength="500" placeholder="A Factorio mod created with Factorio Mod Studio."></textarea>
+      </div>
+      <div id="nm-status" class="nm-status" role="status" aria-live="polite"></div>
+      <div class="nm-actions">
+        <button type="button" id="nm-cancel" data-i18n="dialog.cancel">Cancel</button>
+        <button type="submit" id="nm-create" class="primary" data-i18n="dialog.create">Create</button>
+      </div>
+    </form>
+  </dialog>
+  <div id="drop-overlay" class="drop-overlay" hidden aria-hidden="true"><div data-i18n="drop.hint">Drop a mod here (.zip or folder)</div></div>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
