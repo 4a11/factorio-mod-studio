@@ -45,4 +45,7 @@ public sealed record ModOverview(
 {
     /// <summary>Per-language key counts, "en" first, then alphabetical. Missing/extra are relative to the default language.</summary>
     public IReadOnlyList<LocaleCoverage> LocaleCoverage { get; init; } = Array.Empty<LocaleCoverage>();
+
+    /// <summary>Release checklist (see <see cref="ReleaseReadiness"/>). Filled per request by the UI server, never cached.</summary>
+    public IReadOnlyList<ReadinessCheck> Readiness { get; init; } = Array.Empty<ReadinessCheck>();
 }

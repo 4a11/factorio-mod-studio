@@ -430,9 +430,6 @@ node --test tests/js/palette-logic.test.mjs   # fuzzy matching of the quick-open
 * `tests/FactorioModStudio.Tests` — xUnit tests; Factorio itself is replaced by a fake process runner.
 * `examples/hello-mod` — a minimal mod that passes all checks.
 
-Optional: a local code graph of this repository (graphify + Obsidian) helps AI agents and humans navigate the code. It is opt-in
-and local-only; `tools/graphify/setup.sh` (Linux/macOS) or `tools\graphify\setup.ps1` (Windows) set it up. See [docs/graphify.md](docs/graphify.md).
-
 ## Architecture
 
 ```

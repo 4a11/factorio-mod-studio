@@ -126,7 +126,7 @@ public static class UiServer
         var app = builder.Build();
         MapSecurity(app, token);
         MapStaticAssets(app, token);
-        MapApi(app, context, catalog, feed, watcher);
+        MapApi(app, context, catalog, feed, watcher, jobs);
         BuildApi.Map(app, catalog, jobs);
         FactorioSettingsApi.Map(app, jobs, token);
 
@@ -239,7 +239,7 @@ public static class UiServer
         });
     }
 
-    private static void MapApi(WebApplication app, ProjectContext context, ModCatalog catalog, ChangeFeed feed, WorkspaceWatcher watcher)
+    private static void MapApi(WebApplication app, ProjectContext context, ModCatalog catalog, ChangeFeed feed, WorkspaceWatcher watcher, BuildJobs jobs)
     {
         MapImport(app, catalog, feed, watcher);
         MapNew(app, catalog, feed, watcher);
@@ -265,7 +265,12 @@ public static class UiServer
             var entry = catalog.Find(id);
             if (entry is null) return Error(StatusCodes.Status404NotFound, "Unknown mod.");
 
-            try { return Results.Ok(catalog.Overview(entry)); }
+            try
+            {
+                var overview = catalog.Overview(entry);
+                // Readiness depends on dist/ and file times, so it is computed per request and never cached.
+                return Results.Ok(overview with { Readiness = ReleaseReadiness.Evaluate(catalog.Materialize(entry), overview, jobs.DistDirectory) });
+            }
             catch (FmsException ex) { return Error(StatusCodes.Status422UnprocessableEntity, ex.Message); }
         });
 

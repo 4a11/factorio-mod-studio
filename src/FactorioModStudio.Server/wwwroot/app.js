@@ -64,6 +64,7 @@ const state = {
   tab: 'overview',
   protoFilter: '',
   protoType: '',
+  protoMode: 'defined', // 'defined' (prototypes of this mod) or 'touched' (existing prototypes referenced via data.raw)
   token: 0,
 };
 
@@ -230,38 +231,83 @@ function categoryCounts(o) {
   return counts;
 }
 
+const READINESS_ICONS = { ok: '✓', warn: '!', fail: '✕', info: 'i' };
+const READINESS_KEYS = { thumbnail: 'thumbnail', changelog: 'changelog', 'locale-name': 'localeName', errors: 'errors', packed: 'packed' };
+
+function readinessAction(c) {
+  if (c.file) return () => openFile(c.file, c.line);
+  if (c.id === 'errors') return () => go(state.currentId, 'problems');
+  if (c.id === 'locale-name') return () => go(state.currentId, 'locale');
+  return null;
+}
+
+function renderReadiness(checks) {
+  if (!checks || !checks.length) return null;
+  return el('section', { class: 'readiness', 'data-testid': 'readiness' },
+    el('h3', { text: t('readiness.heading') }),
+    el('ul', { class: 'readiness-list' }, checks.map((c) => {
+      const key = READINESS_KEYS[c.id] || c.id;
+      const text = t(`readiness.${key}.${c.status}`, { version: c.version ?? '?', n: c.count ?? 0 });
+      const action = readinessAction(c);
+      return el('li', { class: `readiness-row ${c.status}`, 'data-testid': 'readiness-row', 'data-id': c.id, 'data-status': c.status },
+        el('span', { class: `readiness-icon ${c.status}`, 'aria-hidden': 'true', text: READINESS_ICONS[c.status] || '?' }),
+        action ? el('button', { class: 'readiness-text', type: 'button', onclick: action, text }) : el('span', { class: 'readiness-text', text }));
+    })));
+}
+
+/** "ru 92% · de 60%": coverage of every language but the default one (the first entry). */
+function coverageLine(coverage) {
+  if (!coverage || coverage.length < 2 || !(coverage[0].keys > 0)) return '';
+  const total = coverage[0].keys;
+  return coverage.slice(1).map((c) => `${c.language} ${Math.max(0, Math.round(((total - c.missing) / total) * 100))}%`).join(' · ');
+}
+
+function showTouched(type) {
+  state.protoMode = 'touched';
+  state.protoType = type || '';
+  state.protoFilter = '';
+  if (state.tab === 'prototypes') renderMod(); else go(state.currentId, 'prototypes');
+}
+
 function renderOverview(o, counts) {
-  const card = (num, label, tab) => el('div', { class: 'card' },
-    el('div', { class: 'num', text: num }), el('div', { class: 'label' }, tab
-      ? el('button', { class: 'link', type: 'button', onclick: () => go(state.currentId, tab), text: label })
-      : label));
+  const card = (num, label, onclick, extra = {}) => el('div', { class: 'card' + (extra.class ? ` ${extra.class}` : ''), 'data-testid': extra.testid },
+    el('div', { class: 'num', text: num }), el('div', { class: 'label' }, onclick
+      ? el('button', { class: 'link', type: 'button', onclick, text: label })
+      : label),
+    extra.sub && el('div', { class: 'sub muted small', 'data-testid': extra.testid ? `${extra.testid}-sub` : null, text: extra.sub }));
+  const toTab = (tab) => () => go(state.currentId, tab);
 
   const entryPoints = o.files.filter((f) => f.role);
-  const issueCount = o.issues.filter((i) => i.severity !== 'info').length;
+  const errors = o.issues.filter((i) => i.severity === 'error').length;
+  const warnings = o.issues.filter((i) => i.severity === 'warning').length;
+
+  const touchedTypes = new Map();
+  for (const p of o.touched) touchedTypes.set(p.type, (touchedTypes.get(p.type) || 0) + 1);
+  const touchedChips = [...touchedTypes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
   return el('div', {},
+    renderReadiness(o.readiness),
     el('div', { class: 'cards' },
-      card(counts.script, t('overview.scripts'), 'files'),
-      card(o.prototypes.length, t('overview.prototypes'), 'prototypes'),
-      card(o.recipes.length, t('overview.recipes'), 'recipes'),
-      card(counts.graphics, t('overview.graphics'), 'resources'),
-      card(counts.sound, t('overview.sounds'), 'resources'),
-      card(o.languages.length, t('overview.languages'), 'resources'),
-      card(o.touched.length, t('overview.touched')),
-      card(issueCount, t('overview.problems'), 'problems')),
+      card(counts.script, t('overview.scripts'), toTab('files')),
+      card(o.prototypes.length, t('overview.prototypes'), toTab('prototypes')),
+      card(o.recipes.length, t('overview.recipes'), toTab('recipes')),
+      card(counts.graphics, t('overview.graphics'), toTab('resources')),
+      card(counts.sound, t('overview.sounds'), toTab('resources')),
+      card(o.languages.length, t('overview.translations'), toTab('locale'), { testid: 'card-translations', sub: coverageLine(o.localeCoverage) }),
+      card(o.touched.length, t('overview.touched'), () => showTouched(''), { testid: 'card-touched' }),
+      card(errors, t('overview.errors'), toTab('problems'), { testid: 'card-errors', class: errors > 0 ? 'bad' : '' }),
+      card(warnings, t('overview.warnings'), toTab('problems'), { testid: 'card-warnings', class: warnings > 0 ? 'warn' : '' })),
     o.notes.map((n) => el('p', { class: 'note', text: n })),
     el('h3', { class: 'section', text: t('overview.entryPoints') }),
     entryPoints.length
       ? el('table', {}, el('tbody', {}, entryPoints.map((f) => el('tr', { class: 'clickable', onclick: () => openFile(f.path) },
           el('td', {}, el('span', { class: 'mono', text: f.path })), el('td', { class: 'muted', text: f.role })))))
       : el('p', { class: 'muted', text: t('overview.noEntryPoints') }),
-    o.touched.length > 0 && [
+    touchedChips.length > 0 && [
       el('h3', { class: 'section', text: t('overview.touchedHeading') }),
-      el('table', {},
-        el('thead', {}, el('tr', {}, el('th', { text: t('table.type') }), el('th', { text: t('table.name') }), el('th', { text: t('table.firstSeen') }))),
-        el('tbody', {}, o.touched.slice(0, 200).map((t) => el('tr', { class: 'clickable', onclick: () => openFile(t.file, t.line) },
-          el('td', { class: 'mono', text: t.type }), el('td', { class: 'mono', text: t.name }), el('td', { class: 'muted mono', text: `${t.file}:${t.line}` }))))),
-      o.touched.length > 200 && el('p', { class: 'muted small', text: t('overview.showingLimit', { shown: 200, total: o.touched.length }) }),
+      el('div', { class: 'chips', 'data-testid': 'touched-chips' }, touchedChips.map(([type, n]) =>
+        el('button', { class: 'chip touched-chip', type: 'button', 'data-testid': 'touched-chip', 'data-type': type, onclick: () => showTouched(type) },
+          el('span', { class: 'mono', text: type }), el('span', { class: 'muted', text: String(n) })))),
     ]);
 }
 
@@ -297,38 +343,49 @@ function renderBuild() {
 }
 
 function renderPrototypes(o) {
-  const types = [...new Set(o.prototypes.map((p) => p.type))];
+  const touched = state.protoMode === 'touched';
+  const list = touched ? o.touched : o.prototypes;
+  const types = [...new Set(list.map((p) => p.type))];
+  if (state.protoType && !types.includes(state.protoType)) state.protoType = '';
   const body = el('tbody');
 
   const refresh = () => {
     const filter = state.protoFilter.toLowerCase();
-    const rows = o.prototypes.filter((p) =>
+    const rows = list.filter((p) =>
       (!state.protoType || p.type === state.protoType) &&
       (!filter || p.name.toLowerCase().includes(filter) || (p.displayName || '').toLowerCase().includes(filter)));
 
-    body.replaceChildren(...rows.slice(0, 500).map((p) => el('tr', { class: 'clickable', onclick: () => openFile(p.file, p.line) },
-      el('td', { class: 'icon' }, p.icon ? el('img', { class: 'thumb', loading: 'lazy', alt: '', src: fileUrl(p.icon) }) : null),
+    body.replaceChildren(...rows.slice(0, 500).map((p) => el('tr', { class: 'clickable', 'data-testid': 'proto-row', onclick: () => openFile(p.file, p.line) },
+      !touched && el('td', { class: 'icon' }, p.icon ? el('img', { class: 'thumb', loading: 'lazy', alt: '', src: fileUrl(p.icon) }) : null),
       el('td', { class: 'mono', text: p.type }),
       el('td', {}, el('div', { class: 'mono', text: p.name }), p.displayName && el('div', { class: 'muted small', text: p.displayName })),
       el('td', { class: 'muted mono', text: `${p.file}:${p.line}` }))));
     count.textContent = rows.length > 500 ? t('prototypes.showing', { shown: 500, total: rows.length }) : t('count.prototype', { n: rows.length });
   };
 
-  const count = el('span', { class: 'muted small' });
+  const setMode = (mode) => { if (state.protoMode !== mode) { state.protoMode = mode; state.protoType = ''; renderMod(true); } };
+  const modeSwitch = (o.touched.length > 0 || touched) && el('div', { class: 'segmented', role: 'group', 'aria-label': t('prototypes.modeAria'), 'data-testid': 'proto-mode' },
+    [['defined', 'prototypes.modeDefined'], ['touched', 'prototypes.modeTouched']].map(([mode, key]) =>
+      el('button', { type: 'button', class: 'toggle', 'data-mode': mode, 'aria-pressed': (touched ? mode === 'touched' : mode === 'defined') ? 'true' : 'false',
+        onclick: () => setMode(mode), text: t(key) })));
+
+  const count = el('span', { class: 'muted small', 'data-testid': 'proto-count' });
   const search = el('input', { type: 'search', placeholder: t('prototypes.filter'), 'aria-label': t('prototypes.filterAria'), value: state.protoFilter,
     oninput: (e) => { state.protoFilter = e.target.value; refresh(); } });
-  const select = el('select', { 'aria-label': t('prototypes.typeAria'), onchange: (e) => { state.protoType = e.target.value; refresh(); } },
+  const select = el('select', { 'aria-label': t('prototypes.typeAria'), 'data-testid': 'proto-type', onchange: (e) => { state.protoType = e.target.value; refresh(); } },
     el('option', { value: '', text: t('prototypes.allTypes') }),
     types.map((t) => el('option', { value: t, text: t, selected: t === state.protoType })));
 
-  if (!o.prototypes.length) {
-    return el('p', { class: 'muted', text: t('prototypes.empty') });
+  if (!list.length) {
+    return el('div', {}, modeSwitch && el('div', { class: 'toolbar' }, modeSwitch),
+      el('p', { class: 'muted', text: t(touched ? 'prototypes.touchedEmpty' : 'prototypes.empty') }));
   }
 
   refresh();
+  const headers = [!touched && '', t('table.type'), t('table.name'), t(touched ? 'table.firstSeen' : 'table.definedAt')].filter((h) => h !== false);
   return el('div', {},
-    el('div', { class: 'toolbar' }, search, select, count),
-    el('table', {}, el('thead', {}, el('tr', {}, el('th', { text: '' }), el('th', { text: t('table.type') }), el('th', { text: t('table.name') }), el('th', { text: t('table.definedAt') }))), body));
+    el('div', { class: 'toolbar' }, modeSwitch, search, select, count),
+    el('table', {}, el('thead', {}, el('tr', {}, headers.map((h) => el('th', { text: h })))), body));
 }
 
 function itemChip(item) {

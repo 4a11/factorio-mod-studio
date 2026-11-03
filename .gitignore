@@ -21,12 +21,22 @@ dist/
 /mods/*
 !/mods/README.md
 
-# graphify (optional code knowledge graph, see docs/graphify.md): derived data and the Obsidian vault
+# Release builds
+publish/
+artifacts/
+
+# Logs and local secrets (e.g. factorio.com credentials): never committed
+*.log
+.env
+.env.*
+
+# Local-only developer tooling (code graph for AI agents): kept on disk, not in the repo
+/tools/graphify/
+/docs/graphify.md
+/.graphifyignore
 graphify-out/
 
-# Local-only Claude Code integration written by `tools/graphify/setup.* --hooks`:
-# CLAUDE.md and .claude/settings.json contain machine-specific hook paths (the absolute path of the
-# graphify executable), so they must never be committed.
+# Local AI-agent settings with machine-specific paths: never committed
 CLAUDE.md
 .claude/
 

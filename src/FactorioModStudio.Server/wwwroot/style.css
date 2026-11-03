@@ -203,6 +203,36 @@ input:focus-visible, button:focus-visible, select:focus-visible, a:focus-visible
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
 .card .num { font-size: 24px; font-weight: 650; }
 .card .label { color: var(--muted); font-size: 12px; }
+.card .sub { margin-top: 4px; font-family: var(--mono); overflow-wrap: anywhere; }
+.card.bad { border-color: var(--error); }
+.card.bad .num { color: var(--error); }
+.card.warn { border-color: var(--warning); }
+.card.warn .num { color: var(--warning); }
+
+.readiness { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; }
+.readiness h3 { margin: 0 0 6px; font-size: 14px; }
+.readiness-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.readiness-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.readiness-icon {
+  flex: none; width: 18px; height: 18px; border-radius: 999px; border: 1px solid currentColor;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; line-height: 1;
+}
+.readiness-icon.ok { color: var(--ok); }
+.readiness-icon.warn { color: var(--warning); }
+.readiness-icon.fail { color: var(--error); background: var(--error-soft); }
+.readiness-icon.info { color: var(--info); }
+.readiness-text { min-width: 0; overflow-wrap: anywhere; font-size: 13px; text-align: left; }
+button.readiness-text { background: none; border: 0; padding: 0; color: var(--text); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+button.readiness-text:hover { color: var(--accent); }
+
+.touched-chip { cursor: pointer; }
+.touched-chip:hover { border-color: var(--accent); }
+
+.segmented { display: inline-flex; flex: none; }
+.segmented .toggle { font-size: 12.5px; padding: 4px 10px; border-radius: 0; }
+.segmented .toggle:first-child { border-radius: 6px 0 0 6px; }
+.segmented .toggle:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
+.segmented .toggle[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--text); position: relative; }
 
 .note { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--warning); border-radius: 6px; padding: 8px 12px; margin: 0 0 8px; }
 
