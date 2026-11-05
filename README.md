@@ -1,20 +1,94 @@
 # Factorio Mod Studio
 
-A command-line toolkit that takes the repetitive work out of developing [Factorio](https://factorio.com) mods:
-validate a mod, package a release, run the game with an isolated set of mods, understand error logs and
-smoke-test a mod headlessly (locally or in CI).
+**A local workbench for [Factorio](https://factorio.com) mod authors.** Create a mod, catch its mistakes before the game does,
+translate it, pack a clean release and test-run it with an isolated set of mods: from the command line or from a page in your
+browser. It runs entirely on your machine and works next to your usual code editor.
 
-> **Status: early MVP (0.1).** The logic is covered by unit tests, but the interaction with a real Factorio
-> installation (`run`, `smoke`) has not been verified against the game yet. Feedback and bug reports are very welcome.
->
-> Unofficial community project. Not affiliated with or endorsed by Wube Software. "Factorio" is a trademark of Wube Software Ltd.
+> **Early version (0.1).** The logic is covered by tests, but launching the real game (`run`, `smoke`) has not been verified
+> against Factorio yet. Feedback and bug reports are very welcome.
+> Unofficial community project, not affiliated with Wube Software. "Factorio" is a trademark of Wube Software Ltd.
+
+## What it does
+
+- **Start a mod in seconds.** Templates (empty, item + recipe, entity, runtime script) for Factorio 2.0 and 2.1 (all but the entity one also for 1.1) that pass every check out of the box.
+- **Catch mistakes early.** `info.json`, changelog, thumbnail, broken `__mod__/` paths and `require`s, missing or broken translations: all with file and line.
+- **See inside any mod.** A browser studio with the file tree, a Lua editor with live checks, the prototypes and recipes the mod defines, its graphics and sounds, and the files nothing uses.
+- **Translate comfortably.** Side-by-side editor with progress per language, placeholder checks and suggestions from your own earlier translations.
+- **Ship a clean release.** `NAME_VERSION.zip` with the right folder layout, built only when the mod validates.
+- **Test without touching your game.** Run Factorio or a headless smoke test with an isolated mod set per profile; your normal mods folder is never touched. Works in CI.
+- **Read logs faster.** A Factorio log condensed to its errors and warnings, merged duplicates, with the file and line and a hint.
+
+## Roadmap
+
+Where the project stands and what comes next. Versions are goals, not dates; the order follows feedback, so
+[open an issue](https://github.com/4a11/factorio-mod-studio/issues) if something here (or missing here) matters to you.
+
+**0.1: now.** The CLI (`new`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) and the browser studio
+(Overview, Files, Prototypes, Resources, Localization, Problems, Build) in 8 interface languages.
+
+**0.2: proven against the real game**
+- [ ] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1 on Windows, Linux and macOS, including the headless server
+- [ ] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
+- [ ] the prototypes the templates generate (entity, runtime script) loaded in the game, not only written from the documentation
+- [ ] one-line install: the tool published to NuGet (`dotnet tool install -g FactorioModStudio.Cli`), no clone needed
+
+**0.3: the remaining tabs**
+- [ ] Problems in the new style: grouped by file and rule, safe quick fixes (add a missing locale key, fix the letter case of a path)
+- [ ] Build: choose the profile, extra mods and a save; a history of runs to compare
+- [ ] icons for ingredients and results that come from the base game or a dependency
+- [ ] dependencies at a glance: required, optional, incompatible, and which of them are available in `modsSource`
+
+**0.4: release workflow**
+- [ ] version bump and changelog entry in one step (`fmstudio bump patch|minor|major`)
+- [ ] upload to the Factorio mod portal (opt-in, with your own API key)
+- [ ] a ready GitHub Actions workflow (`fmstudio init --ci`): validate, pack and smoke-test on every push
+
+**Later**
+- the final prototypes via `--dump-data`: "which mod changed this item, and to what?"
+- running tests written for [FactorioTest](https://mods.factorio.com/mod/factorio-test) from the studio
+- an editor extension (VS Code) on top of the same API
 
 ## Why
 
-Existing tools already cover editing Lua, debugging and unit testing (for example the *Factorio Modding Tool Kit*
-extension for VS Code and the *FactorioTest* framework). What is still tedious is the glue: building a clean release,
-launching the game with a reproducible set of mods, and finding the actual cause in a wall of log output.
-Factorio Mod Studio focuses on that glue and is meant to work next to your favourite editor, not replace it.
+Editing Lua, debugging and unit tests are already well covered (for example by the *Factorio Modding Tool Kit* for VS Code and
+*FactorioTest*). What stays tedious is the glue around them: a correct release zip, a reproducible set of mods to launch, the one
+real error in a wall of log output, translations that drift apart. Factorio Mod Studio does that glue.
+
+## Quick start
+
+You need the [.NET 8 SDK](https://dotnet.microsoft.com/download).
+
+```sh
+# 1. Install the `fmstudio` tool (once)
+git clone https://github.com/4a11/factorio-mod-studio
+cd factorio-mod-studio
+dotnet pack src/FactorioModStudio.Cli -c Release -o ./nupkg
+dotnet tool install --global FactorioModStudio.Cli --add-source ./nupkg
+
+# 2. Create a mod in any folder you like and open the studio
+cd ~/factorio-dev
+fmstudio new my-mod --template item-recipe   # a ready-to-run mod in ./mods/my-mod
+fmstudio ui                                  # every mod in ./mods, in your browser
+```
+
+A typical loop: the buttons at the top of every mod in the browser, or the same in the terminal from the mod's folder:
+
+```sh
+cd mods/my-mod
+fmstudio validate      # what is wrong, with file:line
+fmstudio pack          # dist/my-mod_0.1.0.zip
+fmstudio smoke         # load it headless for 600 ticks; fails on any error
+fmstudio run           # start Factorio with only this mod and its dependencies
+```
+
+Factorio is found automatically (the usual install folders, `FACTORIO_PATH`, or installations you add in the UI); the version that
+matches the mod's `factorio_version` is used.
+
+## Documentation
+
+- [Install](#install) · [Commands](#commands) · [Creating a mod](#creating-a-mod) · [Several Factorio versions](#several-factorio-versions) · [Configuration](#configuration) · [Smoke test](#smoke-test)
+- The browser studio: [overview and tabs](#graphical-mod-browser) · [Build tab](#build-tab-validate-pack-smoke-test-and-run) · [Files tab](#files-tab) · [Search](#search-api) · [Localization editor](#localization-editor)
+- [Validation rules](#validation-rules) · [Translating the interface](#translating-the-interface) · [CI example](#ci-example) · [Development](#development) · [Architecture](#architecture) · [Roadmap](#roadmap)
 
 ## Install
 
@@ -477,12 +551,14 @@ The translations are machine-assisted and may contain mistakes or unnatural word
 ```sh
 dotnet build
 dotnet test
-node --test tests/js/highlight.test.mjs   # editor syntax highlighter (Node 18+, no dependencies)
-node --test tests/js/palette-logic.test.mjs   # fuzzy matching of the quick-open palette
+node --test tests/js/*.test.mjs   # the browser-side logic: highlighter, palette, files tree, i18n dictionaries (Node 18+, no dependencies)
 ```
 
+If `fmstudio ui` is running it locks the CLI's build output; build the tests elsewhere with
+`dotnet test --artifacts-path <folder>` and set `FMS_REPO_ROOT=<repository>` so the tests can find the repository.
+
 * `src/FactorioModStudio.Core` — library: validation, packaging, profiles, log parser, smoke test, mod inspector (Lua reading, locale, zip extraction). No console or HTTP code.
-* `src/FactorioModStudio.Server` — local web host: a JSON API over Core (read, plus guarded writes), live change events (server-sent events) and the embedded UI (`wwwroot`, plain HTML/CSS/JS, no build step). The page is a set of ES modules: `app.js` (routing and wiring), `editor-tabs.js`, `action-bar.js`, `bottom-panel.js`, `search-panel.js`, `palette.js` with the pure `palette-logic.js`, `build-view.js`, `locale-view.js`, `theme.js` / `theme-init.js` and `ui-state.js`. A new module has to be added to `StaticScripts` in `UiServer.cs`.
+* `src/FactorioModStudio.Server` — local web host: a JSON API over Core (read, plus guarded writes), live change events (server-sent events) and the embedded UI (`wwwroot`, plain HTML/CSS/JS, no build step). The page is a set of ES modules: `app.js` (routing, sidebar, Overview and Problems), one module per bigger tab (`files-view.js` with the pure `files-logic.js`, `prototypes-view.js`, `resources-view.js`, `locale-view.js`, `build-view.js`), `editor-tabs.js`, `action-bar.js`, `bottom-panel.js`, `search-panel.js`, `palette.js` with the pure `palette-logic.js`, `theme.js` / `theme-init.js` and `ui-state.js`. A new module has to be added to `StaticScripts` in `UiServer.cs`.
 * `src/FactorioModStudio.Cli` — the `fmstudio` command-line tool; a thin layer over Core and Server.
 * `tests/FactorioModStudio.Tests` — xUnit tests; Factorio itself is replaced by a fake process runner.
 * `examples/hello-mod` — a minimal mod that passes all checks.
@@ -497,18 +573,6 @@ core:      FactorioModStudio.Core
 
 Core holds all behaviour and knows nothing about the console or HTTP; hosts only translate. New features go into Core first, with tests,
 and become available to every client. The shape of the `--json` output and of the `/api` responses is the public contract.
-
-## Roadmap
-
-Ideas, roughly in order of intended complexity. Nothing here is a promise; priorities will follow real feedback.
-
-* Verify `run` / `smoke` against real Factorio on Windows, Linux and macOS; capture `factorio-current.log` as well as stdout.
-* Locale checks (keys used in Lua vs. `locale/*.cfg`).
-* `fmstudio new` — project templates.
-* UI: rename/move files, profile selection and saves in the Build tab, dependency graph, ingredient icons from other mods.
-* Inspecting the final prototypes via `--dump-data` ("which mod changed this item?").
-* Integration with existing test frameworks instead of reimplementing them.
-* Dependency / conflict analysis; a GUI or editor extension on top of the same library.
 
 ## License
 
