@@ -1,5 +1,7 @@
 # Factorio Mod Studio
 
+**English** · [Русский](README.ru.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [Українська](README.uk.md) · [Polski](README.pl.md) · [Français](README.fr.md) · [Español](README.es.md)
+
 **A local workbench for [Factorio](https://factorio.com) mod authors.** Create a mod, catch its mistakes before the game does,
 translate it, pack a clean release and test-run it with an isolated set of mods: from the command line or from a page in your
 browser. It runs entirely on your machine and works next to your usual code editor.
@@ -536,6 +538,10 @@ To add a language:
 3. Add the code to the `UiLanguages` allowlist in `src/FactorioModStudio.Server/UiServer.cs`.
 
 The translations are machine-assisted and may contain mistakes or unnatural wording; corrections are welcome via pull request.
+
+The README has translations too (`README.<code>.md`, linked at the top). They cover only the introduction (what it does, roadmap,
+why, quick start) and link to this file for the documentation, so when you change those parts here, update them as well; this
+English README is the reference.
 
 ## CI example
 
