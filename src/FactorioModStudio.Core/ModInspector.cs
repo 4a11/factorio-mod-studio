@@ -31,11 +31,16 @@ public static class ModInspector
         var info = ReadSummary(root, out var modName);
         var relativePaths = ModFiles.Enumerate(root);
 
+        var references = ModReferences.Analyze(root, modName, relativePaths);
+
         var files = new List<ModFileEntry>(relativePaths.Count);
         foreach (var relative in relativePaths)
         {
             var size = SafeLength(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
-            files.Add(new ModFileEntry(relative, size, Categorize(relative), RoleOf(relative)));
+            files.Add(new ModFileEntry(relative, size, Categorize(relative), RoleOf(relative))
+            {
+                Unused = references.Unused.TryGetValue(relative, out var unused) ? unused : null
+            });
         }
 
         var languages = LocaleData.Languages(root);
@@ -74,6 +79,7 @@ public static class ModInspector
         if (dynamic > 0)
             notes.Add($"{dynamic} entr{(dynamic == 1 ? "y" : "ies")} passed to data:extend could not be resolved statically (variables or function calls), so the prototype and recipe lists may be incomplete.");
 
+        // Broken asset paths and requires (FMS030-032) come from the validator, which runs the same ModReferences analysis.
         var issues = validate ? ModValidator.Validate(root).Issues : Array.Empty<ValidationIssue>();
 
         return new ModOverview(

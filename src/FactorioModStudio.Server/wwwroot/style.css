@@ -644,3 +644,45 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .45); }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 .mod-header p { margin: 0; }
+
+/* Files tab: tree / category view, badges, context menu, dialogs, toast (files-view.js) */
+.files-toolbar { align-items: center; }
+.files-toolbar .files-filter { flex: 1; min-width: 160px; }
+.files-check { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.files-switch { display: inline-flex; }
+.files-switch button { border-radius: 0; }
+.files-switch button:first-child { border-radius: 6px 0 0 6px; }
+.files-switch button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+.files-switch button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.files-hint { flex-basis: 100%; }
+.files-tree { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 0; }
+details .files-tree { border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+.files-row { --depth: 0; display: flex; align-items: center; gap: 6px; min-height: 26px; padding: 2px 10px 2px calc(10px + var(--depth) * 16px); cursor: pointer; user-select: none; }
+.files-row:hover { background: var(--surface-2); }
+.files-row[aria-selected="true"] { background: var(--accent-soft); }
+.files-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.files-row.active .files-name { font-weight: 700; color: var(--accent); }
+.files-row.drop-target { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.files-twisty { width: 12px; flex: none; color: var(--muted); font-size: 11px; }
+.files-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 12.5px; }
+.files-row.folder .files-name { font-family: inherit; font-weight: 600; }
+.files-badges { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.files-badges .chip { font-size: 11px; padding: 0 6px; }
+.badge.files-unused { color: var(--muted); }
+.files-dirty { color: var(--accent); }
+.files-menu { position: fixed; z-index: 200; min-width: 180px; padding: 4px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); }
+.files-menu[hidden] { display: none; }
+.files-menu button { text-align: left; border: 0; background: none; padding: 6px 10px; border-radius: 4px; }
+.files-menu button:hover, .files-menu button:focus-visible { background: var(--accent-soft); outline: none; }
+.files-dialog { width: min(420px, calc(100vw - 32px)); padding: 20px 22px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); }
+.files-dialog::backdrop { background: rgba(0, 0, 0, .5); }
+.files-dialog h2 { margin-bottom: 10px; overflow-wrap: anywhere; }
+.files-dialog p { overflow-wrap: anywhere; }
+.files-dialog input { width: 100%; padding: 6px 10px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.files-dialog .nm-actions { margin-top: 10px; position: static; }
+.files-dialog-error { min-height: 1.2em; margin: 6px 0 0; color: var(--error); }
+button.primary.danger { background: var(--error); border-color: var(--error); }
+.files-toast { position: fixed; z-index: 150; left: 50%; bottom: 48px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; max-width: min(640px, calc(100vw - 24px)); padding: 8px 12px; background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); overflow-wrap: anywhere; }
+.files-toast.bad { border-color: var(--error); }
+.files-toast[hidden] { display: none; }
+@media (max-width: 700px) { .files-dialog input, .files-toolbar .files-filter { font-size: 16px; } }

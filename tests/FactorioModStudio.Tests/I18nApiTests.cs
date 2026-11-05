@@ -146,7 +146,8 @@ public class I18nApiTests
         Assert.Equal("nosniff", Header(response, "X-Content-Type-Options"));
         Assert.True(Header(response, "Content-Security-Policy").Length > 0);
         var bytes = await response.Content.ReadAsByteArrayAsync();
-        Assert.True(bytes.SequenceEqual(await File.ReadAllBytesAsync(Path.Combine(WwwRoot(), "i18n.js"))), "i18n.js differs from repo");
+        var expected = await File.ReadAllBytesAsync(Path.Combine(WwwRoot(), "i18n.js"));
+        Assert.True(bytes.SequenceEqual(expected), "i18n.js differs from repo");
         var text = Encoding.UTF8.GetString(bytes);
         Assert.Contains("export", text);
         Assert.Contains("createTranslator", text);
@@ -208,7 +209,9 @@ public class I18nApiTests
             Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
         }
         // the dictionary must remain intact after the attempted writes
-        Assert.True((await http.GetByteArrayAsync("/i18n/en.json")).SequenceEqual(await File.ReadAllBytesAsync(Path.Combine(WwwRoot(), "i18n", "en.json"))));
+        var served = await http.GetByteArrayAsync("/i18n/en.json");
+        var onDisk = await File.ReadAllBytesAsync(Path.Combine(WwwRoot(), "i18n", "en.json"));
+        Assert.True(served.SequenceEqual(onDisk));
 
         using var head = await http.SendAsync(new HttpRequestMessage(HttpMethod.Head, "/i18n/en.json"));
         Assert.True(head.StatusCode is HttpStatusCode.OK or HttpStatusCode.MethodNotAllowed);

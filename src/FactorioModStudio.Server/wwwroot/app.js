@@ -4,13 +4,14 @@
 
 import { createLocaleView } from '/locale-view.js';
 import { createBuildView } from '/build-view.js';
-import { createEditorTabs, EDITABLE_EXT } from '/editor-tabs.js';
+import { createEditorTabs } from '/editor-tabs.js';
 import { createUiState, SIDEBAR_DEFAULT, SIDEBAR_MIN, SIDEBAR_MAX } from '/ui-state.js';
 import { createTheme } from '/theme.js';
 import { createSearchPanel } from '/search-panel.js';
 import { createBottomPanel } from '/bottom-panel.js';
 import { createActionBar } from '/action-bar.js';
 import { createPalette } from '/palette.js';
+import { createFilesView } from '/files-view.js';
 import { LANGUAGES, initI18n, setLanguage, getLanguage, onLanguageChange, t, formatNumber } from '/i18n.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -125,6 +126,7 @@ async function route() {
     }
     localeView.reset();
     buildView.reset();
+    filesView.reset();
     searchPanel.setMod(id);
     bottom.setMod();
     state.currentId = id;
@@ -255,11 +257,20 @@ function renderReadiness(checks) {
     })));
 }
 
-/** "ru 92% · de 60%": coverage of every language but the default one (the first entry). */
-function coverageLine(coverage) {
-  if (!coverage || coverage.length < 2 || !(coverage[0].keys > 0)) return '';
-  const total = coverage[0].keys;
-  return coverage.slice(1).map((c) => `${c.language} ${Math.max(0, Math.round(((total - c.missing) / total) * 100))}%`).join(' · ');
+/**
+ * Coverage of every language but the default one (the first entry). Up to 3 languages: "ru 92% · de 60%".
+ * More: "{full}/{total} complete · fa 0% · eu 0% · sq 0%" (the 3 weakest); the full list goes to the tooltip.
+ */
+function coverage(cov) {
+  if (!cov || cov.length < 2 || !(cov[0].keys > 0)) return { text: '', title: null };
+  const total = cov[0].keys;
+  const langs = cov.slice(1).map((c) => ({ lang: c.language, pct: Math.max(0, Math.round(((total - c.missing) / total) * 100)) }));
+  const fmt = (l) => `${l.lang} ${l.pct}%`;
+  const all = langs.map(fmt).join(' · ');
+  if (langs.length <= 3) return { text: all, title: null };
+  const weakest = langs.filter((l) => l.pct < 100).sort((a, b) => a.pct - b.pct || a.lang.localeCompare(b.lang)).slice(0, 3);
+  const summary = t('overview.coverageComplete', { full: langs.length - langs.filter((l) => l.pct < 100).length, total: langs.length });
+  return { text: [summary, ...weakest.map(fmt)].join(' · '), title: all };
 }
 
 function showTouched(type) {
@@ -274,8 +285,9 @@ function renderOverview(o, counts) {
     el('div', { class: 'num', text: num }), el('div', { class: 'label' }, onclick
       ? el('button', { class: 'link', type: 'button', onclick, text: label })
       : label),
-    extra.sub && el('div', { class: 'sub muted small', 'data-testid': extra.testid ? `${extra.testid}-sub` : null, text: extra.sub }));
+    extra.sub && el('div', { class: 'sub muted small', 'data-testid': extra.testid ? `${extra.testid}-sub` : null, title: extra.title || null, text: extra.sub }));
   const toTab = (tab) => () => go(state.currentId, tab);
+  const cov = coverage(o.localeCoverage);
 
   const entryPoints = o.files.filter((f) => f.role);
   const errors = o.issues.filter((i) => i.severity === 'error').length;
@@ -293,7 +305,7 @@ function renderOverview(o, counts) {
       card(o.recipes.length, t('overview.recipes'), toTab('recipes')),
       card(counts.graphics, t('overview.graphics'), toTab('resources')),
       card(counts.sound, t('overview.sounds'), toTab('resources')),
-      card(o.languages.length, t('overview.translations'), toTab('locale'), { testid: 'card-translations', sub: coverageLine(o.localeCoverage) }),
+      card(o.languages.length, t('overview.translations'), toTab('locale'), { testid: 'card-translations', sub: cov.text, title: cov.title }),
       card(o.touched.length, t('overview.touched'), () => showTouched(''), { testid: 'card-touched' }),
       card(errors, t('overview.errors'), toTab('problems'), { testid: 'card-errors', class: errors > 0 ? 'bad' : '' }),
       card(warnings, t('overview.warnings'), toTab('problems'), { testid: 'card-warnings', class: warnings > 0 ? 'warn' : '' })),
@@ -311,25 +323,12 @@ function renderOverview(o, counts) {
     ]);
 }
 
-const CATEGORIES = ['script', 'locale', 'graphics', 'sound', 'data', 'text', 'other'];
 
 const currentMod = () => state.mods.find((m) => m.id === state.currentId);
 
+// The Files tab (tree, filters, context menu, drag & drop, trash with undo) lives in files-view.js.
 function renderFiles(o) {
-  const groups = {};
-  for (const f of o.files) (groups[f.category] ||= []).push(f);
-  const editable = currentMod()?.editable;
-
-  return el('div', {}, editable && el('div', { class: 'toolbar' },
-      el('button', { type: 'button', onclick: newFile, text: t('files.new') }),
-      el('span', { class: 'muted small', text: t('files.hint') })),
-    CATEGORIES.filter((c) => groups[c]).map((category) =>
-    el('details', { open: category === 'script' },
-      el('summary', {}, t(`category.${category === 'other' ? 'misc' : category}`), el('span', { class: 'muted', text: ` (${groups[category].length})` })),
-      groups[category].slice(0, 500).map((f) => el('div', { class: 'file-row' },
-        el('button', { class: 'link', type: 'button', onclick: () => openFile(f.path), text: f.path }),
-        el('span', { class: 'muted small', text: [f.role, formatSize(f.size)].filter(Boolean).join(' · ') }))),
-      groups[category].length > 500 && el('div', { class: 'file-row muted', text: t('files.moreNotShown', { n: groups[category].length - 500 }) }))));
+  return filesView.render(o);
 }
 
 function renderLocale() {
@@ -472,6 +471,15 @@ const editorTabs = createEditorTabs({
 
 const closeViewer = (force = false) => editorTabs.closeViewer(force);
 
+const filesView = createFilesView({
+  api, el, editorTabs, formatSize,
+  getModId: () => state.currentId,
+  isEditable: () => !!currentMod()?.editable,
+  openFile: (path, line) => openFile(path, line),
+  refresh: () => refreshOverview(),
+  setDropOverlay: (on) => setOverlay(on),
+});
+
 /** Opens a file of the current mod in an editor tab; with `column` / `length` the matched range is selected. */
 function openFile(path, line, column, length) {
   if (!state.currentId) return Promise.resolve(false);
@@ -580,6 +588,7 @@ function revealButtonRender() {
 // Open editor tabs are remembered per mod.
 function onEditorTabsChanged() {
   revealButtonRender();
+  if (state.tab === 'files') filesView.onTabsChanged();
   if (suspendTabMemory || !state.currentId) return;
   uiState.setEditorTabs(state.currentId, editorTabs.paths(), editorTabs.activePath());
 }
@@ -661,25 +670,6 @@ document.addEventListener('keydown', (e) => {
   if (key === 'j' && !e.shiftKey) { e.preventDefault(); bottom.toggle(); }
   else if (key === 'f' && e.shiftKey) { e.preventDefault(); bottom.focusSearch(); }
 });
-
-async function newFile() {
-  const input = prompt(t('files.promptNew'));
-  if (!input) return;
-  const path = input.trim().replace(/\\/g, '/').replace(/^\/+/, '');
-  const extension = path.split('.').pop().toLowerCase();
-  if (!path || !EDITABLE_EXT.includes(extension)) { alert(t('files.badExtension')); return; }
-  try {
-    await api(`/api/mods/${encodeURIComponent(state.currentId)}/file?path=${encodeURIComponent(path)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'If-None-Match': '*' },
-      body: '',
-    });
-    await refreshOverview();
-    openFile(path);
-  } catch (error) {
-    alert(error.status === 428 ? t('files.exists') : t('files.createFailed', { message: error.message }));
-  }
-}
 
 // ---------------------------------------------------------------- live updates
 

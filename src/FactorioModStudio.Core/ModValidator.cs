@@ -31,11 +31,6 @@ public static class ModValidator
     private static readonly string[] KnownFactorioVersions = { "1.0", "1.1", "2.0", "2.1" };
     private static readonly HashSet<string> DlcMods = new(StringComparer.Ordinal) { "space-age", "quality", "elevated-rails" };
 
-    // __mod-name__/path/to/file.ext  (only paths that end in a file extension we can check)
-    private static readonly Regex AssetReference = new(
-        @"__(?<mod>[^\s/""']+?)__/(?<path>[A-Za-z0-9_\-./]+?\.(?:png|jpg|jpeg|ogg|wav|lua|json|cfg))(?![A-Za-z0-9_\-./%])",
-        RegexOptions.Compiled);
-
     private static readonly string[] RequiredStringFields = { "name", "version", "title", "author" };
 
     public static ValidationResult Validate(string modDirectory)
@@ -77,8 +72,10 @@ public static class ModValidator
         CheckThumbnail(result, modDirectory);
         CheckChangelog(result, modDirectory, result.Info);
 
-        var files = ModFiles.Enumerate(modDirectory);
-        if (result.Info.Name is not null) CheckAssetReferences(result, modDirectory, files, result.Info.Name);
+        // FMS030 / FMS031 / FMS032: broken __mod__/ asset paths and requires. ModReferences is the single implementation; the
+        // overview uses the same analysis for its "unused" flags.
+        foreach (var issue in ModReferences.Analyze(modDirectory, result.Info.Name, ModFiles.Enumerate(modDirectory)).Issues)
+            result.Add(issue.Severity, issue.Code, issue.Message, issue.File, issue.Line);
 
         try { LocaleChecker.Check(result, modDirectory); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { /* unreadable tree: skip locale checks */ }
@@ -244,38 +241,5 @@ public static class ModValidator
         if (info.Version is not null && top.Version != info.Version)
             result.Add(Severity.Warning, "FMS013",
                 $"Newest changelog entry is {top.Version} but info.json version is {info.Version}.", "changelog.txt", top.Line);
-    }
-
-    private static void CheckAssetReferences(ValidationResult result, string modDirectory, IReadOnlyList<string> files, string modName)
-    {
-        var exact = new HashSet<string>(files, StringComparer.Ordinal);
-        var insensitive = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var f in files) insensitive.TryAdd(f, f);
-
-        foreach (var file in files.Where(f => f.EndsWith(".lua", StringComparison.OrdinalIgnoreCase)))
-        {
-            string[] lines;
-            try { lines = File.ReadAllLines(Path.Combine(modDirectory, file)); }
-            catch (IOException) { continue; }
-
-            for (var i = 0; i < lines.Length; i++)
-            {
-                if (lines[i].TrimStart().StartsWith("--", StringComparison.Ordinal)) continue;
-
-                foreach (Match m in AssetReference.Matches(lines[i]))
-                {
-                    if (m.Groups["mod"].Value != modName) continue;
-                    var target = m.Groups["path"].Value;
-                    if (target.Contains("..", StringComparison.Ordinal) || exact.Contains(target)) continue;
-
-                    if (insensitive.TryGetValue(target, out var actual))
-                        result.Add(Severity.Error, "FMS031",
-                            $"Referenced \"{target}\" differs in letter case from the real file \"{actual}\"; this works on Windows but fails inside the zip and on Linux.",
-                            file, i + 1);
-                    else
-                        result.Add(Severity.Error, "FMS030", $"Referenced file \"{target}\" does not exist in the mod.", file, i + 1);
-                }
-            }
-        }
     }
 }

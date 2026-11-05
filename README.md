@@ -212,7 +212,7 @@ sidebar button *Go to…* opens it too.
 What the tabs show:
 
 * **Overview** — counts, entry points (`data.lua`, `control.lua`, `settings.lua`, migrations) and which existing prototypes the mod touches via `data.raw`.
-* **Files** — grouped into scripts, locale, graphics, sounds and data, with a built-in viewer (Lua and text with line numbers, images, audio).
+* **Files** — a folder tree (or the files grouped by type), with a built-in viewer (Lua and text with line numbers, images, audio) and file management, see below.
 * **Prototypes** — every prototype the mod defines, with display names from the locale files and icon previews; click to jump to the source line.
 * **Recipes** — ingredients and results, for both the Factorio 2.x format and the older `result` / `normal` style.
 * **Resources** — image gallery, sound players and locale files.
@@ -299,6 +299,40 @@ API (JSON, `X-FMS-Token` required for POST, DELETE and the folder listing):
 | `POST /api/jobs/{jobId}/cancel` | the cancelled job; `409` if it had already finished |
 | `GET /api/downloads/{file}` | a packed archive from `dist` |
 
+### Files tab
+
+The *Files* tab shows the mod as a folder tree (*Tree*) or grouped into scripts, locale, graphics, sounds and data (*By type*; the
+choice is remembered in the browser). *Filter by name* keeps the files whose name contains the text; *Unused only* keeps graphics,
+sounds and scripts that nothing in the mod refers to. Rows carry badges for problems, unsaved changes in open tabs, entry points and
+*unused* files. The "unused" check is static: `__mod__/path` strings and `require` calls in Lua are followed, entry points
+(`data.lua`, `control.lua`, `settings*.lua`, ...), `locale/`, `migrations/` and scenario folders always count as used, and a path built
+at run time is only seen through its literal prefix (`"__mod__/graphics/" .. name` marks everything under `graphics/` as used).
+
+In editable mods the toolbar and the context menu (right-click, the Menu key or Shift+F10) offer *New file…*, *New folder…*, *Upload
+files…*, *Rename…* (F2), *Duplicate…*, *Delete* (Del) and *Show in file manager* (also for read-only mods). Drag rows onto a folder to
+move them, or drop files from your computer to upload them (text files as in the editor, images and sounds as binary assets; existing
+files are never overwritten, dropped folders are skipped). Names are checked before anything is sent: no `/` `\`, no leading dot, no
+`..`, no Windows device names (`CON`, `NUL`, `COM1`, ...), no `<>:"|?*`, no trailing dot or space, at most 255 characters. Open editor
+tabs follow a renamed or moved file with their unsaved edits; deleting closes them (after a warning when they have unsaved changes).
+
+*Delete* moves the file or folder into a trash outside the mod (`<workspace>/.fmstudio/trash/<mod>/`) and shows a notice with *Undo*.
+The trash keeps the 20 newest entries of each mod for at most 7 days. Undo fails with a message when something else now exists at
+the original path.
+
+API (same token, same-origin and `Host` rules as the other writes; only editable mods, `403` for read-only ones, `404` unknown mod; paths
+are relative to the mod, hidden files, links and anything outside the mod are refused with `400`; errors as `{ "error" }`):
+
+| Request | Result |
+| --- | --- |
+| `POST /api/mods/{id}/fs/mkdir?path=<folder>` | `{ "path" }`; `409` the name exists |
+| `POST /api/mods/{id}/fs/move` `{ "from", "to" }` | Moves or renames a file or folder (a case-only rename works on Windows and macOS too); `{ "from", "to" }`; `400` into itself or a folder with links that would have to be copied across drives, `404` missing source, `409` target exists, `413` body over 16 KB |
+| `POST /api/mods/{id}/fs/copy` `{ "from", "to" }` | Copies one file (not folders); same answers as move |
+| `DELETE /api/mods/{id}/file?path=<file or folder>` | Moves it into the trash; `{ "trashId" }` |
+| `GET /api/mods/{id}/trash` | `[ { "trashId", "path", "kind": "file\|folder", "deletedUtc" } ]`, newest first (no token needed) |
+| `POST /api/mods/{id}/trash/{trashId}/restore` | `{ "path" }`; `404` unknown entry, `409` the original path is taken |
+| `PUT /api/mods/{id}/asset?path=<file>` | Raw body: a `.png`, `.jpg`/`.jpeg`, `.ogg` or `.wav` file whose leading bytes match the extension, at most 32 MB. Needs `If-None-Match: *` to create or `If-Match: <etag>` to overwrite (`428` without, `409` `{ error, etag }` when the file changed); returns `{ "etag", "size" }`; `400` content does not match, `413` too large, `415` other extension |
+| `POST /api/mods/{id}/reveal?path=<file or folder>` | Opens Explorer / Finder / the default file manager at the file (no `path`: the mod folder; for a zip mod: the archive); `204`. Works for read-only mods too |
+
 ### Search API
 
 `GET /api/mods/{id}/search?q=<text>&regex=0|1&case=0|1` searches the text files of a mod (`.lua .cfg .json .txt .md .csv .ini`; hidden
@@ -369,6 +403,7 @@ Limits: 5000 changes and 2 MB per request, 65536 characters per value. Not inclu
 | FMS016 | info | `factorio_version` is well-formed but not one of 1.0, 1.1, 2.0, 2.1 |
 | FMS030 | error | Lua references `__your-mod__/path` that does not exist |
 | FMS031 | error | referenced file exists only with different letter case (works on Windows, breaks in the zip and on Linux) |
+| FMS032 | error | `require("a.b")` / `require "a/b"` matches no `.lua` file of the mod (looked up next to the requiring file, then at the mod root; other mods and Factorio's lualib modules such as `util` are ignored) |
 | FMS040 | error | malformed `locale/**/*.cfg` line (key before any section, line without `=`, bad section header, empty key) |
 | FMS041 | warning | duplicate key in the same language and section (reported at the later one) |
 | FMS042 | warning | prototype of this mod has no localised name in `locale/en` |

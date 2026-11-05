@@ -11,7 +11,12 @@ public sealed record ModSummary(
 
 /// <param name="Category">"script", "locale", "graphics", "sound", "data", "text" or "other".</param>
 /// <param name="Role">For well-known Lua entry points, what the file is for (e.g. "Data stage: prototypes").</param>
-public sealed record ModFileEntry(string Path, long Size, string Category, string? Role);
+public sealed record ModFileEntry(string Path, long Size, string Category, string? Role)
+{
+    /// <summary>For graphics, sound and script files: whether nothing in the mod refers to it (see <see cref="ModReferences"/>).
+    /// Null for every other category, where the question does not apply.</summary>
+    public bool? Unused { get; init; }
+}
 
 /// <param name="Icon">Path of the icon inside the mod, when the prototype's icon points into the same mod.</param>
 public sealed record PrototypeInfo(string Type, string Name, string? DisplayName, string? Icon, string File, int Line);

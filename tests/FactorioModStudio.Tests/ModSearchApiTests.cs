@@ -441,12 +441,12 @@ public class ModSearchApiTests
     {
         using var env = await Env.Create(e =>
         {
-            foreach (var p in new[] { "z.lua", "a.lua", "B.lua", "sub/x.lua", "sub-a.lua", "sub/deep/er/y.lua", "Sub/q.lua", "locale/en/main.cfg" })
+            foreach (var p in new[] { "z.lua", "a.lua", "B.lua", "sub/x.lua", "sub-a.lua", "sub/deep/er/y.lua", "Sx/q.lua", "locale/en/main.cfg" })
                 e.Workspace.Write("alpha/" + p, "needle\n");
             e.Workspace.Write("alpha/nomatch.lua", "nothing\n");
         });
         var r = Ok(await env.Search("needle"));
-        var expected = new[] { "B.lua", "Sub/q.lua", "a.lua", "locale/en/main.cfg", "sub-a.lua", "sub/deep/er/y.lua", "sub/x.lua", "z.lua" };
+        var expected = new[] { "B.lua", "Sx/q.lua", "a.lua", "locale/en/main.cfg", "sub-a.lua", "sub/deep/er/y.lua", "sub/x.lua", "z.lua" };
         Assert.Equal(expected, r.Paths.ToArray());
         Assert.DoesNotContain("\\", r.Raw.Replace("\\n", "").Replace("\\t", "").Replace("\\u", "").Replace("\\\"", ""));
     }

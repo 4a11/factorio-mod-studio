@@ -439,10 +439,10 @@ public class LocaleEditorTests
             ("locale/en/b.cfg", "[s]\nb2=1\nb1=1\n"),
             ("locale/en/a.cfg", "[s]\na2=1\na1=1\n"),
             ("locale/en/sub/c.cfg", "[s]\nc1=1\n"),
-            ("locale/en/B.cfg", "[s]\nupper=1\n"),
+            ("locale/en/C.cfg", "[s]\nupper=1\n"),
             ("locale/de/a.cfg", "[s]\n"));
         var t = LocaleEditor.Build(dir.Path, "de");
-        // Ordinal: "B.cfg" < "a.cfg" < "b.cfg" < "sub/c.cfg"
+        // Ordinal: "C.cfg" < "a.cfg" < "b.cfg" < "sub/c.cfg" (no names differing only by case: they merge on Windows)
         Assert.Equal(new[] { "upper", "a2", "a1", "b2", "b1", "c1" }, t.Rows.Select(r => r.Key).ToArray());
         Assert.Equal("locale/en/sub/c.cfg", Row(t, "s", "c1").SourceFile);
     }

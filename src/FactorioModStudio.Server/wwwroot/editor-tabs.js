@@ -847,6 +847,35 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
     reveal,
     isParked: () => parked,
     focusActive: () => { if (active?.area) active.area.focus(); },
+    /** Paths of the current mod's tabs with unsaved changes. */
+    dirtyPaths: () => tabs.filter(isDirty).map((tab) => tab.path),
+
+    /** A file or folder of the current mod was renamed / moved: tabs under `from` keep their state and follow it to `to`. */
+    renamePath(from, to) {
+      let changed = false;
+      for (const tab of tabs) {
+        if (tab.modId !== getModId()) continue;
+        const next = tab.path === from ? to : tab.path.startsWith(`${from}/`) ? to + tab.path.slice(from.length) : null;
+        if (next === null) continue;
+        tab.path = next;
+        tab.titleText = next;
+        tab.pane.dataset.path = next;
+        tab.tabEl.dataset.path = next;
+        tab.tabEl.setAttribute('title', next);
+        tab.area?.setAttribute('aria-label', t('editor.ariaLabel', { path: next }));
+        if (tab.area) { tab.lua = extensionOf(next) === 'lua'; scheduleHighlight(tab); }
+        changed = true;
+      }
+      if (!changed) return;
+      updateAllTabEls();
+      renderHeader();
+      onChange();
+    },
+
+    /** Closes the tabs of `path` and everything under it (a deleted file or folder) without asking; the caller confirms. */
+    closePaths(path) {
+      for (const tab of tabs.slice()) if (tab.path === path || tab.path.startsWith(`${path}/`)) closeTab(tab, true);
+    },
 
     /** A file of the current mod changed on disk (change feed). */
     onFileChanged(modId, path) {

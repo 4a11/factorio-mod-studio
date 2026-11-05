@@ -84,7 +84,7 @@ public class ScaffoldTests
                 w = (int)Be32(b, pos + 8); h = (int)Be32(b, pos + 12);
                 depth = b[pos + 16]; colorType = b[pos + 17]; interlace = b[pos + 20];
                 Assert.True(b[pos + 18] == 0 && b[pos + 19] == 0, $"{what}: bad compression/filter method");
-                channels = colorType switch { 0 => 1, 2 => 3, 3 => 1, 4 => 2, 6 => 4, _ => throw new Xunit.XunitException($"{what}: bad color type {colorType}") };
+                channels = colorType switch { 0 => 1, 2 => 3, 3 => 1, 4 => 2, 6 => 4, _ => throw new XunitException($"{what}: bad color type {colorType}") };
                 first = false;
             }
             else if (type == "IDAT") idat.Write(b, pos + 8, len);

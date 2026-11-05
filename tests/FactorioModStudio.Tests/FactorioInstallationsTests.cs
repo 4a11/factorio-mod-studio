@@ -1087,7 +1087,7 @@ public class FactorioScaffoldVersionTests
             foreach (var v in candidates)
             {
                 using var parent = new TempDir();
-                Assert.Throws<FmsException>(() => Create(parent, "nope", t.Id, v));
+                Assert.ThrowsAny<FmsException>(() => Create(parent, "nope", t.Id, v));
                 Assert.False(Directory.Exists(Path.Combine(parent.Path, "nope")), $"{t.Id}@{v}: folder created despite failure");
                 var left = Directory.GetFileSystemEntries(parent.Path, "*", SearchOption.AllDirectories).Where(p => !p.Contains(".fmstudio")).ToList();
                 Assert.True(left.Count == 0, $"{t.Id}@{v}: leftovers " + string.Join(",", left));
@@ -1120,7 +1120,7 @@ public class FactorioScaffoldVersionTests
     public void InvalidVersionString_ThrowsFmsException_AndCreatesNothing(string version)
     {
         using var parent = new TempDir();
-        Assert.Throws<FmsException>(() => ModScaffolder.Create(new ScaffoldRequest("badver", "empty", FactorioVersion: version), parent.Path));
+        Assert.ThrowsAny<FmsException>(() => ModScaffolder.Create(new ScaffoldRequest("badver", "empty", FactorioVersion: version), parent.Path));
         Assert.False(Directory.Exists(Path.Combine(parent.Path, "badver")));
     }
 
@@ -1158,8 +1158,8 @@ public class FactorioScaffoldVersionTests
     public void HugeVersionString_IsAnFmsException()
     {
         using var parent = new TempDir();
-        Assert.Throws<FmsException>(() => ModScaffolder.Create(new ScaffoldRequest("huge", "empty", FactorioVersion: new string('1', 5000) + ".0"), parent.Path));
-        Assert.Throws<FmsException>(() => ModScaffolder.Create(new ScaffoldRequest("huge2", "empty", FactorioVersion: new string('x', 100000)), parent.Path));
+        Assert.ThrowsAny<FmsException>(() => ModScaffolder.Create(new ScaffoldRequest("huge", "empty", FactorioVersion: new string('1', 5000) + ".0"), parent.Path));
+        Assert.ThrowsAny<FmsException>(() => ModScaffolder.Create(new ScaffoldRequest("huge2", "empty", FactorioVersion: new string('x', 100000)), parent.Path));
     }
 
     [Fact]

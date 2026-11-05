@@ -22,11 +22,13 @@ namespace FactorioModStudio.Server;
 /// <param name="ExtraModFolders">Additional folders with installed mods (zips or unpacked) to offer read-only in the UI.</param>
 /// <param name="FactorioExecutable">When known, the game's own data folder (base, core, ...) is offered for browsing too.</param>
 /// <param name="WorkspaceDirectory">Overrides the project's workspace folder. Mods inside it can be edited from the UI.</param>
+/// <param name="FileManager">Opens the OS file manager for "Reveal"; null starts the real one. Tests pass a fake.</param>
 public sealed record UiOptions(
     int Port = 5757,
     IReadOnlyList<string>? ExtraModFolders = null,
     string? FactorioExecutable = null,
-    string? WorkspaceDirectory = null);
+    string? WorkspaceDirectory = null,
+    FileManagerLauncher? FileManager = null);
 
 public sealed class RunningUi : IAsyncDisposable
 {
@@ -76,7 +78,7 @@ public static class UiServer
     [
         "lua-highlight.js", "locale-placeholders.js", "locale-view.js", "build-view.js", "i18n.js",
         "theme-init.js", "theme.js", "ui-state.js", "palette-logic.js", "palette.js", "editor-tabs.js",
-        "bottom-panel.js", "search-panel.js", "action-bar.js"
+        "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js"
     ];
 
     private const string ContentSecurityPolicy =
@@ -128,6 +130,7 @@ public static class UiServer
         MapStaticAssets(app, token);
         MapApi(app, context, catalog, feed, watcher, jobs);
         BuildApi.Map(app, catalog, jobs);
+        FilesApi.Map(app, catalog, context, options.FileManager);
         FactorioSettingsApi.Map(app, jobs, token);
 
         try
@@ -838,7 +841,7 @@ public static class UiServer
         return true;
     }
 
-    private static async Task<byte[]> ReadLimited(Stream input, long limit, CancellationToken ct)
+    internal static async Task<byte[]> ReadLimited(Stream input, long limit, CancellationToken ct)
     {
         using var memory = new MemoryStream();
         var buffer = new byte[16 * 1024];
