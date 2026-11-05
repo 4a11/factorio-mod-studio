@@ -117,6 +117,7 @@ Or run it without installing: `dotnet run --project src/FactorioModStudio.Cli --
 | `fmstudio log <file>` | Summarizes errors and warnings of a Factorio log: location, merged duplicates, hints. |
 | `fmstudio smoke [profile]` | Headless test: generates a map (or loads the profile's save), simulates N ticks, fails on any log error. |
 | `fmstudio factorio [--json]` | Lists the Factorio installations found (id, version, where each came from) and the one chosen for the project's mod. |
+| `fmstudio factorio available` / `install [version]` / `remove <version>` | Factorio's headless server releases; download one into the studio's folder (Linux only); delete it again. See "Several Factorio versions". |
 | `fmstudio ui` | Opens the graphical mod browser in your web browser (see below). |
 
 Common options: `--project <dir>` (default: current directory), `--factorio <path>`, `--json` (for `validate`, `log`, `smoke`, `factorio`).
@@ -157,6 +158,28 @@ are several. Candidates (merged by executable path) come from:
 The version is read from `data/base/info.json`; the executable is never started to find it out. `--factorio <path>` is used exactly as
 given (a mismatch with the mod only prints a warning). Without a matching installation the command fails and names the versions it
 found. `fmstudio factorio` shows the candidates and the pick; the UI's version selector can override the pick for one mod.
+
+**Installing a version.** The studio can download Factorio's *headless server* (the game without graphics, made for servers: free,
+no account and much smaller than the game; enough for `smoke`, not for playing) into its own folder, where the discovery above finds it:
+
+```sh
+fmstudio factorio available           # releases per branch (--all: every release; --json)
+fmstudio factorio install 2.0         # the newest 2.0 release; also 2.0.72, stable or latest
+fmstudio factorio install             # the newest release of the project mod's factorio_version
+fmstudio factorio remove 2.0.72       # only versions the studio installed
+```
+
+The headless server is published for Linux x64 only, so this works on Linux, in WSL and in CI; on Windows and macOS the command
+says so and downloads nothing. Versions come from Factorio's updater (`updater.factorio.com/get-available-versions`), the archive from
+the documented download address (`factorio.com/get-download/<version>/headless/linux64`, HTTPS only, at most 512 MB) and is unpacked
+with the system's `tar` into `<user data dir>/FactorioModStudio/factorio/<version>-headless/`. A version is accepted only as
+MAJOR.MINOR.PATCH; the unpacked game has to report that version in `data/base/info.json` before it is moved into place, and a failed
+or interrupted install leaves nothing behind. Installing a version that is already there downloads nothing.
+
+**A missing version.** When no installed Factorio matches the mod's `factorio_version`, `fmstudio smoke --install` downloads the newest
+headless release of that branch and goes on with the test (handy in CI); without `--install` the error names the command to run.
+`run` starts the game itself, so it never picks one of these headless servers (and refuses `--install`); the Build tab's *Run in
+Factorio* skips them in the same way, while *Smoke test* may use them.
 
 ```sh
 fmstudio new --list

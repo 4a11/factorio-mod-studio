@@ -178,6 +178,22 @@ public static class FactorioInstallations
         return new FactorioPick(null, "none", $"No installed Factorio matches {wanted} (found: {list}). Install one or choose an installation manually.");
     }
 
+    /// <summary>
+    /// Like <see cref="Pick"/>, for starting the game itself (<c>run</c>): the headless servers the studio installed have no graphics,
+    /// so they are left out, and the reason says so when that leaves nothing.
+    /// </summary>
+    /// <param name="isHeadless">Tells the studio's headless servers apart; <see cref="FactorioDownloads.IsHeadlessInstall"/> by default.</param>
+    public static FactorioPick PickToPlay(IReadOnlyList<FactorioInstallation> installs, string? modFactorioVersion, string? manualId = null, Func<string, bool>? isHeadless = null)
+    {
+        ArgumentNullException.ThrowIfNull(installs);
+        isHeadless ??= path => FactorioDownloads.IsHeadlessInstall(path);
+        var playable = installs.Where(i => !isHeadless(i.Path)).ToList();
+        var pick = Pick(playable, modFactorioVersion, manualId);
+        if (pick.Chosen is null && playable.Count != installs.Count)
+            pick = pick with { Reason = pick.Reason + " The headless servers installed by the studio have no graphics: they are used for smoke tests, not to play." };
+        return pick;
+    }
+
     // ------------------------------------------------------------------ validation of a single executable
 
     public static bool IsFactorioName(string name) =>

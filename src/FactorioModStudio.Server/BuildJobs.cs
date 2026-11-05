@@ -158,9 +158,10 @@ internal sealed class BuildJobs : IDisposable
         catch (Exception ex) when (ex is FmsException or IOException or UnauthorizedAccessException or JsonException or InvalidDataException) { return null; }
     }
 
-    public FactorioPick Pick(IReadOnlyList<FactorioInstallation> candidates, string? modVersion, string? manualId)
+    /// <param name="play">The game itself is started (Run): the studio's headless servers do not count.</param>
+    public FactorioPick Pick(IReadOnlyList<FactorioInstallation> candidates, string? modVersion, string? manualId, bool play = false)
     {
-        var pick = FactorioInstallations.Pick(candidates, modVersion, manualId);
+        var pick = play ? FactorioInstallations.PickToPlay(candidates, modVersion, manualId) : FactorioInstallations.Pick(candidates, modVersion, manualId);
         if (pick.Chosen is null && manualId is null)
         {
             var unusable = FactorioInstallations.UnusableConfiguredSources(_project);
@@ -251,7 +252,7 @@ internal sealed class BuildJobs : IDisposable
             try
             {
                 var modVersion = ModFactorioVersion(entry);
-                var pick = Pick(GetCandidates(refresh: true), modVersion, request.Installation);
+                var pick = Pick(GetCandidates(refresh: true), modVersion, request.Installation, play: request.Kind == JobKind.Run);
                 lock (_gate) job.Factorio = new JobFactorio(pick.Chosen, pick.Mode, pick.Reason, modVersion);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

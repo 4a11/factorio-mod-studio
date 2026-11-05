@@ -13,8 +13,8 @@ public static class Program
 
     public static int Main(string[] args) => Run(args, Console.Out, Console.Error);
 
-    /// <summary>Entry point with injectable streams and process runner, so it can be tested.</summary>
-    public static int Run(string[] args, TextWriter output, TextWriter error, IProcessRunner? runner = null)
+    /// <summary>Entry point with injectable streams, process runner and HTTP client, so it can be tested.</summary>
+    public static int Run(string[] args, TextWriter output, TextWriter error, IProcessRunner? runner = null, HttpClient? http = null)
     {
         try
         {
@@ -42,8 +42,8 @@ public static class Program
                 "prepare" => Prepare(cmd, output),
                 "run" => RunGame(cmd, output),
                 "log" => Log(cmd, output),
-                "smoke" => Smoke(cmd, output, error, runner),
-                "factorio" => FactorioCommand(cmd, output),
+                "smoke" => Smoke(cmd, output, error, runner, http),
+                "factorio" => FactorioCommand(cmd, output, runner, http),
                 "ui" => Ui(cmd, output),
                 "new" => New(cmd, output, error),
                 _ => UnknownCommand(command, error)
@@ -200,7 +200,9 @@ public static class Program
         var context = LoadProject(cmd);
         var name = cmd.Positional.FirstOrDefault() ?? "default";
         var profileConfig = context.GetProfile(name);
-        var factorio = ChooseFactorio(cmd, context, output);
+        if (cmd.Has("--install"))
+            throw new FmsException("--install downloads Factorio's headless server, which has no graphics; use it with `fmstudio smoke`.");
+        var factorio = ChooseFactorio(cmd, context, output, play: true);
 
         var prepared = ProfileBuilder.Prepare(context, name);
         PrintPrepared(output, prepared);
@@ -240,8 +242,10 @@ public static class Program
     /// <summary>
     /// <c>--factorio</c> is used exactly as given (a version mismatch only prints a warning); otherwise the installation that matches the
     /// mod's factorio_version is picked from FACTORIO_PATH, fmstudio.json, the UI's list and the usual folders.
+    /// <paramref name="play"/>: the game itself is started, so the studio's headless servers do not count.
+    /// <paramref name="installMissing"/>: when nothing matches, called with the mod's MAJOR.MINOR to install it; returns the executable.
     /// </summary>
-    private static string ChooseFactorio(CommandLine cmd, ProjectContext context, TextWriter log)
+    private static string ChooseFactorio(CommandLine cmd, ProjectContext context, TextWriter log, bool play = false, Func<string, string>? installMissing = null)
     {
         var modVersion = ProjectModFactorioVersion(context);
         string path;
@@ -256,17 +260,31 @@ public static class Program
         else
         {
             var candidates = FactorioInstallations.Candidates(context, new FactorioSettings(context.StateDirectory).Read());
-            var pick = FactorioInstallations.Pick(candidates, modVersion);
-            if (pick.Chosen is null)
+            var pick = play ? FactorioInstallations.PickToPlay(candidates, modVersion) : FactorioInstallations.Pick(candidates, modVersion);
+            var branch = FactorioInstallations.NormaliseMajorMinor(modVersion);
+            if (pick.Chosen is null && installMissing is not null && branch is not null)
+            {
+                log.WriteLine($"{pick.Reason} Installing it, as --install asks.");
+                path = installMissing(branch);
+                version = FactorioInstallations.DetectVersion(path);
+                log.WriteLine($"Using Factorio {VersionText(version)} ({path})");
+            }
+            else if (pick.Chosen is null)
             {
                 var unusable = FactorioInstallations.UnusableConfiguredSources(context);
                 var note = unusable.Count > 0 ? $" Not usable: {string.Join(", ", unusable)}." : "";
-                throw new FmsException($"{pick.Reason}{note} Pass --factorio <path>, set {FactorioLocator.EnvironmentVariable}, or set \"factorioPath\" in {ProjectConfig.FileName}.");
+                // Offer the download only where it can work: the headless server, for smoke tests, on Linux x64.
+                var install = !play && branch is not null && FactorioDownloads.HeadlessPlatformProblem() is null
+                    ? $" Install it with `fmstudio factorio install {branch}` or rerun with --install;"
+                    : "";
+                throw new FmsException($"{pick.Reason}{note}{install} Pass --factorio <path>, set {FactorioLocator.EnvironmentVariable}, or set \"factorioPath\" in {ProjectConfig.FileName}.");
             }
-
-            path = pick.Chosen.Path;
-            version = pick.Chosen.Version;
-            log.WriteLine($"Using Factorio {VersionText(version)} ({path})");
+            else
+            {
+                path = pick.Chosen.Path;
+                version = pick.Chosen.Version;
+                log.WriteLine($"Using Factorio {VersionText(version)} ({path})");
+            }
         }
 
         if (FactorioInstallations.NormaliseMajorMinor(modVersion) is { } wanted && version is not null && !FactorioInstallations.VersionMatches(version, wanted))
@@ -274,7 +292,153 @@ public static class Program
         return path;
     }
 
-    private static int FactorioCommand(CommandLine cmd, TextWriter output)
+    private static int FactorioCommand(CommandLine cmd, TextWriter output, IProcessRunner runner, HttpClient? http)
+    {
+        switch (cmd.Positional.FirstOrDefault())
+        {
+            case null: return ListFactorio(cmd, output);
+            case "available": return FactorioAvailable(cmd, output, Downloads(runner, http));
+            case "install": return FactorioInstall(cmd, output, Downloads(runner, http));
+            case "remove": return FactorioRemove(cmd, output, Downloads(runner, http));
+            default:
+                throw new FmsException($"Unknown \"factorio {cmd.Positional[0]}\". Use `fmstudio factorio` (list), `factorio available`, `factorio install <version>` or `factorio remove <version>`.");
+        }
+    }
+
+    private static FactorioDownloads Downloads(IProcessRunner runner, HttpClient? http)
+    {
+        if (http is null)
+        {
+            http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan }; // downloads can take a while; the updater call has its own limit
+            http.DefaultRequestHeaders.UserAgent.ParseAdd($"FactorioModStudio/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "0"}");
+        }
+        return new FactorioDownloads(http, runner, FactorioInstallations.ManagedInstallationsDirectory());
+    }
+
+    private static AvailableReleases FetchReleases(FactorioDownloads downloads)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        try { return downloads.AvailableAsync(timeout.Token).GetAwaiter().GetResult(); }
+        catch (OperationCanceledException) { throw new FmsException("Factorio's updater did not answer within 30 seconds."); }
+    }
+
+    /// <summary><c>fmstudio factorio available [--all] [--json]</c>: the headless releases, newest of each branch unless --all.</summary>
+    private static int FactorioAvailable(CommandLine cmd, TextWriter output, FactorioDownloads downloads)
+    {
+        var releases = FetchReleases(downloads);
+        var installed = downloads.Installed().Select(i => i.Version).ToHashSet(StringComparer.Ordinal);
+        var branches = releases.Versions.GroupBy(v => string.Join('.', v.Split('.').Take(2))).ToList();
+
+        if (cmd.Has("--json"))
+        {
+            output.WriteLine(JsonSerializer.Serialize(new
+            {
+                releases.Stable, releases.Experimental,
+                branches = branches.Select(b => new { branch = b.Key, newest = b.First(), versions = b.ToList() }),
+                installed,
+                platformProblem = FactorioDownloads.HeadlessPlatformProblem()
+            }, NewJson));
+            return ExitOk;
+        }
+
+        output.WriteLine("Factorio headless server releases (Linux x64), from Factorio's updater:");
+        output.WriteLine($"  stable {releases.Stable ?? "-"}, experimental {releases.Experimental ?? "-"}");
+        output.WriteLine();
+        foreach (var branch in branches)
+        {
+            var shown = cmd.Has("--all") ? branch.ToList() : new List<string> { branch.First() };
+            var text = string.Join(", ", shown.Select(v => v + (installed.Contains(v) ? " (installed)" : "")));
+            output.WriteLine($"  {branch.Key.PadRight(5)} {text}{(cmd.Has("--all") ? "" : $"   ({branch.Count()} releases)")}");
+        }
+        output.WriteLine();
+        output.WriteLine("Install one with `fmstudio factorio install <MAJOR.MINOR | MAJOR.MINOR.PATCH | stable>`; `--all` lists every release.");
+        if (FactorioDownloads.HeadlessPlatformProblem() is { } problem) output.WriteLine($"note: {problem}");
+        return ExitOk;
+    }
+
+    /// <summary>
+    /// <c>fmstudio factorio install [version] [--json]</c>: without a version, the newest release of the project mod's factorio_version.
+    /// </summary>
+    private static int FactorioInstall(CommandLine cmd, TextWriter output, FactorioDownloads downloads)
+    {
+        var spec = cmd.Positional.Skip(1).FirstOrDefault();
+        if (spec is null)
+        {
+            spec = FactorioInstallations.NormaliseMajorMinor(ProjectModFactorioVersion(LoadProject(cmd)))
+                   ?? throw new FmsException("Usage: fmstudio factorio install <MAJOR.MINOR | MAJOR.MINOR.PATCH | stable | latest>. Without a version, the project's mod must declare factorio_version.");
+            if (!cmd.Has("--json")) output.WriteLine($"The project's mod targets Factorio {spec}.");
+        }
+
+        // Check the platform before going to the network: on Windows and macOS nothing could be installed anyway.
+        if (downloads.PlatformProblem is { } problem) throw new FmsException(problem);
+
+        var releases = FetchReleases(downloads);
+        var version = FactorioDownloads.Resolve(releases, spec)
+                      ?? throw new FmsException($"Factorio has no headless release matching \"{spec}\". See `fmstudio factorio available`.");
+
+        var json = cmd.Has("--json");
+        var result = InstallWithProgress(downloads, version, json ? null : output);
+        if (json)
+        {
+            output.WriteLine(JsonSerializer.Serialize(new { result.Version, result.Path, result.Executable, result.AlreadyInstalled }, NewJson));
+            return ExitOk;
+        }
+
+        output.WriteLine($"  {result.Path}");
+        output.WriteLine($"smoke now uses it for mods with factorio_version {string.Join('.', version.Split('.').Take(2))} (see `fmstudio factorio`); run needs the game with graphics.");
+        return ExitOk;
+    }
+
+    /// <summary>Installs one headless release, writing "Factorio 2.0.72 (headless): 10% 20% ... done." to <paramref name="log"/>.</summary>
+    private static ManagedInstallation InstallWithProgress(FactorioDownloads downloads, string version, TextWriter? log)
+    {
+        var lastStep = -1;
+        var progress = new SyncProgress<(long Received, long? Total)>(p =>
+        {
+            if (log is null) return;
+            var step = p.Total is > 0 ? (int)(p.Received * 10 / p.Total.Value) : (int)(p.Received / (10L * 1024 * 1024));
+            if (step == lastStep) return;
+            lastStep = step;
+            log.Write(p.Total is > 0 ? $" {step * 10}%" : $" {p.Received / (1024 * 1024)} MB");
+        });
+
+        log?.Write($"Factorio {version} (headless):");
+        var result = downloads.InstallHeadlessAsync(version, progress).GetAwaiter().GetResult();
+        log?.WriteLine(result.AlreadyInstalled ? " already installed." : " done.");
+        return result;
+    }
+
+    /// <summary>For <c>smoke --install</c>: the newest headless release of <paramref name="branch"/>; returns its executable.</summary>
+    private static string InstallBranch(string branch, TextWriter log, IProcessRunner runner, HttpClient? http)
+    {
+        var downloads = Downloads(runner, http);
+        if (downloads.PlatformProblem is { } problem) throw new FmsException(problem);
+        var version = FactorioDownloads.Resolve(FetchReleases(downloads), branch)
+                      ?? throw new FmsException($"Factorio has no headless release of {branch}. See `fmstudio factorio available`.");
+        return InstallWithProgress(downloads, version, log).Executable;
+    }
+
+    /// <summary><c>fmstudio factorio remove &lt;MAJOR.MINOR.PATCH&gt;</c>: only installations the studio made itself.</summary>
+    private static int FactorioRemove(CommandLine cmd, TextWriter output, FactorioDownloads downloads)
+    {
+        var version = cmd.Positional.Skip(1).FirstOrDefault()
+                      ?? throw new FmsException("Usage: fmstudio factorio remove <MAJOR.MINOR.PATCH>. Only versions installed with `fmstudio factorio install` can be removed.");
+        if (!downloads.Remove(version))
+        {
+            output.WriteLine($"Factorio {version} was not installed by the studio (nothing in {downloads.Directory}).");
+            return ExitProblemsFound;
+        }
+        output.WriteLine($"Removed Factorio {version} (headless).");
+        return ExitOk;
+    }
+
+    /// <summary>Calls the handler on the reporting thread (Progress&lt;T&gt; would post to the thread pool and interleave the output).</summary>
+    private sealed class SyncProgress<T>(Action<T> handler) : IProgress<T>
+    {
+        public void Report(T value) => handler(value);
+    }
+
+    private static int ListFactorio(CommandLine cmd, TextWriter output)
     {
         var context = LoadProject(cmd);
         var candidates = FactorioInstallations.Candidates(context, new FactorioSettings(context.StateDirectory).Read());
@@ -315,7 +479,7 @@ public static class Program
         return report.HasErrors ? ExitProblemsFound : ExitOk;
     }
 
-    private static int Smoke(CommandLine cmd, TextWriter output, TextWriter error, IProcessRunner runner)
+    private static int Smoke(CommandLine cmd, TextWriter output, TextWriter error, IProcessRunner runner, HttpClient? http)
     {
         var context = LoadProject(cmd);
         var name = cmd.Positional.FirstOrDefault() ?? "default";
@@ -323,7 +487,8 @@ public static class Program
 
         var json = cmd.Has("--json");
         var log = json ? error : output; // keep stdout clean for JSON consumers
-        var factorio = ChooseFactorio(cmd, context, log);
+        var factorio = ChooseFactorio(cmd, context, log,
+            installMissing: cmd.Has("--install") ? branch => InstallBranch(branch, log, runner, http) : null);
 
         var validation = ModValidator.Validate(context.ModDirectory);
         if (validation.HasErrors)
@@ -410,6 +575,11 @@ public static class Program
                                  [--template <id>] [--title T] [--author A] [--description D] [--factorio-version <MAJOR.MINOR, default 2.0>]
                                  [--out <folder, default: the workspace>] [--json]   `new --list` shows the templates
           factorio               List the Factorio installations found and the one chosen for the project's mod  [--json]
+          factorio available     Factorio's headless server releases (Linux x64)  [--all] [--json]
+          factorio install [v]   Download a headless server release into the studio's folder, where smoke finds it
+                                 v: MAJOR.MINOR (newest of the branch), MAJOR.MINOR.PATCH, stable or latest;
+                                 without v: the project mod's factorio_version   [--json]
+          factorio remove <v>    Delete a release installed with `factorio install`
           validate [mod-dir]     Check info.json, changelog, thumbnail and file references
           pack                   Validate and build NAME_VERSION.zip   [--out dir] [--force]
           prepare [profile]      Build the isolated mods folder for a profile
@@ -417,6 +587,7 @@ public static class Program
           log <file>             Summarize errors/warnings from a Factorio log  [--json] [--verbose]
           smoke [profile]        Headless test: load the mods, simulate ticks, fail on log errors
                                  [--ticks N] [--seed N] [--timeout MINUTES] [--json]
+                                 [--install: no matching Factorio? download the headless server first (Linux)]
           ui                     Open the graphical mod browser in your web browser
                                  [--port N] [--workspace <mods folder to edit>] [--mods <installed mods, read-only>]
                                  [--no-browser]
