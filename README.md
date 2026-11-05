@@ -211,7 +211,10 @@ sidebar button *Go to…* opens it too.
 
 What the tabs show:
 
-* **Overview** — counts, entry points (`data.lua`, `control.lua`, `settings.lua`, migrations) and which existing prototypes the mod touches via `data.raw`.
+* **Overview** — a release-readiness checklist (thumbnail, changelog entry for the version, localised mod name, errors, packed zip) with a
+  progress bar and a button for each open item (open the file, go to Problems / Localization / Files / Build); clickable cards with counts
+  that lead to the matching tab; entry points (`data.lua`, `control.lua`, `settings.lua`, migrations); and which existing prototypes the mod
+  touches via `data.raw`. Hovering a dependency in the header explains its prefix (`!`, `?`, `(?)`, `~`).
 * **Files** — a folder tree (or the files grouped by type), with a built-in viewer (Lua and text with line numbers, images, audio) and file management, see below.
 * **Prototypes** — every prototype the mod defines, with display names from the locale files and icon previews; click to jump to the source line.
 * **Recipes** — ingredients and results, for both the Factorio 2.x format and the older `result` / `normal` style.

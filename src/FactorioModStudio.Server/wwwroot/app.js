@@ -205,7 +205,7 @@ function renderMod(keepScroll = false) {
       info.author && el('span', { text: t('mod.by', { author: info.author }) })),
     info.description && el('p', { class: 'muted', text: info.description }),
     info.dependencies && info.dependencies.length > 0 && el('div', { class: 'chips' },
-      info.dependencies.map((d) => el('span', { class: 'chip' + (/^(\?|\(\?\)|~)/.test(d) ? ' optional' : '') + (d.startsWith('!') ? ' accent' : ''), text: d }))));
+      info.dependencies.map((d) => el('span', { class: 'chip' + (/^(\?|\(\?\)|~)/.test(d) ? ' optional' : '') + (d.startsWith('!') ? ' accent' : ''), title: t(dependencyKind(d)), text: d }))));
 
   const tabCount = {
     files: o.files.length, prototypes: o.prototypes.length, recipes: o.recipes.length,
@@ -227,6 +227,16 @@ function renderMod(keepScroll = false) {
   if (selected) tabs.scrollLeft = Math.max(0, selected.offsetLeft - (tabs.clientWidth - selected.offsetWidth) / 2);
 }
 
+/** i18n key explaining a dependency string's prefix: "!" incompatible, "?" optional, "(?)" hidden optional, "~" no load order. */
+function dependencyKind(d) {
+  const s = d.trim();
+  if (s.startsWith('!')) return 'dep.incompatible';
+  if (s.startsWith('(?)')) return 'dep.hidden';
+  if (s.startsWith('?')) return 'dep.optional';
+  if (s.startsWith('~')) return 'dep.noOrder';
+  return 'dep.required';
+}
+
 function categoryCounts(o) {
   const counts = { script: 0, locale: 0, graphics: 0, sound: 0, data: 0, text: 0, other: 0 };
   for (const f of o.files) counts[f.category] = (counts[f.category] || 0) + 1;
@@ -236,24 +246,37 @@ function categoryCounts(o) {
 const READINESS_ICONS = { ok: '✓', warn: '!', fail: '✕', info: 'i' };
 const READINESS_KEYS = { thumbnail: 'thumbnail', changelog: 'changelog', 'locale-name': 'localeName', errors: 'errors', packed: 'packed' };
 
-function readinessAction(c) {
-  if (c.file) return () => openFile(c.file, c.line);
-  if (c.id === 'errors') return () => go(state.currentId, 'problems');
-  if (c.id === 'locale-name') return () => go(state.currentId, 'locale');
+/** What to do about a check that is not done yet: an explicit button label and its action, or null. */
+function readinessAction(c, o) {
+  if (c.status === 'ok') return null;
+  const toTab = (tab, key) => ({ label: t(key), run: () => go(state.currentId, tab) });
+  if (c.file) return { label: t('readiness.action.open', { file: c.file }), run: () => openFile(c.file, c.line) };
+  if (c.id === 'changelog' && o.files.some((f) => f.path === 'changelog.txt'))
+    return { label: t('readiness.action.open', { file: 'changelog.txt' }), run: () => openFile('changelog.txt') };
+  if (c.id === 'changelog' || c.id === 'thumbnail') return toTab('files', 'readiness.action.files');
+  if (c.id === 'errors') return toTab('problems', 'readiness.action.problems');
+  if (c.id === 'locale-name') return toTab('locale', 'readiness.action.locale');
+  if (c.id === 'packed') return toTab('build', 'readiness.action.build');
   return null;
 }
 
-function renderReadiness(checks) {
+// Checklist with a segmented progress bar; every open item gets a button that says what it does.
+function renderReadiness(checks, o) {
   if (!checks || !checks.length) return null;
+  const done = checks.filter((c) => c.status === 'ok').length;
   return el('section', { class: 'readiness', 'data-testid': 'readiness' },
-    el('h3', { text: t('readiness.heading') }),
+    el('div', { class: 'readiness-head' },
+      el('h3', { text: t('readiness.heading') }),
+      el('div', { class: 'readiness-bar', 'aria-hidden': 'true' }, checks.map((c) => el('span', { class: c.status }))),
+      el('span', { class: 'muted small', 'data-testid': 'readiness-progress', text: t('readiness.progress', { ok: done, total: checks.length }) })),
     el('ul', { class: 'readiness-list' }, checks.map((c) => {
       const key = READINESS_KEYS[c.id] || c.id;
       const text = t(`readiness.${key}.${c.status}`, { version: c.version ?? '?', n: c.count ?? 0 });
-      const action = readinessAction(c);
+      const action = readinessAction(c, o);
       return el('li', { class: `readiness-row ${c.status}`, 'data-testid': 'readiness-row', 'data-id': c.id, 'data-status': c.status },
         el('span', { class: `readiness-icon ${c.status}`, 'aria-hidden': 'true', text: READINESS_ICONS[c.status] || '?' }),
-        action ? el('button', { class: 'readiness-text', type: 'button', onclick: action, text }) : el('span', { class: 'readiness-text', text }));
+        el('span', { class: 'readiness-text', text }),
+        action && el('button', { class: 'readiness-action', type: 'button', 'data-testid': 'readiness-action', onclick: action.run, text: action.label }));
     })));
 }
 
@@ -281,11 +304,14 @@ function showTouched(type) {
 }
 
 function renderOverview(o, counts) {
-  const card = (num, label, onclick, extra = {}) => el('div', { class: 'card' + (extra.class ? ` ${extra.class}` : ''), 'data-testid': extra.testid },
-    el('div', { class: 'num', text: num }), el('div', { class: 'label' }, onclick
-      ? el('button', { class: 'link', type: 'button', onclick, text: label })
-      : label),
-    extra.sub && el('div', { class: 'sub muted small', 'data-testid': extra.testid ? `${extra.testid}-sub` : null, title: extra.title || null, text: extra.sub }));
+  // Every card is one button (icon + label, the number, an optional detail line) that leads to the tab with the details.
+  const card = (num, label, icon, onclick, extra = {}) => el('button', {
+    type: 'button', onclick, 'data-testid': extra.testid,
+    class: ['card', 'ov-card', num === 0 && 'zero', extra.class].filter(Boolean).join(' '),
+  },
+  el('span', { class: 'ov-card-head' }, el('span', { class: `fi-icon ${icon}`, 'aria-hidden': 'true' }), el('span', { class: 'label', text: label })),
+  el('span', { class: 'num', text: num }),
+  extra.sub && el('span', { class: 'sub muted small', 'data-testid': extra.testid ? `${extra.testid}-sub` : null, title: extra.title || null, text: extra.sub }));
   const toTab = (tab) => () => go(state.currentId, tab);
   const cov = coverage(o.localeCoverage);
 
@@ -297,29 +323,34 @@ function renderOverview(o, counts) {
   for (const p of o.touched) touchedTypes.set(p.type, (touchedTypes.get(p.type) || 0) + 1);
   const touchedChips = [...touchedTypes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
-  return el('div', {},
-    renderReadiness(o.readiness),
-    el('div', { class: 'cards' },
-      card(counts.script, t('overview.scripts'), toTab('files')),
-      card(o.prototypes.length, t('overview.prototypes'), toTab('prototypes')),
-      card(o.recipes.length, t('overview.recipes'), toTab('recipes')),
-      card(counts.graphics, t('overview.graphics'), toTab('resources')),
-      card(counts.sound, t('overview.sounds'), toTab('resources')),
-      card(o.languages.length, t('overview.translations'), toTab('locale'), { testid: 'card-translations', sub: cov.text, title: cov.title }),
-      card(o.touched.length, t('overview.touched'), () => showTouched(''), { testid: 'card-touched' }),
-      card(errors, t('overview.errors'), toTab('problems'), { testid: 'card-errors', class: errors > 0 ? 'bad' : '' }),
-      card(warnings, t('overview.warnings'), toTab('problems'), { testid: 'card-warnings', class: warnings > 0 ? 'warn' : '' })),
+  return el('div', { class: 'overview' },
+    renderReadiness(o.readiness, o),
     o.notes.map((n) => el('p', { class: 'note', text: n })),
+    el('div', { class: 'cards' },
+      card(counts.script, t('overview.scripts'), 'fi-file cat-script', toTab('files')),
+      card(o.prototypes.length, t('overview.prototypes'), 'fi-cube', toTab('prototypes')),
+      card(o.recipes.length, t('overview.recipes'), 'fi-recipe', toTab('recipes')),
+      card(counts.graphics, t('overview.graphics'), 'fi-image', toTab('resources')),
+      card(counts.sound, t('overview.sounds'), 'fi-sound', toTab('resources')),
+      card(o.languages.length, t('overview.translations'), 'fi-globe', toTab('locale'), { testid: 'card-translations', sub: cov.text, title: cov.title }),
+      card(o.touched.length, t('overview.touched'), 'fi-pencil', () => showTouched(''), { testid: 'card-touched' }),
+      card(errors, t('overview.errors'), 'fi-error', toTab('problems'), { testid: 'card-errors', class: errors > 0 ? 'bad' : '' }),
+      card(warnings, t('overview.warnings'), 'fi-warning', toTab('problems'), { testid: 'card-warnings', class: warnings > 0 ? 'warn' : '' })),
     el('h3', { class: 'section', text: t('overview.entryPoints') }),
     entryPoints.length
-      ? el('table', {}, el('tbody', {}, entryPoints.map((f) => el('tr', { class: 'clickable', onclick: () => openFile(f.path) },
-          el('td', {}, el('span', { class: 'mono', text: f.path })), el('td', { class: 'muted', text: f.role })))))
-      : el('p', { class: 'muted', text: t('overview.noEntryPoints') }),
+      ? el('div', { class: 'ov-list', 'data-testid': 'entry-points' }, entryPoints.map((f) =>
+          el('button', { class: 'ov-row', type: 'button', title: t('readiness.action.open', { file: f.path }), onclick: () => openFile(f.path) },
+            el('span', { class: 'fi-icon fi-file cat-script', 'aria-hidden': 'true' }),
+            el('span', { class: 'mono ov-row-path', text: f.path }),
+            el('span', { class: 'muted small ov-row-role', text: f.role }),
+            el('span', { class: 'ov-row-go', 'aria-hidden': 'true', text: '›' }))))
+      : el('p', { class: 'muted ov-empty', text: t('overview.noEntryPoints') }),
     touchedChips.length > 0 && [
-      el('h3', { class: 'section', text: t('overview.touchedHeading') }),
+      el('h3', { class: 'section' }, t('overview.touchedHeading'), el('span', { class: 'ov-count', text: String(o.touched.length) })),
+      el('p', { class: 'muted small ov-hint', text: t('overview.touchedHint') }),
       el('div', { class: 'chips', 'data-testid': 'touched-chips' }, touchedChips.map(([type, n]) =>
         el('button', { class: 'chip touched-chip', type: 'button', 'data-testid': 'touched-chip', 'data-type': type, onclick: () => showTouched(type) },
-          el('span', { class: 'mono', text: type }), el('span', { class: 'muted', text: String(n) })))),
+          el('span', { class: 'mono', text: type }), el('span', { class: 'ov-count', text: String(n) })))),
     ]);
 }
 
