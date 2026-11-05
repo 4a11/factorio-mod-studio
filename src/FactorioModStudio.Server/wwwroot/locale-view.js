@@ -1,5 +1,10 @@
 // "Localization" tab of the mod page: a translation table (source language next to one target language) with live
 // placeholder checks, filters, a local translation memory and optimistic-concurrency saving.
+// Top: one chip per language with its progress, a segmented progress bar of the chosen language and filter chips with counts.
+// Bottom: a sticky save bar that appears while there are unsaved changes (Ctrl/Cmd+S saves while focus is in the tab).
+// The table is grouped by locale section ([item-name], [entity-name], ...) with per-section progress; complete sections start
+// collapsed. Placeholder chips show only on the row being edited. Enter moves to the next string, Shift+Enter inserts a line
+// break (stored as \n), Alt+Down / Alt+Up jump to the next / previous untranslated string.
 //
 // The view owns one persistent DOM subtree (`element`) and its state lives outside the DOM, so the host page can detach and
 // re-attach it (it redraws the whole mod page on live updates) without losing unsaved edits.
@@ -8,10 +13,11 @@
 import { t } from '/i18n.js';
 import { compare, extract } from '/locale-placeholders.js';
 
-const CHUNK = 200; // rows rendered at once; "show more" adds another chunk
+const CHUNK = 200; // rows rendered per section at once; "show more" adds another chunk
 const FILTERS = ['all', 'untranslated', 'identical', 'extra', 'problems'];
 const CODE_PATTERN = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/;
 const RELOAD_DELAY_MS = 300;
+const STATUS_MS = 5000; // how long "Saved" / "Created" stay in the save bar
 const TOKEN_LABEL_LIMIT = 48;
 
 const idOf = (section, key) => `${section}\u0000${key}`;
@@ -32,7 +38,8 @@ export function createLocaleView({ api, el }) {
     removals: new Set(), // ids of Extra rows staged for removal
     filter: 'all',
     search: '',
-    limit: CHUNK,
+    limits: new Map(), // section -> rows shown (CHUNK unless "show more" was used)
+    open: new Map(), // section -> expanded, when the user toggled it (otherwise: open unless complete)
     status: null, // { key, params } | { text } | null
     conflict: false,
     saving: false,
@@ -41,6 +48,7 @@ export function createLocaleView({ api, el }) {
     seq: 0,
     own: new Set(), // revisions produced by our own saves
     reloadTimer: 0,
+    statusTimer: 0,
   };
 
   const labels = []; // [node, key] pairs retranslated on a language switch
@@ -66,23 +74,24 @@ export function createLocaleView({ api, el }) {
   refs.error = el('div', { class: 'note locale-error', 'data-testid': 'locale-error', role: 'alert' });
   refs.loading = label(el('div', { class: 'muted', 'data-testid': 'locale-loading' }), 'locale.loading');
 
-  refs.lang = el('select', { 'data-testid': 'locale-lang', id: 'locale-lang' });
-  refs.lang.addEventListener('change', () => switchLanguage(refs.lang.value));
-  refs.newLang = label(el('button', { type: 'button', 'data-testid': 'locale-new-lang' }), 'locale.newLanguage');
+  // Languages: one chip each (code, percent, a small bar); the original language is marked and has no percent.
+  refs.langs = el('div', { class: 'locale-langs', role: 'group', 'data-testid': 'locale-lang' });
+  refs.newLang = el('button', { type: 'button', class: 'files-btn', 'data-testid': 'locale-new-lang' },
+    el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: '+' }), label(el('span'), 'locale.newLanguage'));
   refs.newLang.addEventListener('click', openNewLanguage);
 
-  refs.progressBar = el('progress', { max: '100', value: '0', 'aria-hidden': 'true' });
+  // Progress of the chosen language: translated / same as original / untranslated as segments of one bar.
+  refs.progressBar = el('div', { class: 'locale-segments', 'aria-hidden': 'true' });
   refs.progressText = el('span', { class: 'locale-progress-text' });
   refs.progress = el('div', { class: 'locale-progress', 'data-testid': 'locale-progress', 'data-percent': '0', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0' }, refs.progressBar, refs.progressText);
-  refs.stats = el('div', { class: 'locale-stats muted small', 'data-testid': 'locale-stats' });
 
-  refs.filter = el('select', { 'data-testid': 'locale-filter', 'aria-label': '' });
-  refs.filter.addEventListener('change', () => { s.filter = refs.filter.value; s.limit = CHUNK; renderRows(); });
-  refs.search = withPlaceholder(el('input', { type: 'search', 'data-testid': 'locale-search', autocomplete: 'off', spellcheck: 'false' }), 'locale.search');
-  refs.search.addEventListener('input', () => { s.search = refs.search.value; s.limit = CHUNK; renderRows(); });
+  refs.filter = el('div', { class: 'locale-filters', role: 'group', 'data-testid': 'locale-filter' });
+  refs.search = withPlaceholder(el('input', { type: 'search', class: 'locale-search', 'data-testid': 'locale-search', autocomplete: 'off', spellcheck: 'false' }), 'locale.search');
+  refs.search.addEventListener('input', () => { s.search = refs.search.value; s.limits.clear(); renderRows(); });
 
-  refs.dirty = el('span', { class: 'locale-dirty small', 'data-testid': 'locale-dirty' });
+  refs.dirty = el('span', { class: 'locale-dirty', 'data-testid': 'locale-dirty' });
   refs.save = label(el('button', { type: 'button', class: 'primary', 'data-testid': 'locale-save' }), 'locale.save');
+  refs.save.setAttribute('aria-keyshortcuts', 'Control+S');
   refs.save.addEventListener('click', save);
   refs.discard = label(el('button', { type: 'button', 'data-testid': 'locale-discard' }), 'locale.discard');
   refs.discard.addEventListener('click', discardAll);
@@ -93,25 +102,33 @@ export function createLocaleView({ api, el }) {
   refs.reload.addEventListener('click', () => { refresh(true); });
   refs.conflict = el('div', { class: 'banner locale-conflict', 'data-testid': 'locale-conflict', role: 'alert' }, refs.conflictText, refs.reload);
 
-  refs.tbody = el('tbody');
-  refs.noRows = label(el('p', { class: 'muted', 'data-testid': 'locale-norows' }), 'locale.noRows');
-  refs.more = el('button', { type: 'button', class: 'locale-more', 'data-testid': 'locale-more' });
-  refs.more.addEventListener('click', () => { s.limit += CHUNK; renderRows(); });
+  refs.noRows = label(el('p', { class: 'muted ov-empty', 'data-testid': 'locale-norows' }), 'locale.noRows');
+  refs.keysHint = label(el('p', { class: 'muted small locale-keys-hint', 'data-testid': 'locale-keys-hint' }), 'locale.keysHint');
 
+  // One <tbody> per section, each starting with its header row.
   const head = (key) => label(el('th', { scope: 'col' }), key);
-  refs.table = el('table', { class: 'locale-table' },
-    el('thead', {}, el('tr', {}, head('locale.colKey'), head('locale.colSource'), head('locale.colTarget'))),
-    refs.tbody);
+  refs.thead = el('thead', {}, el('tr', {}, head('locale.colKey'), head('locale.colSource'), head('locale.colTarget')));
+  refs.table = el('table', { class: 'locale-table' }, refs.thead);
+
+  // Shown while there are unsaved changes, or briefly after a save; sticks to the bottom of the page while the table scrolls.
+  refs.saveBar = el('div', { class: 'locale-savebar', 'data-testid': 'locale-savebar' },
+    refs.dirty, refs.status, el('span', { class: 'locale-savebar-actions' }, refs.discard, refs.save));
 
   refs.main = el('div', { class: 'locale-main' },
-    el('div', { class: 'locale-bar' },
-      el('label', { class: 'locale-field', for: 'locale-lang' }, label(el('span', { class: 'small muted' }), 'locale.language'), refs.lang),
-      refs.newLang),
-    el('div', { class: 'locale-summary' }, refs.progress, refs.stats),
+    el('div', { class: 'locale-bar' }, refs.langs, refs.newLang),
+    refs.progress,
     el('div', { class: 'locale-bar' }, refs.filter, refs.search),
-    el('div', { class: 'locale-bar locale-actions' }, refs.save, refs.discard, refs.dirty, refs.status),
     refs.conflict,
-    refs.table, refs.noRows, refs.more);
+    refs.keysHint,
+    refs.table, refs.noRows,
+    refs.saveBar);
+
+  // Ctrl/Cmd+S while focus is in the tab saves the translations (and keeps the editor tabs' Ctrl+S from firing).
+  root.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 's') return;
+    e.preventDefault();
+    save();
+  });
 
   // New language dialog
   refs.dialog = el('dialog', { class: 'locale-dialog', 'aria-labelledby': 'locale-dialog-heading' });
@@ -133,24 +150,64 @@ export function createLocaleView({ api, el }) {
 
   // ------------------------------------------------------------ rendering
 
-  function setStatus(key, params) { s.status = key ? { key, params } : null; renderStatus(); }
-  function setStatusText(text) { s.status = text ? { text } : null; renderStatus(); }
+  /** A status line in the save bar; success messages disappear after a while, errors stay until the next action. */
+  function setStatus(key, params) {
+    clearTimeout(s.statusTimer);
+    s.status = key ? { key, params } : null;
+    if (key) s.statusTimer = setTimeout(() => { s.status = null; renderStatus(); renderControls(); }, STATUS_MS);
+    renderStatus();
+    renderControls();
+  }
+  function setStatusText(text) { clearTimeout(s.statusTimer); s.status = text ? { text } : null; renderStatus(); renderControls(); }
   function renderStatus() {
     const spec = s.status;
     refs.status.textContent = !spec ? '' : spec.key ? t(spec.key, spec.params) : spec.text;
+    refs.status.classList.toggle('bad', !!spec?.text);
   }
 
+  const percentOf = (l) => (l.total === 0 ? 100 : Math.floor((l.translated * 100) / l.total));
+
+  // Live counts of the filters (placeholder problems follow unsaved edits).
+  function filterCounts() {
+    const rows = s.table?.rows ?? [];
+    return {
+      all: rows.length,
+      untranslated: rows.filter((r) => r.status === 'untranslated').length,
+      identical: rows.filter((r) => r.identical).length,
+      extra: rows.filter((r) => r.status === 'extra').length,
+      problems: rows.filter((r) => problemsOf(r)).length,
+    };
+  }
+
+  // Filter chips with counts; empty filters are hidden, except the chosen one (so fixing the last problem does not jump away).
   function renderFilterOptions() {
-    const current = refs.filter.value || s.filter;
-    refs.filter.replaceChildren(...FILTERS.map((f) => el('option', { value: f, text: t(`locale.filter.${f}`) })));
-    refs.filter.value = FILTERS.includes(current) ? current : 'all';
     refs.filter.setAttribute('aria-label', t('locale.filterLabel'));
+    const counts = filterCounts();
+    refs.filter.replaceChildren(...FILTERS.filter((f) => f === 'all' || counts[f] > 0 || s.filter === f).map((f) => el('button', {
+      type: 'button', class: `chip proto-chip locale-filter-chip ${f}`, 'data-filter': f, 'aria-pressed': s.filter === f ? 'true' : 'false',
+      onclick: () => { s.filter = f; s.limits.clear(); renderFilterOptions(); renderRows(); },
+    }, el('span', { text: t(`locale.filter.${f}`) }), el('span', { class: 'ov-count', text: String(counts[f]) }))));
   }
 
   function renderLanguageSelect() {
     const languages = s.info?.languages ?? [];
-    refs.lang.replaceChildren(...languages.map((l) => el('option', { value: l.code, text: l.code === sourceLang() ? t('locale.sourceOption', { code: l.code }) : l.code })));
-    if (s.lang) refs.lang.value = s.lang;
+    refs.langs.setAttribute('aria-label', t('locale.language'));
+    refs.langs.replaceChildren(...languages.map((l) => {
+      const source = l.code === sourceLang();
+      const percent = percentOf(l);
+      const fill = el('span', { class: 'locale-lang-fill' });
+      fill.style.setProperty('width', `${percent}%`); // CSSOM, allowed under the strict CSP
+      return el('button', {
+        type: 'button', class: `chip proto-chip locale-lang-chip${source ? ' source' : ''}${percent === 100 ? ' done' : ''}`, 'data-lang': l.code,
+        'aria-pressed': l.code === s.lang ? 'true' : 'false',
+        title: source ? t('locale.sourceOption', { code: l.code }) : t('locale.progress', { percent, translated: l.translated, total: l.total }),
+        onclick: () => switchLanguage(l.code),
+      },
+      el('span', { class: 'mono', text: l.code }),
+      source
+        ? el('span', { class: 'muted small', text: t('locale.originalTag') })
+        : [el('span', { class: 'locale-lang-pct', text: `${percent}%` }), el('span', { class: 'locale-lang-bar', 'aria-hidden': 'true' }, fill)]);
+    }));
   }
 
   function renderSections() {
@@ -175,20 +232,29 @@ export function createLocaleView({ api, el }) {
     const percent = sum.total === 0 ? 100 : Math.floor((sum.translated * 100) / sum.total);
     refs.progress.setAttribute('data-percent', String(percent));
     refs.progress.setAttribute('aria-valuenow', String(percent));
-    refs.progressBar.value = percent;
     refs.progressText.textContent = t('locale.progress', { percent, translated: sum.translated, total: sum.total });
-    refs.stats.textContent = t('locale.stats', {
-      translated: sum.translated, total: sum.total, untranslated: sum.untranslated,
-      identical: sum.identical, extra: sum.extra, problems: sum.placeholderProblems,
-    });
+    // Identical rows count as translated on the server; the bar shows them as their own (blue) segment.
+    const segments = [['ok', sum.translated - sum.identical, 'locale.legend.translated'], ['identical', sum.identical, 'locale.filter.identical'],
+      ['untranslated', sum.untranslated, 'locale.filter.untranslated']];
+    refs.progressBar.replaceChildren(...segments.filter(([, n]) => n > 0).map(([kind, n, key]) => {
+      const part = el('span', { class: kind, title: `${t(key)}: ${n}` });
+      part.style.setProperty('flex-grow', String(n));
+      return part;
+    }));
   }
 
   function renderControls() {
     const dirty = dirtyCount();
-    refs.dirty.textContent = t('locale.dirty', { n: dirty });
+    refs.dirty.textContent = dirty ? t('locale.dirty', { n: dirty }) : '';
     refs.save.disabled = !s.editable || dirty === 0 || s.saving;
+    refs.save.title = t('locale.saveTitle');
     refs.discard.disabled = dirty === 0 || s.saving;
+    refs.discard.hidden = dirty === 0;
+    refs.save.hidden = dirty === 0 && !s.saving;
+    refs.saveBar.hidden = dirty === 0 && !s.saving && !s.status;
+    refs.saveBar.classList.toggle('dirty', dirty > 0);
     refs.conflict.hidden = !s.conflict;
+    if (s.table) renderFilterOptions(); // problem counts follow the edits
   }
 
   const problemsOf = (row) => {
@@ -262,14 +328,12 @@ export function createLocaleView({ api, el }) {
       'data-testid': 'locale-row', 'data-section': row.section, 'data-key': row.key, 'data-status': row.status,
     });
 
-    // Key cell
+    // Key cell (the section is the group header; the file and line are in the tooltip)
     const where = row.targetFile ? `${row.targetFile}:${row.targetLine}` : row.sourceFile;
     const keyCell = el('td', { class: 'locale-key', 'data-label': t('locale.colKey') },
-      el('div', { class: 'mono locale-key-name', text: row.key }),
-      el('div', { class: 'small muted', text: `[${row.section}]` }),
+      el('div', { class: 'mono locale-key-name', title: where || null, text: row.key }),
       row.identical && el('span', { class: 'badge info locale-identical', title: t('locale.identicalHint'), text: t('locale.identical') }),
-      row.status === 'extra' && el('span', { class: 'badge warning', title: t('locale.extraHint'), text: t('locale.extra') }),
-      where && el('div', { class: 'small muted mono locale-where', text: where }));
+      row.status === 'extra' && el('span', { class: 'badge warning', title: t('locale.extraHint'), text: t('locale.extra') }));
 
     // Source cell
     const tokens = row.status === 'extra' || isSourceView() ? [] : extract(row.source);
@@ -296,6 +360,11 @@ export function createLocaleView({ api, el }) {
       autosize(area);
       setEdit(row, text, null);
     });
+    area.addEventListener('keydown', (e) => {
+      if (e.isComposing) return; // Enter confirms an IME composition (Chinese, Japanese, ...), it must not move on
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); jump(row, 1, () => true); }
+      else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); jump(row, e.key === 'ArrowDown' ? 1 : -1, isOpen); }
+    });
 
     const slot = el('div', { class: 'locale-slot' });
     const ref = { tr, area, slot, row, remove: null };
@@ -307,11 +376,14 @@ export function createLocaleView({ api, el }) {
 
     const actions = [];
     if (row.status === 'untranslated' && row.suggestion) {
-      actions.push(el('button', {
-        type: 'button', class: 'locale-suggest', 'data-testid': 'locale-suggest', disabled: !s.editable,
-        title: row.suggestion,
-        onclick: () => { setEdit(row, row.suggestion, area); autosize(area); },
-      }, t('locale.useSuggestion')));
+      // The remembered translation is shown, not hidden in a tooltip.
+      actions.push(el('span', { class: 'locale-suggestion small' },
+        el('span', { class: 'muted', text: t('locale.fromMemory') }),
+        el('span', { class: 'locale-suggestion-text', text: row.suggestion }),
+        el('button', {
+          type: 'button', class: 'locale-suggest', 'data-testid': 'locale-suggest', disabled: !s.editable,
+          onclick: () => { setEdit(row, row.suggestion, area); autosize(area); },
+        }, t('locale.useSuggestion'))));
     }
     if (row.status === 'extra') {
       ref.remove = el('button', {
@@ -353,16 +425,97 @@ export function createLocaleView({ api, el }) {
       || row.source.toLowerCase().includes(needle) || target.toLowerCase().includes(needle);
   }
 
+  /** The rows that pass the filters, grouped by section in table order: Map section -> rows. */
+  function visibleGroups() {
+    const groups = new Map();
+    for (const row of s.table ? s.table.rows : []) {
+      if (!matches(row)) continue;
+      if (!groups.has(row.section)) groups.set(row.section, []);
+      groups.get(row.section).push(row);
+    }
+    return groups;
+  }
+
+  /** Progress of every section over all its rows (not only the filtered ones); extra keys do not count. */
+  function sectionStats() {
+    const stats = new Map();
+    for (const row of s.table ? s.table.rows : []) {
+      if (!stats.has(row.section)) stats.set(row.section, { total: 0, done: 0, extra: 0 });
+      const st = stats.get(row.section);
+      if (row.status === 'extra') { st.extra++; continue; }
+      st.total++;
+      if (row.status !== 'untranslated') st.done++;
+    }
+    return stats;
+  }
+
+  // A complete section starts collapsed, unless a filter or search is active; a click overrides that until the mod changes.
+  const sectionOpen = (section, st) => (s.open.has(section) ? s.open.get(section) : s.filter !== 'all' || !!s.search.trim() || st.done < st.total || st.extra > 0);
+
+  function sectionHeader(section, st, open, shown) {
+    const fill = el('span', { class: 'locale-lang-fill' });
+    fill.style.setProperty('width', `${st.total ? Math.floor((st.done * 100) / st.total) : 100}%`);
+    const complete = st.done === st.total;
+    return el('tr', { class: 'locale-section-head' }, el('th', { colspan: '3', scope: 'rowgroup' },
+      el('button', {
+        type: 'button', class: `locale-section-toggle${complete ? ' done' : ''}`, 'aria-expanded': open ? 'true' : 'false', 'data-testid': 'locale-section',
+        onclick: () => { s.open.set(section, !open); renderRows(); },
+      },
+      el('span', { class: 'files-twisty', 'aria-hidden': 'true', text: open ? '▾' : '▸' }),
+      el('span', { class: 'mono', text: `[${section}]` }),
+      el('span', { class: 'locale-section-count', text: `${st.done}/${st.total}` }),
+      el('span', { class: 'locale-lang-bar', 'aria-hidden': 'true' }, fill),
+      shown < st.total + st.extra && el('span', { class: 'muted small', text: t('locale.sectionShown', { n: shown }) }))));
+  }
+
   function renderRows() {
     rowRefs.clear();
-    const rows = s.table ? s.table.rows.filter(matches) : [];
-    refs.tbody.replaceChildren(...rows.slice(0, s.limit).map(buildRow));
-    refs.noRows.hidden = rows.length > 0;
-    refs.table.hidden = rows.length === 0;
-    const rest = rows.length - s.limit;
-    refs.more.hidden = rest <= 0;
-    if (rest > 0) refs.more.textContent = t('locale.showMore', { n: Math.min(rest, CHUNK), total: rest });
+    const groups = visibleGroups();
+    const stats = sectionStats();
+    const bodies = [...groups].map(([section, rows]) => {
+      const st = stats.get(section);
+      const open = sectionOpen(section, st);
+      const limit = s.limits.get(section) ?? CHUNK;
+      const rest = rows.length - limit;
+      return el('tbody', { 'data-section': section },
+        sectionHeader(section, st, open, rows.length),
+        open ? rows.slice(0, limit).map(buildRow) : null,
+        open && rest > 0 && el('tr', { class: 'locale-more-row' }, el('td', { colspan: '3' }, el('button', {
+          type: 'button', class: 'locale-more', 'data-testid': 'locale-more',
+          onclick: () => { s.limits.set(section, limit + CHUNK); renderRows(); },
+        }, t('locale.showMore', { n: Math.min(rest, CHUNK), total: rest })))));
+    });
+    refs.table.replaceChildren(refs.thead, ...bodies);
+    refs.noRows.hidden = groups.size > 0;
+    refs.table.hidden = groups.size === 0;
+    refs.keysHint.hidden = !s.editable || isSourceView() || groups.size === 0;
     renderControls();
+  }
+
+  /** Still needs a translation, counting unsaved edits. */
+  const isOpen = (row) => row.status !== 'extra' && currentOf(row).trim() === '';
+
+  /**
+   * Moves the focus from `row` to the next (dir 1) or previous (dir -1) visible row that satisfies `want`, opening its section
+   * and showing more rows when it is not drawn yet.
+   */
+  function jump(row, dir, want) {
+    const order = [...visibleGroups().values()].flat();
+    let i = order.indexOf(row) + dir;
+    while (i >= 0 && i < order.length && !want(order[i])) i += dir;
+    const target = order[i];
+    if (!target) return;
+    const id = idOf(target.section, target.key);
+    if (!rowRefs.has(id)) {
+      s.open.set(target.section, true);
+      const index = order.filter((r) => r.section === target.section).indexOf(target);
+      if (index >= (s.limits.get(target.section) ?? CHUNK)) s.limits.set(target.section, Math.ceil((index + 1) / CHUNK) * CHUNK);
+      renderRows();
+    }
+    const ref = rowRefs.get(id);
+    if (!ref?.area) return;
+    ref.area.focus();
+    ref.tr.scrollIntoView?.({ block: 'center' });
   }
 
   function renderAll() {
@@ -427,7 +580,8 @@ export function createLocaleView({ api, el }) {
       s.conflict = false;
       s.table = table;
       indexTable();
-      s.limit = CHUNK;
+      s.limits.clear();
+      s.open.clear();
       renderAll();
       return;
     }
@@ -456,7 +610,7 @@ export function createLocaleView({ api, el }) {
 
   async function switchLanguage(code) {
     if (code === s.lang) return;
-    if (dirtyCount() > 0 && !confirm(t('locale.discardConfirm'))) { refs.lang.value = s.lang; return; }
+    if (dirtyCount() > 0 && !confirm(t('locale.discardConfirm'))) return;
     s.lang = code;
     s.status = null;
     await refresh(true);
@@ -547,17 +701,20 @@ export function createLocaleView({ api, el }) {
 
   function reset() {
     clearTimeout(s.reloadTimer);
+    clearTimeout(s.statusTimer);
     s.seq++;
     Object.assign(s, {
       modId: null, info: null, lang: null, table: null, conflict: false, saving: false, loading: false,
-      error: null, status: null, filter: 'all', search: '', limit: CHUNK,
+      error: null, status: null, filter: 'all', search: '',
     });
     s.byId = new Map();
     s.edits.clear();
     s.removals.clear();
     s.own.clear();
     rowRefs.clear();
-    refs.tbody.replaceChildren();
+    s.limits.clear();
+    s.open.clear();
+    refs.table.replaceChildren(refs.thead);
     refs.search.value = '';
     if (refs.dialog.open) refs.dialog.close();
     renderFilterOptions();

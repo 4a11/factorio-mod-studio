@@ -406,15 +406,36 @@ button.primary:disabled { opacity: .6; cursor: default; }
 .locale-panel [hidden] { display: none !important; }
 .locale-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .locale-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.locale-field { display: flex; align-items: center; gap: 6px; }
 .locale-bar input[type="search"] { flex: 1; min-width: 160px; }
-.locale-summary { display: flex; flex-direction: column; gap: 4px; }
+/* Language chips: code, percent and a thin bar; the original language is marked instead. */
+.locale-langs { display: flex; flex-wrap: wrap; gap: 6px; }
+.locale-lang-chip { gap: 6px; }
+.locale-lang-chip.source { border-style: dashed; }
+.locale-lang-pct { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.locale-lang-chip.done .locale-lang-pct { color: var(--ok); }
+.locale-lang-bar { width: 36px; height: 4px; overflow: hidden; border-radius: 999px; background: var(--border); }
+.locale-lang-fill { display: block; height: 100%; background: var(--warning); }
+.locale-lang-chip.done .locale-lang-fill { background: var(--ok); }
+.locale-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.locale-filter-chip.untranslated .ov-count { color: var(--warning); }
+.locale-filter-chip.problems .ov-count { color: var(--error); }
 .locale-progress { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.locale-progress progress { width: min(280px, 100%); height: 10px; accent-color: var(--accent); }
+/* Segments: translated (green), same as original (blue), untranslated (amber), sized by count. */
+.locale-segments { display: flex; gap: 2px; width: min(360px, 100%); height: 8px; overflow: hidden; border-radius: 999px; background: var(--border); }
+.locale-segments span { flex: 0 1 0; min-width: 2px; }
+.locale-segments .ok { background: var(--ok); }
+.locale-segments .identical { background: var(--info); }
+.locale-segments .untranslated { background: var(--warning); }
 .locale-progress-text { font-weight: 600; }
-.locale-actions { min-height: 32px; }
 .locale-status { color: var(--muted); }
-.locale-dirty { color: var(--muted); }
+.locale-status.bad { color: var(--error); }
+/* Save bar: sticks to the bottom of the scrolling page while there are unsaved changes. */
+.locale-savebar { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 -4px 16px rgba(0, 0, 0, .12); }
+.locale-savebar.dirty { border-color: var(--accent); }
+.locale-savebar.dirty .locale-dirty::before { content: "\25CF"; margin-right: 6px; color: var(--accent); }
+.locale-savebar-actions { display: flex; gap: 8px; margin-left: auto; }
+.locale-dirty { font-weight: 600; }
 .locale-panel .banner { border: 1px solid var(--accent); border-radius: 6px; }
 .locale-error { border-left-color: var(--error); }
 .locale-table { table-layout: fixed; overflow: visible; }
@@ -436,11 +457,24 @@ button.primary:disabled { opacity: .6; cursor: default; }
 }
 .locale-target[readonly] { background: var(--surface-2); }
 .locale-chips, .locale-row-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+/* Placeholder chips only on the row being edited (clicking a chip keeps the focus inside the row). */
+.locale-table tr:not(:focus-within) .locale-chips { display: none; }
+@media (hover: none) { .locale-table tr:not(:focus-within) .locale-chips { display: flex; } }
+.locale-suggestion { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 4px 8px; border-radius: 6px; background: var(--surface-2); }
+.locale-suggestion-text { font-style: italic; overflow-wrap: anywhere; }
+/* Section groups: a header row per [section] with progress; complete sections start collapsed. */
+.locale-table tr.locale-section-head th { position: static; padding: 0; background: var(--surface-2); text-transform: none; letter-spacing: 0; }
+.locale-section-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; text-align: left; color: var(--text); font-weight: 600; background: none; border: 0; border-radius: 0; }
+.locale-section-toggle:hover { background: var(--accent-soft); }
+.locale-section-count { font-size: 11.5px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.locale-section-toggle.done .locale-section-count { color: var(--ok); }
+.locale-section-toggle.done .locale-lang-fill { background: var(--ok); }
+.locale-keys-hint { margin: 0; }
+.locale-more-row td { padding: 6px 12px; }
 .locale-chip { font-family: var(--mono); font-size: 11.5px; cursor: pointer; background: var(--surface); }
 .locale-chip:disabled, .locale-suggest:disabled, .locale-remove:disabled { opacity: .5; cursor: default; }
 .locale-suggest, .locale-remove, .locale-more { font-size: 12px; padding: 2px 8px; }
 .locale-warn { margin-top: 6px; padding: 4px 8px; color: var(--error); background: var(--error-soft); border-radius: 6px; overflow-wrap: anywhere; }
-.locale-more { align-self: flex-start; }
 .locale-dialog { width: min(420px, calc(100vw - 32px)); padding: 20px 22px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); }
 .locale-dialog::backdrop { background: rgba(0, 0, 0, .5); }
 .locale-dialog h2 { margin-bottom: 8px; }
@@ -449,7 +483,7 @@ button.primary:disabled { opacity: .6; cursor: default; }
 .locale-dialog .nm-actions { margin-top: 10px; position: static; }
 
 @media (max-width: 700px) {
-  .locale-table, .locale-table tbody, .locale-table tr, .locale-table td { display: block; width: 100%; }
+  .locale-table, .locale-table tbody, .locale-table tr, .locale-table td, .locale-table tr.locale-section-head th { display: block; width: 100%; }
   .locale-table thead { display: none; }
   .locale-table tr { border-bottom: 1px solid var(--border); padding: 4px 0; }
   .locale-table td { border-bottom: 0; padding: 4px 10px; }

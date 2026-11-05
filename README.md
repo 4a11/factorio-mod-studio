@@ -368,21 +368,27 @@ position. Errors: `400` empty or too long query or an invalid regular expression
 ### Localization editor
 
 The *Localization* tab of a mod turns `locale/<lang>/*.cfg` into a translation table: one row per key of the source language
-(`en` if the mod has `locale/en`, otherwise the first language folder), the original text next to the translation of the language
-chosen in the selector.
+(`en` if the mod has `locale/en`, otherwise the first language folder), the original text next to the translation of the chosen
+language. Every language is a chip with its progress (percent and a small bar; the original is marked), next to *New language…*.
 
-* **Progress and filters.** A progress bar and counters show translated, untranslated, identical-to-original and extra keys.
-  Filter by *All strings*, *Untranslated*, *Identical to original*, *Extra keys* or *Placeholder problems*, or search section, key and text.
-  Long tables are shown in chunks of 200 rows (*Show more*).
+* **Progress and filters.** A segmented bar shows the chosen language's translated, identical-to-original and untranslated keys.
+  Filter chips with counts (*All strings*, *Untranslated*, *Identical to original*, *Extra keys*, *Placeholder problems*; empty ones are
+  hidden, the placeholder count follows your edits) and a search over section, key and text narrow the table.
+* **Sections.** Rows are grouped by locale section (`[item-name]`, `[entity-name]`, ...); each group header shows `translated/total`
+  and a small bar. Complete sections start collapsed (unless a filter or search is active), so the open ones are where work is left.
+  Long sections are shown in chunks of 200 rows (*Show more*). The key's file and line are in its tooltip.
+* **Keyboard.** Enter moves to the next string, Shift+Enter inserts a line break (stored as `\n`), Alt+↓ / Alt+↑ jump to the next /
+  previous untranslated string, opening its section if needed.
 * **Placeholder checks.** The tokens of the original (`__1__`, `__ITEM__iron-plate__`, `__CONTROL__build__`, plural blocks
   `__plural_for_parameter_1_{...}__`, rich-text tags such as `[color=red]` / `[/color]` / `[item=iron-plate]`, and the literal `\n`)
-  are shown as chips under the translation; a click inserts the token at the cursor. While you type, missing and unexpected tokens
+  are shown as chips under the translation of the row being edited; a click inserts the token at the cursor. While you type, missing and unexpected tokens
   are reported live (the same rules run on the server in `LocalePlaceholders` and in the browser in `locale-placeholders.js`; the
   contents of plural blocks are not compared).
-* **Suggestions.** For an untranslated key the editor offers a translation it already knows for the same original text, taken from
+* **Suggestions.** For an untranslated key the editor shows (*From memory: ...* with a *Use suggestion* button) a translation it already knows for the same original text, taken from
   the translated rows of this language in this mod and in the other editable mods of the workspace (a local translation memory;
   nothing is sent anywhere). A suggestion is only offered when its placeholders match; it is never applied automatically.
-* **Saving.** *Save* sends only the changed rows in one request. A value is a single line: a line break typed into a translation is
+* **Saving.** While there are unsaved changes a bar sticks to the bottom of the page with their number, *Discard changes* and *Save*
+  (Ctrl/Cmd+S while the focus is in the tab). *Save* sends only the changed rows in one request. A value is a single line: a line break typed into a translation is
   stored as the two characters `\n`. Only the edited lines of the `.cfg` files change; comments, blank lines, order, indentation,
   BOM and line endings are kept. New keys go into the file that mirrors the original's file (`locale/en/main.cfg` →
   `locale/de/main.cfg`), after the last key of their section. If the files change on disk while you hold unsaved edits (or the
