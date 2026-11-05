@@ -290,10 +290,6 @@ summary { padding: 8px 12px; cursor: pointer; font-weight: 600; }
 details .file-row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 12px; border-top: 1px solid var(--border); }
 details .file-row:hover { background: var(--surface-2); }
 
-.recipe { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 8px; }
-.recipe-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
-.recipe-flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
-.arrow { color: var(--muted); }
 
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
 .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; cursor: pointer; text-align: center; }
@@ -707,6 +703,12 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .45); }
 .fi-pencil { --fi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.5 2.5l3 3-8 8H2.5v-3z M9 4l3 3'/%3E%3C/svg%3E"); background-color: var(--muted); }
 .fi-error { --fi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='8' r='6.5'/%3E%3Cpath d='M5.8 5.8l4.4 4.4 M10.2 5.8l-4.4 4.4'/%3E%3C/svg%3E"); background-color: var(--error); }
 .fi-warning { --fi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 1.8l6.5 11.7H1.5z M8 6.5v3.2 M8 11.6v.1'/%3E%3C/svg%3E"); background-color: var(--warning); }
+.fi-item { --fi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='4.5' width='11' height='9' rx='1'/%3E%3Cpath d='M5.5 4.5V2.5h5v2 M2.5 8h11'/%3E%3C/svg%3E"); background-color: var(--accent); }
+.fi-tech { --fi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.5 10.5a4.5 4.5 0 1 1 5 0V12h-5z M6 14.3h4'/%3E%3C/svg%3E"); background-color: var(--info); }
+.fi-drop { --fi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 1.8c2.8 3.4 4.5 5.9 4.5 8.2a4.5 4.5 0 0 1-9 0c0-2.3 1.7-4.8 4.5-8.2z'/%3E%3C/svg%3E"); background-color: var(--tok-number); }
+.fi-grid { --fi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='2' width='12' height='12' rx='1'/%3E%3Cpath d='M6 2v12 M10 2v12 M2 6h12 M2 10h12'/%3E%3C/svg%3E"); background-color: var(--tok-keyword); }
+.fi-tile { --fi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='2' width='12' height='12' rx='1'/%3E%3Cpath d='M8 2v12 M2 8h12'/%3E%3C/svg%3E"); background-color: var(--warning); }
+.fi-sliders { --fi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4h11 M2.5 8h11 M2.5 12h11'/%3E%3Ccircle cx='5' cy='4' r='1.5'/%3E%3Ccircle cx='10.5' cy='8' r='1.5'/%3E%3Ccircle cx='7' cy='12' r='1.5'/%3E%3C/svg%3E"); background-color: var(--muted); }
 .files-tree { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 0; }
 details .files-tree { border: 0; border-top: 1px solid var(--border); border-radius: 0; }
 .files-row { --depth: 0; display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 10px 2px calc(10px + var(--depth) * 16px); cursor: pointer; user-select: none; }
@@ -744,3 +746,44 @@ button.primary.danger { background: var(--error); border-color: var(--error); }
 .files-toast.bad { border-color: var(--error); }
 .files-toast[hidden] { display: none; }
 @media (max-width: 700px) { .files-dialog input, .files-toolbar .files-filter { font-size: 16px; } }
+
+/* Prototypes tab: mode + explanation, filter bar, type chips, family sections or one row per name (prototypes-view.js) */
+.proto-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 10px; }
+.proto-bar { margin-bottom: 8px; }
+.proto-bar .proto-filter { flex: 1; min-width: 160px; }
+.proto-bar button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.proto-types { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.proto-types[hidden] { display: none; }
+/* The chosen family's types: a second, indented row tied to the first by a guide line. */
+.proto-subtypes { margin: -4px 0 12px 10px; padding-left: 12px; border-left: 2px solid var(--accent); }
+.proto-subtypes .proto-chip { font-size: 11.5px; }
+button.proto-more { color: var(--accent); border-style: dashed; }
+.proto-more-rows { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-top: 1px dashed var(--border); }
+button.proto-chip { cursor: pointer; padding: 2px 8px; }
+button.proto-chip:hover { border-color: var(--accent); }
+button.proto-chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+button.proto-chip:disabled { opacity: .45; cursor: default; }
+.proto-chip .ov-count { margin-left: 2px; }
+.proto-family summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.proto-breakdown { font-weight: 400; font-family: var(--mono); }
+.proto-family .proto-list { border-top: 1px solid var(--border); padding: 4px 0; }
+.proto-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 4px 12px; text-align: left; color: var(--text); background: none; border: 0; border-radius: 0; cursor: pointer; font: inherit; }
+.proto-row:hover { background: var(--surface-2); }
+.proto-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.proto-row .fi-icon { margin: 0 4px; }
+.proto-thumb { width: 24px; height: 24px; flex: none; }
+.proto-names { display: flex; flex-direction: column; align-items: flex-start; flex: 1; min-width: 0; }
+.proto-name { font-size: 12.5px; overflow-wrap: anywhere; }
+.proto-noname { margin-top: 2px; text-transform: none; letter-spacing: 0; }
+/* What a recipe crafts, under its name: ingredients → results · category · time */
+.proto-recipe { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; }
+.proto-item { font-family: var(--mono); font-size: 11px; padding: 0 7px; }
+.proto-arrow { color: var(--muted); }
+.proto-type { flex: none; font-size: 11px; padding: 0 7px; color: var(--muted); }
+.proto-type-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+button.proto-type { cursor: pointer; }
+button.proto-type:hover { color: var(--accent); border-color: var(--accent); }
+.proto-where { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proto-row:hover .ov-row-go { color: var(--accent); }
+@media (max-width: 700px) { .proto-where { display: none; } .proto-bar .proto-filter { font-size: 16px; } }
+

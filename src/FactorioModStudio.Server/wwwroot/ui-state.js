@@ -5,7 +5,7 @@
 
 export const STORAGE_KEY = 'fms.ui.v1';
 export const THEMES = ['auto', 'light', 'dark'];
-export const MOD_TABS = ['overview', 'files', 'prototypes', 'recipes', 'resources', 'locale', 'problems', 'build'];
+export const MOD_TABS = ['overview', 'files', 'prototypes', 'resources', 'locale', 'problems', 'build'];
 export const BOTTOM_TABS = ['problems', 'output', 'search'];
 export const SIDEBAR_MIN = 200;
 export const SIDEBAR_MAX = 480;

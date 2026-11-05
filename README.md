@@ -216,8 +216,14 @@ What the tabs show:
   that lead to the matching tab; entry points (`data.lua`, `control.lua`, `settings.lua`, migrations); and which existing prototypes the mod
   touches via `data.raw`. Hovering a dependency in the header explains its prefix (`!`, `?`, `(?)`, `~`).
 * **Files** — a folder tree (or the files grouped by type), with a built-in viewer (Lua and text with line numbers, images, audio) and file management, see below.
-* **Prototypes** — every prototype the mod defines, with display names from the locale files and icon previews; click to jump to the source line.
-* **Recipes** — ingredients and results, for both the Factorio 2.x format and the older `result` / `normal` style.
+* **Prototypes** — every prototype the mod defines (or, in the *Touched (data.raw)* mode, every existing prototype it changes), with
+  display names from the locale files and icon previews; click to jump to the source line. *By type* groups them into collapsible
+  families (items, recipes, technologies, entities, fluids, equipment, tiles, settings, other); *By name* shows one row per object,
+  because an item, its recipe and its entity usually share a name (each type chip opens its own definition). A row of family chips
+  with counts filters the list; choosing a family shows a second row with its types (the ten most common, the rest behind *+N*).
+  *No localised name* keeps the prototypes the validator reports with FMS042. Recipe rows show what they craft (ingredients →
+  results, category and time; both the Factorio 2.x format and the older `result` / `normal` style), and the filter also matches
+  ingredient and result names, so typing `iron-plate` lists the recipes that use or make it.
 * **Resources** — image gallery, sound players and locale files.
 * **Localization** — a translation editor, see below.
 * **Problems** — the same findings as `fmstudio validate`.

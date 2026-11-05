@@ -12,6 +12,7 @@ import { createBottomPanel } from '/bottom-panel.js';
 import { createActionBar } from '/action-bar.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
+import { renderPrototypes as renderPrototypesView } from '/prototypes-view.js';
 import { LANGUAGES, initI18n, setLanguage, getLanguage, onLanguageChange, t, formatNumber } from '/i18n.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -66,10 +67,16 @@ const state = {
   protoFilter: '',
   protoType: '',
   protoMode: 'defined', // 'defined' (prototypes of this mod) or 'touched' (existing prototypes referenced via data.raw)
+  protoFamily: '', // family chip ('items', 'recipes', ...); protoType narrows it to one type
+  protoTypesExpanded: false, // the family's type chips beyond the first ten are shown
+  protoView: 'type', // 'type' (sections per family) or 'name' (one row per object name)
+  protoMissingOnly: false,
+  protoCollapsed: new Set(), // collapsed family sections
+  protoAllRows: new Set(), // family sections (or 'name') shown without the row limit
   token: 0,
 };
 
-const TABS = ['overview', 'files', 'prototypes', 'recipes', 'resources', 'locale', 'problems', 'build'];
+const TABS = ['overview', 'files', 'prototypes', 'resources', 'locale', 'problems', 'build'];
 
 // The localisation editor keeps its own state and DOM; this page only hosts it and forwards live updates.
 const localeView = createLocaleView({ api, el });
@@ -78,7 +85,6 @@ const localeView = createLocaleView({ api, el });
 const buildView = createBuildView({ api, el, openFile: (path, line) => openFile(path, line), modName: () => currentMod()?.name ?? null });
 
 const fileUrl = (path) => `/api/mods/${encodeURIComponent(state.currentId)}/file?path=${encodeURIComponent(path)}`;
-const fmtNum = (n) => (n === null || n === undefined ? '?' : formatNumber(n, { maximumFractionDigits: 3, useGrouping: false }));
 
 function formatSize(bytes) {
   const one = { maximumFractionDigits: 1, minimumFractionDigits: 1, useGrouping: false };
@@ -108,6 +114,9 @@ function go(id, tab) {
 window.addEventListener('hashchange', route);
 
 async function route() {
+  // Recipes used to have their own tab; old links land on the recipe family of the Prototypes tab.
+  const [oldId, oldTab] = location.hash.replace(/^#\/?/, '').split('/');
+  if (oldId && oldTab === 'recipes') { history.replaceState(null, '', `#/${oldId}/prototypes`); selectRecipeFamily(); }
   const { id, tab } = parseHash();
   if (!id) return;
   state.tab = tab;
@@ -208,7 +217,7 @@ function renderMod(keepScroll = false) {
       info.dependencies.map((d) => el('span', { class: 'chip' + (/^(\?|\(\?\)|~)/.test(d) ? ' optional' : '') + (d.startsWith('!') ? ' accent' : ''), title: t(dependencyKind(d)), text: d }))));
 
   const tabCount = {
-    files: o.files.length, prototypes: o.prototypes.length, recipes: o.recipes.length,
+    files: o.files.length, prototypes: o.prototypes.length,
     resources: counts.graphics + counts.sound, problems: o.issues.length,
   };
 
@@ -219,7 +228,7 @@ function renderMod(keepScroll = false) {
       onclick: () => go(state.currentId, key),
     }, t(`tabs.${key}`), tabCount[key] !== undefined && el('span', { class: 'count', text: tabCount[key] }))));
 
-  const panels = { overview: renderOverview, files: renderFiles, prototypes: renderPrototypes, recipes: renderRecipes, resources: renderResources, problems: renderProblems, locale: renderLocale, build: renderBuild };
+  const panels = { overview: renderOverview, files: renderFiles, prototypes: renderPrototypes, resources: renderResources, problems: renderProblems, locale: renderLocale, build: renderBuild };
   renderContent(header, tabs, panels[state.tab](o, counts));
   $('#content').scrollTop = keepScroll ? scroll : 0;
   // The tab strip is one scrollable row: keep the selected tab in view.
@@ -296,8 +305,18 @@ function coverage(cov) {
   return { text: [summary, ...weakest.map(fmt)].join(' · '), title: all };
 }
 
+/** Prototypes tab filters for "the recipes of this mod" (the Overview card and old #/mod/recipes links). */
+function selectRecipeFamily() {
+  state.protoMode = 'defined';
+  state.protoFamily = 'recipes';
+  state.protoType = '';
+  state.protoFilter = '';
+  state.protoMissingOnly = false;
+}
+
 function showTouched(type) {
   state.protoMode = 'touched';
+  state.protoFamily = '';
   state.protoType = type || '';
   state.protoFilter = '';
   if (state.tab === 'prototypes') renderMod(); else go(state.currentId, 'prototypes');
@@ -329,7 +348,7 @@ function renderOverview(o, counts) {
     el('div', { class: 'cards' },
       card(counts.script, t('overview.scripts'), 'fi-file cat-script', toTab('files')),
       card(o.prototypes.length, t('overview.prototypes'), 'fi-cube', toTab('prototypes')),
-      card(o.recipes.length, t('overview.recipes'), 'fi-recipe', toTab('recipes')),
+      card(o.recipes.length, t('overview.recipes'), 'fi-recipe', () => { selectRecipeFamily(); go(state.currentId, 'prototypes'); }),
       card(counts.graphics, t('overview.graphics'), 'fi-image', toTab('resources')),
       card(counts.sound, t('overview.sounds'), 'fi-sound', toTab('resources')),
       card(o.languages.length, t('overview.translations'), 'fi-globe', toTab('locale'), { testid: 'card-translations', sub: cov.text, title: cov.title }),
@@ -372,70 +391,9 @@ function renderBuild() {
   return buildView.element;
 }
 
+// The Prototypes tab (families / by name, type chips, missing localised names) lives in prototypes-view.js.
 function renderPrototypes(o) {
-  const touched = state.protoMode === 'touched';
-  const list = touched ? o.touched : o.prototypes;
-  const types = [...new Set(list.map((p) => p.type))];
-  if (state.protoType && !types.includes(state.protoType)) state.protoType = '';
-  const body = el('tbody');
-
-  const refresh = () => {
-    const filter = state.protoFilter.toLowerCase();
-    const rows = list.filter((p) =>
-      (!state.protoType || p.type === state.protoType) &&
-      (!filter || p.name.toLowerCase().includes(filter) || (p.displayName || '').toLowerCase().includes(filter)));
-
-    body.replaceChildren(...rows.slice(0, 500).map((p) => el('tr', { class: 'clickable', 'data-testid': 'proto-row', onclick: () => openFile(p.file, p.line) },
-      !touched && el('td', { class: 'icon' }, p.icon ? el('img', { class: 'thumb', loading: 'lazy', alt: '', src: fileUrl(p.icon) }) : null),
-      el('td', { class: 'mono', text: p.type }),
-      el('td', {}, el('div', { class: 'mono', text: p.name }), p.displayName && el('div', { class: 'muted small', text: p.displayName })),
-      el('td', { class: 'muted mono', text: `${p.file}:${p.line}` }))));
-    count.textContent = rows.length > 500 ? t('prototypes.showing', { shown: 500, total: rows.length }) : t('count.prototype', { n: rows.length });
-  };
-
-  const setMode = (mode) => { if (state.protoMode !== mode) { state.protoMode = mode; state.protoType = ''; renderMod(true); } };
-  const modeSwitch = (o.touched.length > 0 || touched) && el('div', { class: 'segmented', role: 'group', 'aria-label': t('prototypes.modeAria'), 'data-testid': 'proto-mode' },
-    [['defined', 'prototypes.modeDefined'], ['touched', 'prototypes.modeTouched']].map(([mode, key]) =>
-      el('button', { type: 'button', class: 'toggle', 'data-mode': mode, 'aria-pressed': (touched ? mode === 'touched' : mode === 'defined') ? 'true' : 'false',
-        onclick: () => setMode(mode), text: t(key) })));
-
-  const count = el('span', { class: 'muted small', 'data-testid': 'proto-count' });
-  const search = el('input', { type: 'search', placeholder: t('prototypes.filter'), 'aria-label': t('prototypes.filterAria'), value: state.protoFilter,
-    oninput: (e) => { state.protoFilter = e.target.value; refresh(); } });
-  const select = el('select', { 'aria-label': t('prototypes.typeAria'), 'data-testid': 'proto-type', onchange: (e) => { state.protoType = e.target.value; refresh(); } },
-    el('option', { value: '', text: t('prototypes.allTypes') }),
-    types.map((t) => el('option', { value: t, text: t, selected: t === state.protoType })));
-
-  if (!list.length) {
-    return el('div', {}, modeSwitch && el('div', { class: 'toolbar' }, modeSwitch),
-      el('p', { class: 'muted', text: t(touched ? 'prototypes.touchedEmpty' : 'prototypes.empty') }));
-  }
-
-  refresh();
-  const headers = [!touched && '', t('table.type'), t('table.name'), t(touched ? 'table.firstSeen' : 'table.definedAt')].filter((h) => h !== false);
-  return el('div', {},
-    el('div', { class: 'toolbar' }, modeSwitch, search, select, count),
-    el('table', {}, el('thead', {}, el('tr', {}, headers.map((h) => el('th', { text: h })))), body));
-}
-
-function itemChip(item) {
-  const amount = item.amount === null || item.amount === undefined ? '' : `${fmtNum(item.amount)}× `;
-  return el('span', { class: 'chip' + (item.type === 'fluid' ? ' accent' : ''), text: `${amount}${item.name}`, title: item.type });
-}
-
-function renderRecipes(o) {
-  if (!o.recipes.length) return el('p', { class: 'muted', text: t('recipes.empty') });
-
-  return el('div', {}, o.recipes.map((r) => el('div', { class: 'recipe' },
-    el('div', { class: 'recipe-head' },
-      el('div', {}, el('strong', { class: 'mono', text: r.name }), r.displayName && el('span', { class: 'muted', text: `  ${r.displayName}` })),
-      el('div', { class: 'muted small' },
-        r.category && `${r.category} · `, r.energyRequired !== null && r.energyRequired !== undefined && `${t('recipes.seconds', { value: fmtNum(r.energyRequired) })} · `,
-        el('button', { class: 'link', type: 'button', onclick: () => openFile(r.file, r.line), text: `${r.file}:${r.line}` }))),
-    el('div', { class: 'recipe-flow' },
-      r.ingredients.length ? r.ingredients.map(itemChip) : el('span', { class: 'muted', text: t('recipes.noIngredients') }),
-      el('span', { class: 'arrow', text: '→' }),
-      r.results.length ? r.results.map(itemChip) : el('span', { class: 'muted', text: t('recipes.noResults') })))));
+  return renderPrototypesView(o, { el, state, openFile, fileUrl, rerender: () => renderMod(true) });
 }
 
 function renderResources(o) {
