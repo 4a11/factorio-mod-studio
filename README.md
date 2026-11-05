@@ -33,6 +33,7 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 - [ ] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
 - [ ] the prototypes the templates generate (entity, runtime script) loaded in the game, not only written from the documentation
 - [ ] one-line install: the tool published to NuGet (`dotnet tool install -g FactorioModStudio.Cli`), no clone needed
+- [ ] Factorio versions installed by the studio: `fmstudio factorio install 2.0` downloads the free headless server (Linux, WSL, CI), where `smoke` finds it, also from the Build tab; *built, not yet tried against the real download*
 
 **0.3: the remaining tabs**
 - [ ] Problems in the new style: grouped by file and rule, safe quick fixes (add a missing locale key, fix the letter case of a path)
@@ -180,6 +181,23 @@ or interrupted install leaves nothing behind. Installing a version that is alrea
 headless release of that branch and goes on with the test (handy in CI); without `--install` the error names the command to run.
 `run` starts the game itself, so it never picks one of these headless servers (and refuses `--install`); the Build tab's *Run in
 Factorio* skips them in the same way, while *Smoke test* may use them.
+
+**In the Build tab.** When no installation matches the mod, a box under the version line offers *Install Factorio 2.0.76 (headless)*
+for the mod's branch, with a progress bar and *Cancel*; afterwards the installation is picked automatically and *Smoke test* is
+enabled. *Manage installations...* has *Install a Factorio version* for any branch, marks the studio's installs as *headless* and
+removes them. Where the headless server cannot run (Windows, macOS) the box says so instead of offering a download. One install
+runs at a time for the whole studio; reloading the page picks it up again.
+
+| Request | Result |
+| --- | --- |
+| `GET /api/factorio/available` | `{ platformProblem, stable, experimental, branches: [ { branch, newest, count } ], installed: [versions] }`; with a `platformProblem` nothing is asked from Factorio and `branches` is empty. The release list is kept for 10 minutes |
+| `POST /api/factorio/install` `{ "version": "2.0" \| "2.0.76" \| "stable" \| "latest" }` | `202` `{ install }` and the install runs in the background; `400` bad version or unsupported platform, `404` no such release, `409` `{ error, install }` another install runs, `502` / `504` Factorio's updater failed or did not answer |
+| `GET /api/factorio/install` | `{ install: { version, state, received, total, error, path, alreadyInstalled } \| null }`; `state`: `downloading`, `unpacking`, `succeeded`, `failed`, `cancelled` |
+| `POST /api/factorio/install/cancel` | the install; `409` nothing runs |
+| `DELETE /api/factorio/install/{MAJOR.MINOR.PATCH}` | `{ removed }`; `400` not a version, `404` not installed by the studio, `409` being installed |
+
+The writes need the session token and pass the same-origin check like every other write. `GET /api/factorio/installations` marks
+these installs with `"headless": true`.
 
 ```sh
 fmstudio new --list

@@ -35,6 +35,7 @@ navigateur (Aperçu, Fichiers, Prototypes, Ressources, Localisation, Problèmes,
 - [ ] après un lancement ou un test de fumée, lire aussi `factorio-current.log` et afficher ses erreurs dans Problèmes et Sortie
 - [ ] les prototypes générés par les modèles (entité, script d'exécution) chargés dans le jeu, pas seulement écrits d'après la documentation
 - [ ] installation en une ligne : l'outil publié sur NuGet (`dotnet tool install -g FactorioModStudio.Cli`), sans clonage
+- [ ] des versions de Factorio installées par le studio : `fmstudio factorio install 2.0` télécharge le serveur sans interface gratuit (Linux, WSL, CI), où `smoke` le trouve, aussi depuis l'onglet Compilation ; *fait, pas encore essayé avec le vrai téléchargement*
 
 **0.3 : les onglets restants**
 - [ ] Problèmes dans le nouveau style : regroupés par fichier et par règle, corrections rapides sûres (ajouter une clé de traduction manquante, corriger la casse d'un chemin)

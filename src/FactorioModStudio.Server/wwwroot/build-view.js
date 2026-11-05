@@ -4,10 +4,15 @@
 // Like the localisation view, this one owns a persistent DOM subtree (`element`) and keeps its state outside the DOM, so the host
 // page can detach and re-attach it (it redraws the whole mod page on live updates) without losing the log.
 // Everything that comes from the server or from a mod (log lines, messages, file names) is only set with textContent / attributes.
+//
+// "Install a missing Factorio": when no installation matches the mod's factorio_version, a button installs the headless server
+// (Factorio without graphics: enough for smoke tests, not for playing) through /api/factorio/install; the installations dialog
+// offers any branch. One install runs at a time for the whole studio, so its state lives outside the per-mod state.
 
 import { t, getLanguage } from '/i18n.js';
 
 const POLL_MS = 500;
+const INSTALL_POLL_MS = 700;
 const MAX_POLL_DELAY_MS = 5000;
 const MAX_LOG_LINES = 5000;
 const MAX_TICKS = 216000;
@@ -136,6 +141,11 @@ export function createBuildView({ api, el, openFile, modName }) {
   refs.installManage = label(el('button', { type: 'button', 'data-testid': 'build-install-manage' }), 'build.install.manage');
   refs.installHint = label(el('p', { class: 'small build-install-hint', 'data-testid': 'build-install-hint' }), 'build.install.noneHint');
   refs.installHint.hidden = true;
+  // Install a missing version: under the hint (for the mod's own version) and in the installations dialog (any branch).
+  refs.getBox = el('div', { class: 'build-get', 'data-testid': 'build-get', role: 'status' });
+  refs.getBox.hidden = true;
+  refs.getSelect = el('select', { id: 'build-get-select', 'data-testid': 'build-get-select' });
+  refs.getDialogBox = el('div', { class: 'build-get build-get-dialog', 'data-testid': 'build-get-dialog', role: 'status' });
   refs.picker = el('div', { class: 'build-install-picker' },
     label(el('label', { for: 'build-install-select' }), 'build.install.label'), refs.installSelect, refs.installManage);
 
@@ -172,9 +182,11 @@ export function createBuildView({ api, el, openFile, modName }) {
     refs.instList,
     el('div', { class: 'nm-actions build-path-actions' }, refs.instRescan, refs.instAdd),
     refs.addForm, refs.pathError,
+    label(el('h3', { class: 'section build-get-heading' }), 'build.get.heading'),
+    refs.getDialogBox,
     el('div', { class: 'nm-actions build-path-actions' }, refs.instClose));
 
-  root.append(refs.env, refs.resolution, refs.picker, refs.installHint, refs.readonly, refs.options, refs.actions, refs.statusRow, refs.log, refs.truncated, refs.result, refs.historyHeading, refs.history, refs.installDialog);
+  root.append(refs.env, refs.resolution, refs.picker, refs.installHint, refs.getBox, refs.readonly, refs.options, refs.actions, refs.statusRow, refs.log, refs.truncated, refs.result, refs.historyHeading, refs.history, refs.installDialog);
 
   // ------------------------------------------------------------ rendering
 
@@ -218,9 +230,11 @@ export function createBuildView({ api, el, openFile, modName }) {
         el('span', { class: 'mono', text: env.path }),
         ' ',
         el('span', { class: 'muted small', 'data-testid': 'build-env-source', 'data-source': env.source ?? '', text: sourceKey ? `(${t(sourceKey)})` : '' }));
+      renderGet();
       return;
     }
     refs.env.replaceChildren(el('strong', { text: t('build.env.notFound') }), el('p', { class: 'small', text: t('build.env.hint') }));
+    renderGet();
   }
 
   function renderResolution() {
@@ -400,6 +414,7 @@ export function createBuildView({ api, el, openFile, modName }) {
   function renderAll() {
     s.historyForce = true;
     renderEnv();
+    renderGet();
     renderButtons();
     renderStatus();
     renderLog(true);
@@ -553,14 +568,15 @@ export function createBuildView({ api, el, openFile, modName }) {
     const head = el('div', { class: 'build-install-head' },
       el('strong', { text: invalid ? t('build.install.missing') : (item.version || unknownVersion()) }),
       name ? el('span', { class: 'build-install-name', text: name }) : null,
-      ...sources.map((source) => el('span', { class: 'badge', 'data-source': source, text: t(`build.path.source.${source}`) })));
+      ...sources.map((source) => el('span', { class: 'badge', 'data-source': source, text: t(`build.path.source.${source}`) })),
+      !invalid && item.headless === true ? el('span', { class: 'badge build-get-badge', title: t('build.get.why'), text: t('build.get.headlessBadge') }) : null);
     const body = el('div', { class: 'build-install-body' }, head, el('div', { class: 'mono build-install-path', text: item.path }),
       invalid && item.error ? el('div', { class: 'small build-install-problem', text: item.error }) : null);
-    const removable = invalid || item.removable === true;
+    const removable = invalid || item.removable === true || item.headless === true;
     const remove = removable
       ? el('button', { type: 'button', class: 'small', 'data-testid': 'build-install-remove', 'aria-label': t('build.install.removeLabel', { name: name || item.path }), text: t('build.install.remove') })
       : null;
-    if (remove) remove.addEventListener('click', () => removeInstall(item));
+    if (remove) remove.addEventListener('click', () => (item.headless === true && !invalid ? removeManaged(item) : removeInstall(item)));
     row.append(body, ...(remove ? [remove] : []));
     return row;
   }
@@ -646,6 +662,7 @@ export function createBuildView({ api, el, openFile, modName }) {
     renderInstallList();
     refs.installDialog.showModal();
     refs.instClose.focus();
+    loadAvailable();
     try {
       applyInstalls(await api('/api/factorio/installations'));
     } catch (error) {
@@ -687,6 +704,162 @@ export function createBuildView({ api, el, openFile, modName }) {
     if (s.modId) rememberChoice(s.modId, s.manualId);
     refreshEnv(true);
   });
+
+  // ------------------------------------------------------------ install a missing Factorio (headless server)
+
+  const get = { available: null, availableError: null, loading: false, install: null, timer: 0, startError: null };
+  const installing = () => !!get.install && (get.install.state === 'downloading' || get.install.state === 'unpacking');
+  /** "2.0" from the mod's factorio_version, or null. */
+  const wantedBranch = () => {
+    const match = /^\s*(\d+)\.(\d+)/.exec(s.env?.resolution?.modVersion || '');
+    return match ? `${match[1]}.${match[2]}` : null;
+  };
+
+  async function loadAvailable(force = false) {
+    if (get.loading || (get.available && !force)) return;
+    get.loading = true;
+    get.availableError = null;
+    renderGet();
+    try { get.available = await api('/api/factorio/available'); } catch (error) { get.availableError = error.message; }
+    get.loading = false;
+    renderGet();
+  }
+
+  async function startInstall(spec) {
+    if (installing()) return;
+    get.startError = null;
+    try {
+      const answer = await api('/api/factorio/install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: spec }) });
+      get.install = answer?.install ?? null;
+    } catch (error) {
+      if (error.status === 409 && error.body?.install) get.install = error.body.install; // another install is running: follow it
+      else get.startError = error.message;
+    }
+    renderGet();
+    if (installing()) pollInstall();
+  }
+
+  async function pollInstall() {
+    clearTimeout(get.timer);
+    const before = get.install?.state ?? null;
+    let answer;
+    try { answer = await api('/api/factorio/install'); } catch { get.timer = setTimeout(pollInstall, INSTALL_POLL_MS * 3); return; }
+    get.install = answer?.install ?? null;
+    if (installing()) get.timer = setTimeout(pollInstall, INSTALL_POLL_MS);
+    else if (get.install?.state === 'succeeded' && (before === 'downloading' || before === 'unpacking')) await installedNow();
+    renderGet();
+  }
+
+  /** A new installation exists: scan again, so the environment line, the picker, the buttons and the dialog list follow. */
+  async function installedNow() {
+    get.available = null;
+    try { applyInstalls(await api('/api/factorio/installations/rescan', { method: 'POST' })); } catch { /* refreshEnv reports problems */ }
+    await refreshEnv(true);
+    if (refs.installDialog.open) loadAvailable();
+  }
+
+  async function cancelInstall() {
+    try { await api('/api/factorio/install/cancel', { method: 'POST' }); } catch { /* it may have just finished */ }
+    pollInstall();
+  }
+
+  async function removeManaged(item) {
+    if (!item.version) return;
+    const result = await installCall(`/api/factorio/install/${enc(item.version)}`, { method: 'DELETE' }, 'build.get.removeError');
+    if (!result) return;
+    get.available = null;
+    const list = await installCall('/api/factorio/installations/rescan', { method: 'POST' }, 'build.install.loadError');
+    if (list) await changed(list);
+    loadAvailable();
+  }
+
+  /** Progress, result or error of the current install, for both places it is shown. */
+  function installView() {
+    const i = get.install;
+    if (!i) return null;
+    const percent = i.total ? Math.min(100, Math.floor((i.received * 100) / i.total)) : null;
+    const text = i.state === 'downloading'
+      ? (percent !== null ? t('build.get.downloading', { version: i.version, percent }) : t('build.get.downloadingSize', { version: i.version, mb: Math.floor(i.received / (1024 * 1024)) }))
+      : i.state === 'unpacking' ? t('build.get.unpacking', { version: i.version })
+        : i.state === 'succeeded' ? t(i.alreadyInstalled ? 'build.get.already' : 'build.get.done', { version: i.version })
+          : i.state === 'cancelled' ? t('build.get.cancelled', { version: i.version })
+            : t('build.get.failed', { version: i.version, message: i.error || '' });
+    const fill = el('span', { class: 'build-get-fill' });
+    fill.style.setProperty('width', `${i.state === 'downloading' ? (percent ?? 0) : 100}%`); // CSSOM, allowed under the strict CSP
+    const cancel = installing() && el('button', { type: 'button', class: 'small', 'data-testid': 'build-get-cancel', onclick: cancelInstall, text: t('build.get.cancel') });
+    return el('div', { class: `build-get-progress ${i.state}`, 'data-state': i.state },
+      el('div', { class: 'build-get-row' }, el('span', { 'data-testid': 'build-get-text', text }), cancel),
+      installing() && el('div', { class: `build-get-bar${percent === null || i.state === 'unpacking' ? ' busy' : ''}`, 'aria-hidden': 'true' }, fill));
+  }
+
+  /** The two install boxes: under the hint (the mod's own version is missing) and in the installations dialog. */
+  function renderGet() {
+    const branch = wantedBranch();
+    const missing = !!s.env && typeof s.env === 'object' && s.env.resolution?.mode === 'none' && !!branch;
+    const forThisMod = get.install && branch && get.install.version.startsWith(`${branch}.`);
+    refs.getBox.hidden = !(missing || installing() || (forThisMod && get.install.state !== 'succeeded'));
+    if (!refs.getBox.hidden && !get.available && !get.loading && !get.availableError) loadAvailable();
+    refs.getBox.replaceChildren(...mainBox(branch).filter(Boolean)); // replaceChildren would print null / false as text
+    if (refs.installDialog.open) refs.getDialogBox.replaceChildren(...dialogBox().filter(Boolean));
+  }
+
+  function availabilityProblem() {
+    if (get.loading && !get.available) return [el('p', { class: 'muted small', text: t('build.get.loading') })];
+    if (get.availableError) {
+      return [el('p', { class: 'small build-get-error', text: t('build.get.loadError', { message: get.availableError }) }),
+        el('button', { type: 'button', class: 'small', onclick: () => loadAvailable(true), text: t('build.get.retry') })];
+    }
+    if (get.available?.platformProblem) {
+      return [el('p', { class: 'small', 'data-testid': 'build-get-unavailable' },
+        el('strong', { text: t('build.get.unavailable') + ' ' }), el('span', { class: 'muted', text: get.available.platformProblem }))];
+    }
+    return null;
+  }
+
+  function mainBox(branch) {
+    const progress = installView();
+    if (installing() || (progress && get.install.state !== 'succeeded')) {
+      return [progress, !installing() && branch ? el('button', { type: 'button', class: 'small', onclick: () => startInstall(branch), text: t('build.get.retry') }) : null];
+    }
+    const problem = availabilityProblem();
+    if (problem) return problem;
+    if (!get.available || !branch) return [];
+    const release = (get.available.branches || []).find((b) => b.branch === branch);
+    if (!release) return [el('p', { class: 'small', text: t('build.get.noRelease', { branch }) })];
+    return [
+      el('div', { class: 'build-get-row' },
+        el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-get-install', onclick: () => startInstall(branch) },
+          el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: '↓' }), el('span', { text: t('build.get.install', { version: release.newest }) }))),
+      el('p', { class: 'muted small', text: t('build.get.why') }),
+      get.startError && el('p', { class: 'small build-get-error', text: t('build.get.startError', { message: get.startError }) }),
+    ];
+  }
+
+  function dialogBox() {
+    const problem = availabilityProblem();
+    const progress = installView();
+    if (problem) return [...problem, progress];
+    if (!get.available) return [progress];
+    const installed = new Set(get.available.installed || []);
+    const branches = get.available.branches || [];
+    const previous = refs.getSelect.value;
+    refs.getSelect.replaceChildren(...branches.map((b) => {
+      const marks = [b.newest === get.available.stable && t('build.get.stable'), b.newest === get.available.experimental && t('build.get.experimental'),
+        installed.has(b.newest) && t('build.get.installedMark')].filter(Boolean);
+      return el('option', { value: b.branch, text: `${b.branch}: ${b.newest}${marks.length ? ` (${marks.join(', ')})` : ''}` });
+    }));
+    const branch = wantedBranch();
+    refs.getSelect.value = branches.some((b) => b.branch === previous) ? previous : branches.some((b) => b.branch === branch) ? branch : (branches[0]?.branch ?? '');
+    return [
+      el('p', { class: 'muted small', text: t('build.get.why') }),
+      el('div', { class: 'build-get-row' },
+        el('label', { for: 'build-get-select', text: t('build.get.branchLabel') }), refs.getSelect,
+        el('button', { type: 'button', class: 'primary', 'data-testid': 'build-get-install-selected', disabled: installing() || !branches.length ? true : null,
+          onclick: () => startInstall(refs.getSelect.value), text: t('build.get.installSelected') })),
+      get.startError && el('p', { class: 'small build-get-error', text: t('build.get.startError', { message: get.startError }) }),
+      progress,
+    ];
+  }
 
   /** Loads the candidate installations and how the mod's installation is chosen. */
   async function refreshEnv(keepCurrent = false) {
@@ -940,6 +1113,8 @@ export function createBuildView({ api, el, openFile, modName }) {
     const entry = id ? s.entries.get(id) : null;
     return entry ? { lines: entry.lines.map((l) => l.text), lastN: entry.lastN, truncated: !!(entry.snap.truncated || entry.lines.length >= MAX_LOG_LINES), loaded: entry.loaded } : null;
   }
+
+  pollInstall();
 
   return {
     element: root,

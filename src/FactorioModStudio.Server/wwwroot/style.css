@@ -852,3 +852,23 @@ button.res-user:hover { color: var(--accent); border-color: var(--accent); }
 .res-sound-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; text-align: left; font-size: 12.5px; color: var(--text); background: none; border: 0; }
 .res-sound-name:hover { color: var(--accent); text-decoration: underline; }
 .res-duration { min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Build tab: install a missing Factorio (headless server), under the hint and in the installations dialog (build-view.js) */
+.build-get { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); }
+.build-get[hidden] { display: none; }
+.build-get p { margin: 0; }
+.build-get-dialog { margin: 0 0 12px; }
+.build-get-heading { margin: 16px 0 8px; }
+.build-get-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.build-get-row select { min-width: 220px; }
+.build-get-error { color: var(--error); }
+.build-get-progress { display: flex; flex-direction: column; gap: 6px; }
+.build-get-progress.failed { color: var(--error); }
+.build-get-progress.succeeded { color: var(--ok); }
+.build-get-bar { position: relative; height: 6px; overflow: hidden; border-radius: 999px; background: var(--border); }
+.build-get-fill { display: block; height: 100%; background: var(--accent); transition: width .3s ease; }
+/* Unknown length or unpacking: a moving stripe instead of a percentage. */
+.build-get-bar.busy .build-get-fill { width: 30% !important; animation: build-get-busy 1.2s ease-in-out infinite; }
+@keyframes build-get-busy { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) { .build-get-bar.busy .build-get-fill { animation: none; width: 100% !important; opacity: .5; } }
+.build-get-badge { color: var(--muted); }

@@ -35,6 +35,7 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 - [ ] po uruchomieniu lub teście dymnym odczytywany jest także `factorio-current.log`, a jego błędy widać w zakładkach Problemy i Wyjście
 - [ ] prototypy tworzone przez szablony (obiekt, skrypt czasu działania) wczytane w grze, a nie tylko napisane według dokumentacji
 - [ ] instalacja jednym poleceniem: narzędzie opublikowane w NuGet (`dotnet tool install -g FactorioModStudio.Cli`), bez klonowania
+- [ ] wersje Factorio instalowane przez studio: `fmstudio factorio install 2.0` pobiera darmowy serwer bez interfejsu (Linux, WSL, CI), gdzie znajdzie go `smoke`, także z zakładki Budowanie; *zrobione, jeszcze niesprawdzone z prawdziwym pobieraniem*
 
 **0.3: pozostałe zakładki**
 - [ ] Problemy w nowym stylu: grupowanie według pliku i reguły, bezpieczne szybkie poprawki (dodanie brakującego klucza tłumaczenia, poprawienie wielkości liter w ścieżce)

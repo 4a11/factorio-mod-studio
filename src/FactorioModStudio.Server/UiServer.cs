@@ -23,12 +23,14 @@ namespace FactorioModStudio.Server;
 /// <param name="FactorioExecutable">When known, the game's own data folder (base, core, ...) is offered for browsing too.</param>
 /// <param name="WorkspaceDirectory">Overrides the project's workspace folder. Mods inside it can be edited from the UI.</param>
 /// <param name="FileManager">Opens the OS file manager for "Reveal"; null starts the real one. Tests pass a fake.</param>
+/// <param name="FactorioDownloads">Makes the downloader for "install a missing Factorio"; null uses Factorio's servers. Tests pass a fake.</param>
 public sealed record UiOptions(
     int Port = 5757,
     IReadOnlyList<string>? ExtraModFolders = null,
     string? FactorioExecutable = null,
     string? WorkspaceDirectory = null,
-    FileManagerLauncher? FileManager = null);
+    FileManagerLauncher? FileManager = null,
+    Func<FactorioDownloads>? FactorioDownloads = null);
 
 public sealed class RunningUi : IAsyncDisposable
 {
@@ -132,6 +134,7 @@ public static class UiServer
         BuildApi.Map(app, catalog, jobs);
         FilesApi.Map(app, catalog, context, options.FileManager);
         FactorioSettingsApi.Map(app, jobs, token);
+        FactorioInstallApi.Map(app, new FactorioInstalls(options.FactorioDownloads ?? DefaultDownloads, () => jobs.InvalidateEnvironment()));
 
         try
         {
@@ -149,6 +152,17 @@ public static class UiServer
         var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
         return new RunningUi(app, watcher, jobs, address.Replace("127.0.0.1", "localhost"), token);
     }
+
+    /// <summary>One HTTP client for every install: Factorio's updater and its download servers.</summary>
+    private static readonly Lazy<HttpClient> DownloadClient = new(() =>
+    {
+        var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan }; // the downloads have their own cancellation
+        http.DefaultRequestHeaders.UserAgent.ParseAdd($"FactorioModStudio/{typeof(UiServer).Assembly.GetName().Version?.ToString(3) ?? "0"}");
+        return http;
+    });
+
+    private static FactorioDownloads DefaultDownloads() =>
+        new(DownloadClient.Value, new ProcessRunner(), FactorioInstallations.ManagedInstallationsDirectory());
 
     private static void MapSecurity(WebApplication app, string token)
     {

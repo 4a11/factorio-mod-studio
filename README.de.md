@@ -35,6 +35,7 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 - [ ] nach einem Start oder Smoke-Test auch `factorio-current.log` lesen und seine Fehler unter Probleme und Ausgabe zeigen
 - [ ] die Prototypen der Vorlagen (Entität, Laufzeit-Skript) im Spiel geladen, nicht nur nach der Dokumentation geschrieben
 - [ ] Installation in einer Zeile: das Werkzeug auf NuGet veröffentlicht (`dotnet tool install -g FactorioModStudio.Cli`), kein Klonen nötig
+- [ ] Factorio-Versionen installiert das Studio selbst: `fmstudio factorio install 2.0` lädt den kostenlosen Headless-Server (Linux, WSL, CI), wo `smoke` ihn findet, auch aus dem Build-Tab; *gebaut, mit dem echten Download noch nicht erprobt*
 
 **0.3: die übrigen Tabs**
 - [ ] Probleme im neuen Stil: nach Datei und Regel gruppiert, sichere Schnellkorrekturen (fehlenden Übersetzungsschlüssel anlegen, Groß-/Kleinschreibung eines Pfads korrigieren)
