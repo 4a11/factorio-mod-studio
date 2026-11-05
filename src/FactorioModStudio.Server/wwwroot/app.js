@@ -13,6 +13,7 @@ import { createActionBar } from '/action-bar.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
 import { renderPrototypes as renderPrototypesView } from '/prototypes-view.js';
+import { renderResources as renderResourcesView, stopResourceSound } from '/resources-view.js';
 import { LANGUAGES, initI18n, setLanguage, getLanguage, onLanguageChange, t, formatNumber } from '/i18n.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -73,6 +74,12 @@ const state = {
   protoMissingOnly: false,
   protoCollapsed: new Set(), // collapsed family sections
   protoAllRows: new Set(), // family sections (or 'name') shown without the row limit
+  resKind: 'graphics', // Resources tab: 'graphics' or 'sound'
+  resFilter: '',
+  resUnusedOnly: false,
+  resSize: 'm', // preview size: 's', 'm' or 'l'
+  resExpanded: new Set(), // opened folder sections ('kind:folder'); they start collapsed
+  resAllRows: new Set(), // folder sections shown without the tile limit
   token: 0,
 };
 
@@ -119,6 +126,7 @@ async function route() {
   if (oldId && oldTab === 'recipes') { history.replaceState(null, '', `#/${oldId}/prototypes`); selectRecipeFamily(); }
   const { id, tab } = parseHash();
   if (!id) return;
+  if (tab !== 'resources' || id !== state.currentId) stopResourceSound();
   state.tab = tab;
 
   if (id !== state.currentId || !state.overview) {
@@ -136,6 +144,7 @@ async function route() {
     localeView.reset();
     buildView.reset();
     filesView.reset();
+    state.resFilter = '';
     searchPanel.setMod(id);
     bottom.setMod();
     state.currentId = id;
@@ -349,8 +358,8 @@ function renderOverview(o, counts) {
       card(counts.script, t('overview.scripts'), 'fi-file cat-script', toTab('files')),
       card(o.prototypes.length, t('overview.prototypes'), 'fi-cube', toTab('prototypes')),
       card(o.recipes.length, t('overview.recipes'), 'fi-recipe', () => { selectRecipeFamily(); go(state.currentId, 'prototypes'); }),
-      card(counts.graphics, t('overview.graphics'), 'fi-image', toTab('resources')),
-      card(counts.sound, t('overview.sounds'), 'fi-sound', toTab('resources')),
+      card(counts.graphics, t('overview.graphics'), 'fi-image', () => { state.resKind = 'graphics'; go(state.currentId, 'resources'); }),
+      card(counts.sound, t('overview.sounds'), 'fi-sound', () => { state.resKind = 'sound'; go(state.currentId, 'resources'); }),
       card(o.languages.length, t('overview.translations'), 'fi-globe', toTab('locale'), { testid: 'card-translations', sub: cov.text, title: cov.title }),
       card(o.touched.length, t('overview.touched'), 'fi-pencil', () => showTouched(''), { testid: 'card-touched' }),
       card(errors, t('overview.errors'), 'fi-error', toTab('problems'), { testid: 'card-errors', class: errors > 0 ? 'bad' : '' }),
@@ -396,39 +405,9 @@ function renderPrototypes(o) {
   return renderPrototypesView(o, { el, state, openFile, fileUrl, rerender: () => renderMod(true) });
 }
 
+// The Resources tab (graphics and sounds by folder, unused filter, icon users, copy Lua path) lives in resources-view.js.
 function renderResources(o) {
-  const graphics = o.files.filter((f) => f.category === 'graphics');
-  const sounds = o.files.filter((f) => f.category === 'sound');
-  const locales = o.files.filter((f) => f.category === 'locale');
-
-  return el('div', {},
-    el('h3', { text: t('resources.graphics', { n: graphics.length }) }),
-    graphics.length
-      ? el('div', { class: 'gallery section' }, graphics.slice(0, 400).map((f) => el('button', { class: 'tile', type: 'button', onclick: () => openFile(f.path), title: f.path },
-          el('img', { loading: 'lazy', alt: '', src: fileUrl(f.path) }), el('span', { text: f.path.split('/').pop() }))))
-      : el('p', { class: 'muted', text: t('resources.noImages') }),
-    graphics.length > 400 && el('p', { class: 'muted small', text: t('resources.more', { shown: 400, total: graphics.length }) }),
-    el('h3', { class: 'section', text: t('resources.sounds', { n: sounds.length }) }),
-    sounds.length
-      ? sounds.slice(0, 100).map((f) => el('div', { class: 'sound-row' }, el('span', { class: 'mono', text: f.path }),
-          el('audio', { controls: true, preload: 'none', src: fileUrl(f.path) })))
-      : el('p', { class: 'muted', text: t('resources.noSounds') }),
-    el('h3', { class: 'section', text: t('resources.locale', { n: o.languages.length }) }),
-    locales.length
-      ? el('div', { class: 'chips' }, locales.map((f) => el('button', { class: 'chip', type: 'button', onclick: () => openFile(f.path), text: f.path.replace(/^locale\//, '') })))
-      : el('p', { class: 'muted', text: t('resources.noLocale') }),
-    renderLocaleCoverage(o.localeCoverage || []));
-}
-
-function renderLocaleCoverage(coverage) {
-  if (!coverage.length) return null;
-  return el('table', { class: 'locale-coverage' },
-    el('thead', {}, el('tr', {}, ['language', 'keys', 'missing', 'extra'].map((h) => el('th', { text: t(`table.${h}`) })))),
-    el('tbody', {}, coverage.map((c) => el('tr', {},
-      el('td', { class: 'mono', text: c.language }),
-      el('td', { text: String(c.keys) }),
-      el('td', {}, c.missing > 0 ? el('span', { class: 'badge warning', text: String(c.missing) }) : String(c.missing)),
-      el('td', { text: String(c.extra) })))));
+  return renderResourcesView(o, { el, state, openFile, fileUrl, formatSize });
 }
 
 function severityLabel(severity) {

@@ -224,7 +224,10 @@ What the tabs show:
   *No localised name* keeps the prototypes the validator reports with FMS042. Recipe rows show what they craft (ingredients →
   results, category and time; both the Factorio 2.x format and the older `result` / `normal` style), and the filter also matches
   ingredient and result names, so typing `iron-plate` lists the recipes that use or make it.
-* **Resources** — image gallery, sound players and locale files.
+* **Resources** — the mod's graphics and sounds, one kind at a time, in a collapsible section per folder: a name filter, *Unused only*
+  (the same static check as the Files tab) and three preview sizes. Image tiles show the pixel size, the file size and which prototypes
+  use the image as their icon (click to open the definition); sounds play in one shared player and show their length. The ⧉ button copies
+  the file's Lua path (`__mod-name__/graphics/...`). Locale files are covered by the Localization tab.
 * **Localization** — a translation editor, see below.
 * **Problems** — the same findings as `fmstudio validate`.
 * **Build** — validate, pack, smoke-test and run the mod without leaving the browser, see below.
@@ -434,7 +437,7 @@ migrations), skips tables that set `localised_name`, accepts `item-name.<x>` for
 ignores unknown prototype types. FMS043 and FMS047 only see literal strings: dynamically built keys (`"section." .. name`) are not
 resolved (a section used like that is excluded from FMS047), keys of the base game or other mods are not known (so FMS043 can warn about
 a base-game key if the mod also defines the same section), and `__ENTITY__x__`-style references are neither checked nor compared. The
-Resources tab of the UI shows per-language key counts with missing and extra keys.
+Localization tab of the UI shows per-language progress with missing and extra keys.
 
 ## Translating the interface
 

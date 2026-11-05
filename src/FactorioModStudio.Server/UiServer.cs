@@ -78,7 +78,7 @@ public static class UiServer
     [
         "lua-highlight.js", "locale-placeholders.js", "locale-view.js", "build-view.js", "i18n.js",
         "theme-init.js", "theme.js", "ui-state.js", "palette-logic.js", "palette.js", "editor-tabs.js",
-        "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js", "prototypes-view.js"
+        "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js", "prototypes-view.js", "resources-view.js"
     ];
 
     private const string ContentSecurityPolicy =
