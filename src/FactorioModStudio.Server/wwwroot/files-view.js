@@ -1,6 +1,7 @@
 // "Files" tab of the mod page: a folder tree (or the files grouped by category) with a name filter, an "unused only" filter,
-// badges (problems, role, unsaved, unused), a context menu (mouse, ContextMenu key, Shift+F10) with new file / new folder /
-// rename / duplicate / delete / reveal / upload, drag & drop inside the tree to move, and OS files dropped on a folder to upload.
+// type icons and badges (problems, role, unsaved, unused), a context menu (mouse, the row's ⋯ button, ContextMenu key, Shift+F10)
+// with new file / new folder / rename / duplicate / delete / reveal / upload, drag & drop inside the tree to move, and OS files
+// dropped on a folder (or the drop zone under the tree) to upload. The toolbar names the folder new files go into.
 // Deleting goes to the server-side trash; the toast offers Undo.
 //
 // The view owns one persistent subtree (`element`) that the host re-attaches on every redraw, so the filter box keeps focus
@@ -52,21 +53,40 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
 
   // ------------------------------------------------------------ persistent structure
 
+  // Toolbar: actions (editable mods) with the folder new things go into, or a read-only notice; below it the view controls.
   const root = el('div', { class: 'files-panel', 'data-testid': 'files-panel' });
+  const iconButton = (testid, icon, onclick) => {
+    const label = el('span');
+    const button = el('button', { type: 'button', class: 'files-btn', 'data-testid': testid, onclick },
+      el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: icon }), label);
+    return { button, label };
+  };
+  const newFileBtn = iconButton('files-new-file', '+', () => newFile(targetFolder()));
+  const newFolderBtn = iconButton('files-new-folder', '+', () => newFolder(targetFolder()));
+  const uploadBtn = iconButton('files-upload', '↑', () => pickUpload(targetFolder()));
+  const targetText = el('span', { 'data-testid': 'files-target' });
+  const targetReset = el('button', { type: 'button', class: 'linklike small', 'data-testid': 'files-target-reset', onclick: () => select(null, false) });
+  const actions = el('div', { class: 'files-actions' }, newFileBtn.button, newFolderBtn.button, uploadBtn.button,
+    el('span', { class: 'files-target muted small' }, targetText, targetReset));
+  const readOnly = el('div', { class: 'files-readonly small', 'data-testid': 'files-readonly' });
+
   const filter = el('input', { type: 'search', class: 'files-filter', 'data-testid': 'files-filter', autocomplete: 'off', spellcheck: 'false' });
   filter.addEventListener('input', () => { s.name = filter.value; renderBody(); });
-  const unusedBox = el('input', { type: 'checkbox', 'data-testid': 'files-unused-only' });
-  unusedBox.addEventListener('change', () => { s.unusedOnly = unusedBox.checked; renderBody(); });
-  const unusedLabel = el('label', { class: 'files-check' }, unusedBox, el('span'));
+  const unusedLabel = el('span');
+  const unusedCount = el('span', { class: 'files-count' });
+  const unusedBtn = el('button', { type: 'button', class: 'files-toggle', 'data-testid': 'files-unused-only', 'aria-pressed': 'false',
+    onclick: () => { s.unusedOnly = !s.unusedOnly; renderBody(); } }, unusedLabel, unusedCount);
   const viewTree = el('button', { type: 'button', 'data-testid': 'files-view-tree', onclick: () => setView('tree') });
   const viewCategory = el('button', { type: 'button', 'data-testid': 'files-view-category', onclick: () => setView('category') });
   const viewSwitch = el('div', { class: 'files-switch', role: 'group' }, viewTree, viewCategory);
-  const newFileBtn = el('button', { type: 'button', 'data-testid': 'files-new-file', onclick: () => newFile(targetFolder()) });
-  const newFolderBtn = el('button', { type: 'button', 'data-testid': 'files-new-folder', onclick: () => newFolder(targetFolder()) });
-  const uploadBtn = el('button', { type: 'button', 'data-testid': 'files-upload', onclick: () => pickUpload(targetFolder()) });
-  const hint = el('span', { class: 'muted small files-hint' });
-  const toolbar = el('div', { class: 'toolbar files-toolbar' }, filter, unusedLabel, viewSwitch, newFileBtn, newFolderBtn, uploadBtn, hint);
+  const expandBtn = el('button', { type: 'button', 'data-testid': 'files-expand-all', onclick: () => toggleAll() });
+  const summary = el('span', { class: 'muted small files-summary', 'data-testid': 'files-summary' });
+  const viewBar = el('div', { class: 'files-viewbar' }, filter, unusedBtn, viewSwitch, expandBtn, summary);
+  const toolbar = el('div', { class: 'files-toolbar' }, actions, readOnly, viewBar);
   const body = el('div', { class: 'files-body' });
+  // Below the tree of an editable mod: drop target / picker for the mod root, and a one-line tip about the hidden actions.
+  const dropzone = el('button', { type: 'button', class: 'files-dropzone', 'data-testid': 'files-dropzone', onclick: () => pickUpload('') });
+  const tip = el('p', { class: 'muted small files-tip' });
   const uploadInput = el('input', { type: 'file', multiple: true, hidden: true, 'data-testid': 'files-upload-input' });
   let uploadTarget = '';
   uploadInput.addEventListener('change', () => {
@@ -89,19 +109,56 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
 
   function renderToolbar() {
     const editable = isEditable();
+    actions.hidden = !editable;
+    readOnly.hidden = editable;
+    readOnly.textContent = t('files.readOnlyHint');
+    newFileBtn.label.textContent = t('files.new');
+    newFolderBtn.label.textContent = t('files.newFolder');
+    uploadBtn.label.textContent = t('files.upload');
+    targetReset.textContent = t('files.targetReset');
     filter.setAttribute('placeholder', t('files.filter'));
     filter.setAttribute('aria-label', t('files.filter'));
-    unusedLabel.lastChild.textContent = t('files.unusedOnly');
+    unusedLabel.textContent = t('files.unusedOnly');
+    unusedBtn.title = t('files.badge.unusedTitle');
     viewSwitch.setAttribute('aria-label', t('files.viewLabel'));
     viewTree.textContent = t('files.viewTree');
     viewCategory.textContent = t('files.viewCategory');
     viewTree.setAttribute('aria-pressed', s.view === 'tree' ? 'true' : 'false');
     viewCategory.setAttribute('aria-pressed', s.view === 'category' ? 'true' : 'false');
-    newFileBtn.textContent = t('files.new');
-    newFolderBtn.textContent = t('files.newFolder');
-    uploadBtn.textContent = t('files.upload');
-    for (const button of [newFileBtn, newFolderBtn, uploadBtn]) button.hidden = !editable;
-    hint.textContent = editable ? t('files.hintTree') : t('files.readOnlyHint');
+    dropzone.textContent = t('files.dropzone');
+    tip.textContent = t('files.tip');
+  }
+
+  /** Toolbar parts that depend on the file list or the selection. */
+  function renderStatus(shown, folderPaths) {
+    const unused = files().filter((f) => f.unused === true).length;
+    unusedBtn.setAttribute('aria-pressed', s.unusedOnly ? 'true' : 'false');
+    unusedBtn.hidden = unused === 0 && !s.unusedOnly;
+    unusedCount.textContent = String(unused);
+
+    s.allFolders = folderPaths;
+    const allOpen = folderPaths.length > 0 && folderPaths.every((p) => expanded().has(p));
+    expandBtn.hidden = s.view !== 'tree' || filtering() || folderPaths.length === 0;
+    expandBtn.textContent = t(allOpen ? 'files.collapseAll' : 'files.expandAll');
+    expandBtn.dataset.mode = allOpen ? 'collapse' : 'expand';
+
+    summary.textContent = filtering()
+      ? `${t('count.file', { n: shown })} / ${files().length}`
+      : t('count.file', { n: files().length });
+    renderTarget();
+  }
+
+  function renderTarget() {
+    const folder = targetFolder();
+    targetText.textContent = t('files.target', { folder: folder ? `${folder}/` : t('files.targetRoot') });
+    targetReset.hidden = !folder;
+  }
+
+  function toggleAll() {
+    const set = expanded();
+    if (expandBtn.dataset.mode === 'collapse') set.clear();
+    else for (const path of s.allFolders || []) set.add(path);
+    renderBody();
   }
 
   // ------------------------------------------------------------ rows
@@ -120,7 +177,8 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
   function badges(node, ctx) {
     const out = [];
     if (node.kind === 'folder') {
-      out.push(el('span', { class: 'muted small', text: String(countFiles(node)) }));
+      const n = countFiles(node);
+      out.push(el('span', { class: 'muted small files-size', title: t('count.file', { n }), text: String(n) }));
       return out;
     }
     const f = node.file;
@@ -130,8 +188,17 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
     if (ctx.dirty.has(node.path)) out.push(el('span', { class: 'files-dirty', 'data-testid': 'files-badge-unsaved', title: t('files.badge.unsaved'), 'aria-label': t('files.badge.unsaved'), text: '●' }));
     if (f.unused === true) out.push(el('span', { class: 'badge files-unused', 'data-testid': 'files-badge-unused', title: t('files.badge.unusedTitle'), text: t('files.badge.unused') }));
     if (f.role) out.push(el('span', { class: 'chip files-role', 'data-testid': 'files-badge-role', title: f.role, text: t('files.badge.role') }));
-    out.push(el('span', { class: 'muted small', text: formatSize(f.size) }));
+    out.push(el('span', { class: 'muted small files-size', text: formatSize(f.size) }));
     return out;
+  }
+
+  /** Icon class of a row: folders, images and sounds have their own shape; other files are coloured by category. */
+  function iconClass(node) {
+    if (node.kind === 'folder') return 'fi-folder';
+    const category = node.file?.category ?? 'other';
+    if (category === 'graphics') return 'fi-image';
+    if (category === 'sound') return 'fi-sound';
+    return `fi-file cat-${category}`;
   }
 
   function rowEl(node, depth, ctx, label = node.name) {
@@ -146,8 +213,12 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
       tabindex: selected ? '0' : '-1', draggable: ctx.editable ? 'true' : null, title: node.path,
     },
     el('span', { class: 'files-twisty', 'aria-hidden': 'true', text: folder ? (open ? '▾' : '▸') : '' }),
+    el('span', { class: `files-icon ${iconClass(node)}`, 'aria-hidden': 'true' }),
     el('span', { class: 'files-name', text: label }),
-    el('span', { class: 'files-badges' }, badges(node, ctx)));
+    el('span', { class: 'files-badges' }, badges(node, ctx)),
+    // Visible on hover / selection: the same menu as a right-click, for people who never right-click.
+    el('button', { type: 'button', class: 'files-more', tabindex: '-1', 'data-testid': 'files-row-menu',
+      'aria-label': t('files.actionsFor', { name: node.name }), title: t('files.actionsFor', { name: node.name }), text: '⋯' }));
     row.style.setProperty('--depth', String(depth)); // CSSOM, allowed under the strict CSP
     return row;
   }
@@ -161,9 +232,13 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
       editable: isEditable(),
     };
 
+    const empty = () => el('p', { class: 'muted files-empty', 'data-testid': 'files-empty', text: t(filtering() ? 'files.noMatch' : 'files.empty') });
+    const footer = ctx.editable ? [dropzone, tip] : [];
+
     if (s.view === 'category') {
       const groups = {};
-      for (const f of files()) if (fileMatches(f, s)) (groups[f.category] ||= []).push(f);
+      let shown = 0;
+      for (const f of files()) if (fileMatches(f, s)) { (groups[f.category] ||= []).push(f); shown++; }
       const sections = CATEGORIES.filter((c) => groups[c]).map((category) => {
         const list = groups[category];
         return el('details', { open: category === 'script' || filtering() },
@@ -172,8 +247,9 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
             list.slice(0, MAX_ROWS).map((f) => rowEl({ kind: 'file', name: nameOf(f.path), path: f.path, file: f }, 0, { ...ctx, editable: false }, f.path))),
           list.length > MAX_ROWS && el('div', { class: 'muted small', text: t('files.moreNotShown', { n: list.length - MAX_ROWS }) }));
       });
-      body.replaceChildren(...(sections.length ? sections : [el('p', { class: 'muted', 'data-testid': 'files-empty', text: t(filtering() ? 'files.noMatch' : 'files.empty') })]));
+      body.replaceChildren(...(sections.length ? sections : [empty()]), ...footer);
       wireTree();
+      renderStatus(shown, []);
       return;
     }
 
@@ -185,10 +261,15 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
       const first = treeEl.querySelector('.files-row');
       if (first) first.tabIndex = 0; // keep the tree reachable with Tab
     }
-    body.replaceChildren(treeEl,
+    body.replaceChildren(rows.length ? treeEl : empty(),
       rows.length > MAX_ROWS ? el('div', { class: 'muted small', text: t('files.moreNotShown', { n: rows.length - MAX_ROWS }) }) : null,
-      rows.length === 0 ? el('p', { class: 'muted', 'data-testid': 'files-empty', text: t(filtering() ? 'files.noMatch' : 'files.empty') }) : null);
+      ...footer);
     wireTree();
+
+    const folderPaths = [];
+    const collect = (node) => { for (const child of node.children) if (child.kind === 'folder') { folderPaths.push(child.path); collect(child); } };
+    collect(tree);
+    renderStatus(rows.filter((r) => r.node.kind === 'file').length, folderPaths);
     if (hadFocus) requestAnimationFrame(() => focusRow(s.selected));
   }
 
@@ -206,12 +287,14 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
 
   function select(path, redraw = true) {
     s.selected = path;
-    for (const row of visibleRows()) {
+    const rows = visibleRows();
+    for (const row of rows) {
       const on = row.dataset.path === path;
       row.setAttribute('aria-selected', on ? 'true' : 'false');
       row.tabIndex = on ? 0 : -1;
     }
-    if (redraw) renderBody();
+    if (rows.length && !rows.some((row) => row.tabIndex === 0)) rows[0].tabIndex = 0; // keep the tree reachable with Tab
+    if (redraw) renderBody(); else renderTarget();
   }
 
   function toggle(path, open) {
@@ -244,7 +327,13 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
 
     body.addEventListener('click', (e) => {
       const row = rowOf(e.target);
-      if (row) activateRow(row);
+      const more = e.target.closest?.('.files-more');
+      if (row && more) {
+        select(row.dataset.path, false);
+        const box = more.getBoundingClientRect();
+        openMenu(nodeOfRow(row), box.left, box.bottom, row);
+      } else if (row) activateRow(row);
+      else if (e.target === body || e.target.classList?.contains('files-tree')) select(null, false); // empty space: back to the mod root
     });
 
     body.addEventListener('contextmenu', (e) => {
@@ -292,8 +381,10 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
       dropRow?.classList.add('drop-target');
     };
     const types = (e) => Array.from(e.dataTransfer?.types || []);
-    const dropFolder = (row) => (!row ? '' : row.dataset.kind === 'folder' ? row.dataset.path : parentOf(row.dataset.path));
+    // The "By type" view shows no folders, so everything dropped there goes to the mod root (the drop zone lights up).
+    const dropFolder = (row) => (!row || s.view !== 'tree' ? '' : row.dataset.kind === 'folder' ? row.dataset.path : parentOf(row.dataset.path));
     const folderRow = (row) => (row && row.dataset.kind === 'file' ? visibleRows().find((r) => r.dataset.path === parentOf(row.dataset.path)) ?? null : row);
+    const highlightFor = (row) => (row && s.view === 'tree' ? folderRow(row) : null) ?? (dropzone.isConnected ? dropzone : null);
 
     body.addEventListener('dragstart', (e) => {
       const row = rowOf(e.target);
@@ -311,7 +402,7 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
       setDropOverlay(false);
       if (!isEditable()) { e.dataTransfer.dropEffect = 'none'; setDropRow(null); return; }
       e.dataTransfer.dropEffect = internal ? 'move' : 'copy';
-      setDropRow(folderRow(rowOf(e.target)));
+      setDropRow(highlightFor(rowOf(e.target)));
     };
     body.addEventListener('dragenter', over);
     body.addEventListener('dragover', over);
@@ -402,14 +493,15 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
   // ------------------------------------------------------------ dialogs
 
   /** Asks for a name. `check(name)` returns an i18n key for a problem or null. Resolves to the name or null (cancelled). */
-  function askName({ title, value = '', check, okKey = 'files.dialog.ok' }) {
+  function askName({ title, value = '', check, okKey = 'files.dialog.ok', placeholder = null, help = null }) {
     return new Promise((resolve) => {
-      const input = el('input', { type: 'text', 'data-testid': 'files-dialog-input', value, autocomplete: 'off', spellcheck: 'false', 'aria-label': title });
+      const input = el('input', { type: 'text', 'data-testid': 'files-dialog-input', value, placeholder, autocomplete: 'off', spellcheck: 'false', 'aria-label': title });
       const problem = el('p', { class: 'files-dialog-error small', role: 'alert', 'data-testid': 'files-dialog-error' });
       const ok = el('button', { type: 'submit', class: 'primary', 'data-testid': 'files-dialog-ok', text: t(okKey) });
       const cancel = el('button', { type: 'button', 'data-testid': 'files-dialog-cancel', text: t('files.dialog.cancel') });
       const dialog = el('dialog', { class: 'files-dialog', 'data-testid': 'files-dialog', 'aria-label': title },
-        el('form', {}, el('h2', { text: title }), input, problem, el('div', { class: 'nm-actions' }, cancel, ok)));
+        el('form', {}, el('h2', { text: title }), input, help && el('p', { class: 'muted small files-dialog-help', text: help }), problem,
+          el('div', { class: 'nm-actions' }, cancel, ok)));
       let result = null;
       const validate = () => { const key = check(input.value.trim()); problem.textContent = key ? t(key) : ''; ok.disabled = !!key; return !key; };
       input.addEventListener('input', validate);
@@ -474,7 +566,10 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
   }
 
   async function newFile(folder) {
-    const name = await askName({ title: t('files.dialog.newFile', { folder: folder || '/' }), check: nameCheck(folder, { extensions: EDITABLE_EXT }), okKey: 'files.dialog.create' });
+    const name = await askName({
+      title: t('files.dialog.newFile', { folder: folder || '/' }), check: nameCheck(folder, { extensions: EDITABLE_EXT }), okKey: 'files.dialog.create',
+      placeholder: t('files.placeholderFile'), help: t('files.badExtension'),
+    });
     if (!name) return;
     const path = joinPath(folder, name);
     try {
@@ -486,7 +581,7 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
   }
 
   async function newFolder(folder) {
-    const name = await askName({ title: t('files.dialog.newFolder', { folder: folder || '/' }), check: nameCheck(folder), okKey: 'files.dialog.create' });
+    const name = await askName({ title: t('files.dialog.newFolder', { folder: folder || '/' }), check: nameCheck(folder), okKey: 'files.dialog.create', placeholder: t('files.placeholderFolder') });
     if (!name) return;
     const path = joinPath(folder, name);
     try { await api(`${base()}/fs/mkdir?path=${enc(path)}`, { method: 'POST' }); }
@@ -632,7 +727,6 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
     render(o) {
       s.overview = o;
       if (filter.value !== s.name) filter.value = s.name;
-      unusedBox.checked = s.unusedOnly;
       renderToolbar();
       renderBody();
       return root;

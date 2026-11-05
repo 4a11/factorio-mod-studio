@@ -303,14 +303,18 @@ API (JSON, `X-FMS-Token` required for POST, DELETE and the folder listing):
 
 The *Files* tab shows the mod as a folder tree (*Tree*) or grouped into scripts, locale, graphics, sounds and data (*By type*; the
 choice is remembered in the browser). *Filter by name* keeps the files whose name contains the text; *Unused only* keeps graphics,
-sounds and scripts that nothing in the mod refers to. Rows carry badges for problems, unsaved changes in open tabs, entry points and
+sounds and scripts that nothing in the mod refers to (the button shows how many there are; it is hidden when there are none). *Expand
+all* / *Collapse all* opens or closes every folder, and the line on the right counts the files shown. Each row has a type icon and
+badges for problems, unsaved changes in open tabs, entry points and
 *unused* files. The "unused" check is static: `__mod__/path` strings and `require` calls in Lua are followed, entry points
 (`data.lua`, `control.lua`, `settings*.lua`, ...), `locale/`, `migrations/` and scenario folders always count as used, and a path built
 at run time is only seen through its literal prefix (`"__mod__/graphics/" .. name` marks everything under `graphics/` as used).
 
-In editable mods the toolbar and the context menu (right-click, the Menu key or Shift+F10) offer *New file…*, *New folder…*, *Upload
+In editable mods the toolbar says where new files go (the selected folder, the folder of the selected file, or the mod root; click
+empty space or *Use the mod root* to go back to the root). The toolbar and the context menu (right-click, the row's *⋯* button, the
+Menu key or Shift+F10) offer *New file…*, *New folder…*, *Upload
 files…*, *Rename…* (F2), *Duplicate…*, *Delete* (Del) and *Show in file manager* (also for read-only mods). Drag rows onto a folder to
-move them, or drop files from your computer to upload them (text files as in the editor, images and sounds as binary assets; existing
+move them, or drop files from your computer onto a folder or onto the drop zone under the tree (the mod root) to upload them (text files as in the editor, images and sounds as binary assets; existing
 files are never overwritten, dropped folders are skipped). Names are checked before anything is sent: no `/` `\`, no leading dot, no
 `..`, no Windows device names (`CON`, `NUL`, `COM1`, ...), no `<>:"|?*`, no trailing dot or space, at most 255 characters. Open editor
 tabs follow a renamed or moved file with their unsaved edits; deleting closes them (after a warning when they have unsaved changes).
