@@ -45,3 +45,7 @@ CLAUDE.md
 
 # Local sandbox test environment (see .sandbox/): never committed
 /.sandbox/
+
+# Nix build output
+result
+result-*
