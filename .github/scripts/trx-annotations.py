@@ -5,7 +5,10 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 
-NS = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+# Test names and messages can contain any language; the Windows console would fail on them otherwise.
+sys.stdout.reconfigure(encoding="utf-8")
+
+NS = {"t":"http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 
 
 def escape(text):

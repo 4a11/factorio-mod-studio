@@ -762,7 +762,9 @@ public class FilesApiTests
         var id = await e.Id(Mod);
         const int limit = 32 * 1024 * 1024;
 
-        var tooBig = await PutAsset(e.Http, id, "graphics/big.png", Bytes(PngMagic, limit + 1), ifNoneMatch: "*");
+        // Expect: 100-continue, so the client waits for the 413 instead of writing 32 MB into a connection the server
+        // closes after answering (on Linux that is a broken pipe, not the response).
+        var tooBig = await PutAsset(e.Http, id, "graphics/big.png", Bytes(PngMagic, limit + 1), ifNoneMatch: "*", t: req => req.Headers.ExpectContinue = true);
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, tooBig.Status);
         Assert.False(File.Exists(e.ModFile("graphics/big.png")));
 

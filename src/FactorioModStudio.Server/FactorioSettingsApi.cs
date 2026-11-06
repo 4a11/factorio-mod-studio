@@ -152,7 +152,9 @@ internal static class FactorioSettingsApi
             var files = new List<string>();
             var scanned = 0;
             var truncated = false;
-            var enumeration = new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = false, AttributesToSkip = 0, ReturnSpecialDirectories = false };
+            // Not IgnoreInaccessible: without recursion the only folder opened is this one, and a folder that cannot be read
+            // has to be a 403, not an empty listing (on Linux and macOS the flag silently swallows that).
+            var enumeration = new EnumerationOptions { IgnoreInaccessible = false, RecurseSubdirectories = false, AttributesToSkip = 0, ReturnSpecialDirectories = false };
             foreach (var entry in new DirectoryInfo(full).EnumerateFileSystemInfos("*", enumeration))
             {
                 if (++scanned > MaxScanned) { truncated = true; break; }
