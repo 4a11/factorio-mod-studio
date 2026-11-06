@@ -11,7 +11,19 @@ public static class Program
     public const int ExitProblemsFound = 1;
     public const int ExitUsageError = 2;
 
-    public static int Main(string[] args) => Run(args, Console.Out, Console.Error);
+    public static int Main(string[] args)
+    {
+        // A double click in Explorer: open the studio instead of printing the help into a window that closes at once.
+        if (args.Length > 0 || !ConsoleWindow.IsOwn()) return Run(args, Console.Out, Console.Error);
+
+        var exitCode = Run(["ui", "--create-workspace"], Console.Out, Console.Error);
+        if (exitCode != ExitOk)
+        {
+            Console.WriteLine("Press Enter to close this window.");
+            Console.ReadLine();
+        }
+        return exitCode;
+    }
 
     /// <summary>Entry point with injectable streams, process runner and HTTP client, so it can be tested.</summary>
     public static int Run(string[] args, TextWriter output, TextWriter error, IProcessRunner? runner = null, HttpClient? http = null)
@@ -544,6 +556,8 @@ public static class Program
 
         var extra = cmd.Get("--mods") is { } folder ? new[] { Path.GetFullPath(folder) } : Array.Empty<string>();
         var workspace = cmd.Get("--workspace") is { } ws ? Path.GetFullPath(ws) : context.WorkspaceDirectory;
+        // Set when started by a double click: the folder next to the program becomes the workspace right away.
+        if (cmd.Has("--create-workspace")) Directory.CreateDirectory(workspace);
         var options = new UiOptions(cmd.GetInt("--port") ?? 5757, extra, factorio, workspace);
 
         using var cancel = new CancellationTokenSource();

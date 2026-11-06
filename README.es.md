@@ -61,7 +61,10 @@ para lanzar, el único error real en un muro de log, traducciones que se desincr
 
 ## Inicio rápido
 
-Necesitas el [SDK de .NET 8](https://dotnet.microsoft.com/download).
+**Lo más fácil:** descarga el archivo para tu sistema desde [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) y descomprímelo; no hace falta .NET. En Windows,
+haz doble clic en `fmstudio.exe` y el estudio se abre en tu navegador; en otros sistemas ejecuta `./fmstudio ui`.
+
+**Como herramienta de .NET** (necesita el [SDK de .NET 8](https://dotnet.microsoft.com/download)):
 
 ```sh
 # 1. Instalar la herramienta `fmstudio` (una vez)

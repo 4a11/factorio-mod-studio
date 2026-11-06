@@ -61,7 +61,10 @@ nach dem einen echten Fehler in einer Wand aus Log-Ausgaben, Übersetzungen, die
 
 ## Schnellstart
 
-Sie brauchen das [.NET 8 SDK](https://dotnet.microsoft.com/download).
+**Am einfachsten:** das Archiv für Ihr System von [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) herunterladen und entpacken; .NET wird nicht gebraucht.
+Unter Windows `fmstudio.exe` doppelt anklicken, und das Studio öffnet sich im Browser; sonst `./fmstudio ui` starten.
+
+**Als .NET-Werkzeug** (braucht das [.NET 8 SDK](https://dotnet.microsoft.com/download)):
 
 ```sh
 # 1. Das Werkzeug `fmstudio` installieren (einmalig)

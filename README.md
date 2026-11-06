@@ -59,7 +59,10 @@ real error in a wall of log output, translations that drift apart. Factorio Mod 
 
 ## Quick start
 
-You need the [.NET 8 SDK](https://dotnet.microsoft.com/download).
+**The easy way:** download the archive for your system from [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) and unpack it; no .NET needed. On Windows,
+double-click `fmstudio.exe` and the studio opens in your browser; elsewhere run `./fmstudio ui`.
+
+**As a .NET tool** (needs the [.NET 8 SDK](https://dotnet.microsoft.com/download)):
 
 ```sh
 # 1. Install the `fmstudio` tool (once)
@@ -95,7 +98,8 @@ matches the mod's `factorio_version` is used.
 
 ## Install
 
-Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download).
+Ready-to-run builds for Windows, Linux and macOS (no .NET needed) are on the [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) page: unpack the
+archive and put the folder on your `PATH`. Building from source requires the [.NET 8 SDK](https://dotnet.microsoft.com/download).
 
 ```sh
 dotnet pack src/FactorioModStudio.Cli -c Release -o ./nupkg

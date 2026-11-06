@@ -1,5 +1,7 @@
 # Publishes a release when a version tag is pushed: git tag v0.1.0 && git push origin v0.1.0
-# The tag has to match <Version> in Directory.Build.props. Needs the NUGET_API_KEY repository secret.
+# The tag has to match <Version> in Directory.Build.props.
+# The GitHub release gets a ready-to-run build per system (no .NET needed). The NuGet package is pushed too
+# when the NUGET_API_KEY repository secret is set.
 name: Release
 
 on:
@@ -10,8 +12,16 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - { rid: win-x64, os: ubuntu-latest }
+          - { rid: linux-x64, os: ubuntu-latest }
+          # macOS builds have to be signed (ad hoc) to start on Apple Silicon; the SDK does that only on macOS.
+          - { rid: osx-x64, os: macos-latest }
+          - { rid: osx-arm64, os: macos-latest }
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,15 +38,60 @@ jobs:
           fi
 
       - name: Test
+        if: matrix.rid == 'linux-x64'
         run: dotnet test -c Release
 
-      - name: Pack
-        run: dotnet pack src/FactorioModStudio.Cli -c Release -o nupkg
+      - name: Publish a single executable
+        run: >
+          dotnet publish src/FactorioModStudio.Cli -c Release -r ${{ matrix.rid }} --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none -p:PackAsTool=false -o "out/fmstudio"
+
+      - name: Archive
+        run: |
+          cp README.md LICENSE out/fmstudio/
+          name="fmstudio-$GITHUB_REF_NAME-${{ matrix.rid }}"
+          mkdir dist
+          cd out
+          if [ "${{ matrix.rid }}" = win-x64 ]; then zip -r "../dist/$name.zip" fmstudio; else tar -czf "../dist/$name.tar.gz" fmstudio; fi
+
+      - name: Pack the .NET tool
+        if: matrix.rid == 'linux-x64'
+        run: dotnet pack src/FactorioModStudio.Cli -c Release -o dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
 
       - name: Push to NuGet
-        run: dotnet nuget push "nupkg/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        if: env.NUGET_API_KEY != ''
+        run: dotnet nuget push "dist/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" nupkg/*.nupkg --title "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          cat > notes.md <<'EOF'
+          ## Install
+
+          Download the archive for your system, unpack it anywhere, done: no .NET needed.
+
+          - **Windows** (`win-x64.zip`): double-click `fmstudio.exe` and the studio opens in your browser, with a `mods` folder next to it as the workspace. Windows may warn about an unknown publisher: *More info → Run anyway*.
+          - **Linux** (`linux-x64.tar.gz`) and **macOS** (`osx-arm64` for Apple Silicon, `osx-x64` for Intel): run `./fmstudio ui` in the unpacked folder. On macOS, clear the download quarantine first: `xattr -d com.apple.quarantine fmstudio`.
+          - **With the .NET 8 SDK**: the `.nupkg` installs `fmstudio` as a global tool: `dotnet tool install -g FactorioModStudio.Cli --add-source <folder with the .nupkg>`.
+
+          Put the unpacked folder on your `PATH` to use `fmstudio validate`, `pack`, `smoke` and the rest from any mod folder.
+          EOF
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes-file notes.md --generate-notes
