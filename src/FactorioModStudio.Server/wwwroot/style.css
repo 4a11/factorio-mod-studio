@@ -398,6 +398,29 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 button.primary:disabled { opacity: .6; cursor: default; }
 
+/* Pre-check of a folder of mods before it is uploaded */
+.import-check-dialog { width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); padding: 20px 22px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); overflow: auto; }
+.import-check-dialog::backdrop { background: rgba(0, 0, 0, .5); }
+.import-check-dialog h2 { margin: 0 0 4px; overflow-wrap: anywhere; }
+.import-check-dialog p { margin: 0 0 8px; }
+.ic-summary { font-weight: 600; }
+.ic-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.ic-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 14em); gap: 4px 10px; align-items: start; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.ic-row:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.ic-row.blocked { cursor: default; opacity: .75; }
+.ic-row input { margin-top: 3px; }
+.ic-main { display: flex; flex-direction: column; min-width: 0; }
+.ic-main strong, .ic-title, .ic-folder { overflow-wrap: anywhere; }
+.ic-size { white-space: nowrap; padding-top: 1px; }
+.ic-status { padding-top: 1px; }
+.ic-status.good { color: var(--ok); }
+.ic-status.bad { color: var(--error); }
+@media (max-width: 600px) {
+  .ic-row { grid-template-columns: auto minmax(0, 1fr); }
+  .ic-size, .ic-status { grid-column: 2; }
+  .import-check-dialog { padding: 14px; }
+}
+
 /* New mod dialog: keep the buttons reachable and avoid iOS focus zoom */
 .nm-actions { position: sticky; bottom: -20px; padding: 10px 0 0; background: var(--surface); }
 @media (max-width: 700px) { .nm-field input, .nm-field textarea { font-size: 16px; } }
