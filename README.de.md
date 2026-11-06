@@ -54,6 +54,10 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 - [ ] Upload auf das Factorio-Mod-Portal (optional, mit Ihrem eigenen API-Schlüssel)
 - [ ] ein fertiger GitHub-Actions-Workflow (`fmstudio init --ci`): bei jedem Push prüfen, packen und smoke-testen
 
+**0.5: Inhalte erstellen**
+- [ ] ein Sprite-Editor im Studio: Icons und Sprites erstellen und bearbeiten, Animationen bauen (Frames, Spritesheet, Live-Vorschau), ohne das Studio zu verlassen
+- [ ] eine Sammlung von Beispielen für typische Inhalte, jedes im Spiel ladbar: Lager, Gegenstand, Waffe, Fahrzeug, Logistik (Rohre, Förderbänder, Splitter, unterirdische Förderbänder)
+
 **Später**
 - die endgültigen Prototypen über `--dump-data`: „Welche Mod hat diesen Gegenstand geändert, und wie?“
 - Tests, die für [FactorioTest](https://mods.factorio.com/mod/factorio-test) geschrieben sind, aus dem Studio starten

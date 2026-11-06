@@ -54,6 +54,10 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 - [ ] wysyłanie na portal modów Factorio (opcjonalnie, z Twoim własnym kluczem API)
 - [ ] gotowy workflow GitHub Actions (`fmstudio init --ci`): sprawdzanie, pakowanie i test dymny przy każdym pushu
 
+**0.5: tworzenie zawartości**
+- [ ] edytor sprite'ów w studiu: tworzenie i edycja ikon i sprite'ów oraz animacje (klatki, arkusz sprite'ów, podgląd na żywo) bez wychodzenia ze studia
+- [ ] zestaw przykładów typowych rzeczy do dodania, każdy wczytywany w grze: magazyn, przedmiot, broń, pojazd, logistyka (rury, taśmociągi, rozdzielacze, taśmociągi podziemne)
+
 **Później**
 - końcowe prototypy przez `--dump-data`: „który mod zmienił ten przedmiot i na co?”
 - uruchamianie testów napisanych dla [FactorioTest](https://mods.factorio.com/mod/factorio-test) bezpośrednio ze studia

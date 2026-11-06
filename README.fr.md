@@ -54,6 +54,10 @@ navigateur (Aperçu, Fichiers, Prototypes, Ressources, Localisation, Problèmes,
 - [ ] envoi sur le portail de mods Factorio (facultatif, avec votre propre clé d'API)
 - [ ] un workflow GitHub Actions prêt à l'emploi (`fmstudio init --ci`) : vérifier, empaqueter et tester à chaque push
 
+**0.5 : créer du contenu**
+- [ ] un éditeur de sprites dans le studio : créer et modifier des icônes et des sprites, et monter des animations (images, feuille de sprites, aperçu en direct) sans quitter le studio
+- [ ] un ensemble d'exemples pour les ajouts courants, chacun chargé dans le jeu : stockage, objet, arme, véhicule, logistique (tuyaux, convoyeurs, répartiteurs, convoyeurs souterrains)
+
 **Plus tard**
 - les prototypes finaux via `--dump-data` : « quel mod a modifié cet objet, et en quoi ? »
 - lancer depuis le studio les tests écrits pour [FactorioTest](https://mods.factorio.com/mod/factorio-test)
