@@ -329,8 +329,10 @@ details .file-row:hover { background: var(--surface-2); }
 }
 
 /* Live status, editor */
-.sidebar-footer { margin-top: auto; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 0 4px; min-width: 0; }
-.footer-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; flex: 1 1 200px; justify-content: flex-end; }
+/* Two rows: the connection status with "Go to…" on the right, then theme and language side by side */
+.sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding: 0 4px; min-width: 0; }
+.footer-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.footer-controls { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .sidebar-footer select { font-size: 12px; padding: 3px 6px; min-width: 0; flex: 1 1 80px; }
 .palette-open { font-size: 12px; padding: 3px 8px; flex: none; }
 .live { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--muted); min-width: 0; }
