@@ -74,7 +74,7 @@ prawdziwy błąd w ścianie logów, tłumaczenia, które się rozjeżdżają. Fa
 **Najprościej:** pobierz archiwum dla swojego systemu ze strony [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) i rozpakuj je; .NET nie jest potrzebny.
 W Windows kliknij dwukrotnie `fmstudio.exe`, a studio otworzy się w przeglądarce; w innych systemach uruchom `./fmstudio ui`.
 
-**Jako narzędzie .NET** (wymaga [.NET 8 SDK](https://dotnet.microsoft.com/download)):
+**Jako narzędzie .NET** (wymaga [.NET 10 SDK](https://dotnet.microsoft.com/download)):
 
 ```sh
 # 1. Zainstaluj narzędzie `fmstudio` (jednorazowo)

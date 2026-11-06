@@ -74,7 +74,7 @@
 **Проще всего:** скачайте архив для своей системы со страницы [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) и распакуйте; .NET не нужен. В Windows
 дважды щёлкните `fmstudio.exe`, и студия откроется в браузере; в других системах запустите `./fmstudio ui`.
 
-**Как инструмент .NET** (нужен [.NET 8 SDK](https://dotnet.microsoft.com/download)):
+**Как инструмент .NET** (нужен [.NET 10 SDK](https://dotnet.microsoft.com/download)):
 
 ```sh
 # 1. Установить инструмент `fmstudio` (один раз)

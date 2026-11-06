@@ -74,7 +74,7 @@ la seule vraie erreur noyée dans un mur de log, des traductions qui divergent. 
 **Le plus simple :** téléchargez l'archive pour votre système depuis [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) et décompressez-la ; .NET n'est pas nécessaire.
 Sous Windows, double-cliquez sur `fmstudio.exe` et le studio s'ouvre dans votre navigateur ; ailleurs, lancez `./fmstudio ui`.
 
-**Comme outil .NET** (nécessite le [SDK .NET 8](https://dotnet.microsoft.com/download)) :
+**Comme outil .NET** (nécessite le [SDK .NET 10](https://dotnet.microsoft.com/download)) :
 
 ```sh
 # 1. Installer l'outil `fmstudio` (une fois)

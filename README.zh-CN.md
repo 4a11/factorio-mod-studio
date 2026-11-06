@@ -72,7 +72,7 @@ Factorio Mod Studio 负责的正是这些胶水工作。
 **最简单的方式：** 从 [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) 下载适合你系统的压缩包并解压，无需安装 .NET。在 Windows 上双击 `fmstudio.exe`，
 工作室会在浏览器中打开；在其他系统上运行 `./fmstudio ui`。
 
-**作为 .NET 工具安装**（需要 [.NET 8 SDK](https://dotnet.microsoft.com/download)）：
+**作为 .NET 工具安装**（需要 [.NET 10 SDK](https://dotnet.microsoft.com/download)）：
 
 ```sh
 # 1. 安装 `fmstudio` 工具（只需一次）
