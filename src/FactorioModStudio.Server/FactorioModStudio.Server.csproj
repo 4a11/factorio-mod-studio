@@ -13,6 +13,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="FactorioModStudio.Tests" />
     <InternalsVisibleTo Include="fmstudio" />
+    <InternalsVisibleTo Include="FactorioModStudio" />
   </ItemGroup>
 
   <ItemGroup>

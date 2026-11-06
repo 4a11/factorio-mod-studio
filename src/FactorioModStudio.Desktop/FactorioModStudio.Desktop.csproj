@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>FactorioModStudio.Desktop</RootNamespace>
+    <AssemblyName>FactorioModStudio</AssemblyName>
+    <Description>Factorio Mod Studio as a desktop application: the studio UI in a window of its own (Avalonia).</Description>
+    <IsPackable>false</IsPackable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.5" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.5" />
+    <PackageReference Include="Avalonia.Controls.WebView" Version="12.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FactorioModStudio.Core\FactorioModStudio.Core.csproj" />
+    <ProjectReference Include="..\FactorioModStudio.Server\FactorioModStudio.Server.csproj" />
+  </ItemGroup>
+
+</Project>
