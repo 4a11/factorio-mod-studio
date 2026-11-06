@@ -1,0 +1,29 @@
+# Runs the tests on every push and pull request, on Linux and Windows.
+# Failed tests are listed as annotations on the run's summary page.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Test
+        run: dotnet test -c Release --logger trx --results-directory test-results
+
+      - name: List failed tests
+        if: failure()
+        run: python .github/scripts/trx-annotations.py test-results
