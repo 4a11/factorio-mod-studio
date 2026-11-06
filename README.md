@@ -10,6 +10,12 @@ browser. It runs entirely on your machine and works next to your usual code edit
 > Windows. Other versions and systems have not been tried yet. Feedback and bug reports are very welcome.
 > Unofficial community project, not affiliated with Wube Software. "Factorio" is a trademark of Wube Software Ltd.
 
+![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
+
+| Files | Localization |
+| --- | --- |
+| ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
+
 ## What it does
 
 - **Start a mod in seconds.** Templates (empty, item + recipe, entity, runtime script) for Factorio 2.0 and 2.1 (all but the entity one also for 1.1) that pass every check out of the box.

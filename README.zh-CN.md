@@ -10,6 +10,12 @@
 >
 > 这是简介部分的翻译。完整文档为[英文版](README.md#documentation)；如有出入，以英文 README 为准。
 
+![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
+
+| Files | Localization |
+| --- | --- |
+| ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
+
 ## 功能
 
 - **几秒钟创建模组。** 适用于 Factorio 2.0 和 2.1 的模板（空模组、物品 + 配方、实体、运行时脚本；除实体外也支持 1.1），开箱即可通过所有检查。

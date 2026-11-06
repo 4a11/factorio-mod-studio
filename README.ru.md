@@ -12,6 +12,12 @@
 >
 > Это перевод вводной части. Подробная документация — [на английском](README.md#documentation); при расхождениях верен английский README.
 
+![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
+
+| Files | Localization |
+| --- | --- |
+| ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
+
 ## Что умеет
 
 - **Мод за секунды.** Шаблоны (пустой, предмет + рецепт, сущность, скрипт времени выполнения) для Factorio 2.0 и 2.1 (все, кроме сущности, — и для 1.1), которые сразу проходят все проверки.

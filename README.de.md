@@ -12,6 +12,12 @@ Kommandozeile oder auf einer Seite im Browser. Alles läuft auf Ihrem Rechner, n
 >
 > Dies ist eine Übersetzung des einleitenden Teils. Die ausführliche Dokumentation gibt es [auf Englisch](README.md#documentation); bei Abweichungen gilt das englische README.
 
+![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
+
+| Files | Localization |
+| --- | --- |
+| ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
+
 ## Was es kann
 
 - **Eine Mod in Sekunden.** Vorlagen (leer, Gegenstand + Rezept, Entität, Laufzeit-Skript) für Factorio 2.0 und 2.1 (alle außer der Entität auch für 1.1), die sofort jede Prüfung bestehen.

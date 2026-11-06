@@ -12,6 +12,12 @@ de votre navigateur. Tout tourne sur votre machine, à côté de votre éditeur 
 >
 > Ceci est une traduction de la partie d'introduction. La documentation complète est [en anglais](README.md#documentation) ; en cas de divergence, le README anglais fait foi.
 
+![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
+
+| Files | Localization |
+| --- | --- |
+| ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
+
 ## Ce qu'il fait
 
 - **Un mod en quelques secondes.** Des modèles (vide, objet + recette, entité, script d'exécution) pour Factorio 2.0 et 2.1 (tous sauf l'entité aussi pour 1.1), qui passent toutes les vérifications d'emblée.

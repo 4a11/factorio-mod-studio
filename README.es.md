@@ -12,6 +12,12 @@ página en tu navegador. Todo funciona en tu equipo, junto a tu editor de códig
 >
 > Esta es una traducción de la parte introductoria. La documentación completa está [en inglés](README.md#documentation); en caso de discrepancia, prevalece el README en inglés.
 
+![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
+
+| Files | Localization |
+| --- | --- |
+| ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
+
 ## Qué hace
 
 - **Un mod en segundos.** Plantillas (vacía, objeto + receta, entidad, script en tiempo de ejecución) para Factorio 2.0 y 2.1 (todas salvo la de entidad también para 1.1) que pasan todas las comprobaciones desde el principio.

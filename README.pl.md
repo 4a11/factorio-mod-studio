@@ -12,6 +12,12 @@ Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 >
 > To tłumaczenie części wprowadzającej. Pełna dokumentacja jest [po angielsku](README.md#documentation); w razie rozbieżności obowiązuje angielskie README.
 
+![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
+
+| Files | Localization |
+| --- | --- |
+| ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
+
 ## Co potrafi
 
 - **Mod w kilka sekund.** Szablony (pusty, przedmiot + receptura, obiekt, skrypt czasu działania) dla Factorio 2.0 i 2.1 (wszystkie poza obiektem także dla 1.1), które od razu przechodzą każdą kontrolę.
