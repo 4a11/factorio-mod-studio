@@ -5,7 +5,7 @@
 **为 [Factorio](https://factorio.com) 模组作者打造的本地工作台。** 创建模组、在游戏之前发现它的错误、翻译它、打包干净的发行版，
 并用隔离的模组组合试运行——既可以在命令行中操作，也可以在浏览器页面中操作。一切都在你自己的电脑上运行，与你常用的代码编辑器并行使用。
 
-> **早期版本（0.1）。** 逻辑已有测试覆盖，但启动真实游戏（`run`、`smoke`）尚未在 Factorio 上验证。非常欢迎反馈和错误报告。
+> **早期版本（0.1）。** 逻辑已有测试覆盖；启动真实游戏（`run`、`smoke`）在 Windows 上的 Factorio 2.1 中可以正常工作，其他版本和系统尚未验证。非常欢迎反馈和错误报告。
 > 非官方社区项目，与 Wube Software 无关。“Factorio”是 Wube Software Ltd. 的商标。
 >
 > 这是简介部分的翻译。完整文档为[英文版](README.md#documentation)；如有出入，以英文 README 为准。
@@ -29,7 +29,7 @@
 （概览、文件、原型、资源、本地化、问题、构建），界面支持 8 种语言。
 
 **0.2：在真实游戏上验证**
-- [ ] 在 Windows、Linux 和 macOS 上用 Factorio 1.1、2.0 和 2.1（包括无界面服务器）验证 `run` 和 `smoke`
+- [ ] 在 Windows、Linux 和 macOS 上用 Factorio 1.1、2.0 和 2.1（包括无界面服务器）验证 `run` 和 `smoke`；*Windows 上的 2.1 已可用*
 - [ ] 运行或冒烟测试之后同时读取 `factorio-current.log`，并在“问题”和“输出”中显示其中的错误
 - [ ] 模板生成的原型（实体、运行时脚本）在游戏中实际加载过，而不只是按文档编写
 - [ ] 一行命令安装：工具发布到 NuGet（`dotnet tool install -g FactorioModStudio.Cli`），无需克隆仓库

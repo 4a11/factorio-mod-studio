@@ -6,8 +6,8 @@
 juego, tradúcelo, empaqueta una versión limpia y pruébalo con un conjunto de mods aislado: desde la línea de comandos o desde una
 página en tu navegador. Todo funciona en tu equipo, junto a tu editor de código habitual.
 
-> **Versión temprana (0.1).** La lógica está cubierta por pruebas, pero el lanzamiento del juego real (`run`, `smoke`) todavía no se
-> ha verificado con Factorio. Los comentarios y los informes de errores son muy bienvenidos.
+> **Versión temprana (0.1).** La lógica está cubierta por pruebas; el lanzamiento del juego real (`run`, `smoke`) funciona con Factorio 2.1 en
+> Windows. Otras versiones y sistemas aún no se han probado. Los comentarios y los informes de errores son muy bienvenidos.
 > Proyecto comunitario no oficial, sin relación con Wube Software. «Factorio» es una marca de Wube Software Ltd.
 >
 > Esta es una traducción de la parte introductoria. La documentación completa está [en inglés](README.md#documentation); en caso de discrepancia, prevalece el README en inglés.
@@ -31,7 +31,7 @@ Dónde está el proyecto y qué viene después. Las versiones son objetivos, no 
 navegador (Resumen, Archivos, Prototipos, Recursos, Localización, Problemas, Compilación) en 8 idiomas de interfaz.
 
 **0.2: probado con el juego real**
-- [ ] `run` y `smoke` verificados con Factorio 1.1, 2.0 y 2.1 en Windows, Linux y macOS, incluido el servidor sin interfaz
+- [ ] `run` y `smoke` verificados con Factorio 1.1, 2.0 y 2.1 en Windows, Linux y macOS, incluido el servidor sin interfaz; *2.1 en Windows funciona*
 - [ ] tras un lanzamiento o una prueba de humo, leer también `factorio-current.log` y mostrar sus errores en Problemas y Salida
 - [ ] los prototipos que generan las plantillas (entidad, script en tiempo de ejecución) cargados en el juego, no solo escritos según la documentación
 - [ ] instalación en una línea: la herramienta publicada en NuGet (`dotnet tool install -g FactorioModStudio.Cli`), sin clonar

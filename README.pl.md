@@ -6,8 +6,8 @@
 przetłumacz go, spakuj czyste wydanie i uruchom z odizolowanym zestawem modów: z wiersza poleceń albo ze strony w przeglądarce.
 Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 
-> **Wczesna wersja (0.1).** Logika jest pokryta testami, ale uruchamianie prawdziwej gry (`run`, `smoke`) nie zostało jeszcze
-> sprawdzone z Factorio. Opinie i zgłoszenia błędów są bardzo mile widziane.
+> **Wczesna wersja (0.1).** Logika jest pokryta testami; uruchamianie prawdziwej gry (`run`, `smoke`) działa z Factorio 2.1 na Windows.
+> Inne wersje i systemy nie zostały jeszcze sprawdzone. Opinie i zgłoszenia błędów są bardzo mile widziane.
 > Nieoficjalny projekt społeczności, niezwiązany z Wube Software. „Factorio” jest znakiem towarowym Wube Software Ltd.
 >
 > To tłumaczenie części wprowadzającej. Pełna dokumentacja jest [po angielsku](README.md#documentation); w razie rozbieżności obowiązuje angielskie README.
@@ -31,7 +31,7 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 (Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy, Budowanie) w 8 językach interfejsu.
 
 **0.2: sprawdzone na prawdziwej grze**
-- [ ] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1 na Windows, Linux i macOS, łącznie z serwerem bez interfejsu
+- [ ] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1 na Windows, Linux i macOS, łącznie z serwerem bez interfejsu; *2.1 na Windows działa*
 - [ ] po uruchomieniu lub teście dymnym odczytywany jest także `factorio-current.log`, a jego błędy widać w zakładkach Problemy i Wyjście
 - [ ] prototypy tworzone przez szablony (obiekt, skrypt czasu działania) wczytane w grze, a nie tylko napisane według dokumentacji
 - [ ] instalacja jednym poleceniem: narzędzie opublikowane w NuGet (`dotnet tool install -g FactorioModStudio.Cli`), bez klonowania

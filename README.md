@@ -6,8 +6,8 @@
 translate it, pack a clean release and test-run it with an isolated set of mods: from the command line or from a page in your
 browser. It runs entirely on your machine and works next to your usual code editor.
 
-> **Early version (0.1).** The logic is covered by tests, but launching the real game (`run`, `smoke`) has not been verified
-> against Factorio yet. Feedback and bug reports are very welcome.
+> **Early version (0.1).** The logic is covered by tests; launching the real game (`run`, `smoke`) works with Factorio 2.1 on
+> Windows. Other versions and systems have not been tried yet. Feedback and bug reports are very welcome.
 > Unofficial community project, not affiliated with Wube Software. "Factorio" is a trademark of Wube Software Ltd.
 
 ## What it does
@@ -29,7 +29,7 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 (Overview, Files, Prototypes, Resources, Localization, Problems, Build) in 8 interface languages.
 
 **0.2: proven against the real game**
-- [ ] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1 on Windows, Linux and macOS, including the headless server
+- [ ] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1 on Windows, Linux and macOS, including the headless server; *2.1 on Windows works*
 - [ ] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
 - [ ] the prototypes the templates generate (entity, runtime script) loaded in the game, not only written from the documentation
 - [ ] one-line install: the tool published to NuGet (`dotnet tool install -g FactorioModStudio.Cli`), no clone needed
