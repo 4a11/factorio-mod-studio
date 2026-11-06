@@ -77,17 +77,6 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Log in to NuGet
-        id: nuget
-        if: vars.NUGET_USER != ''
-        uses: NuGet/login@v1
-        with:
-          user: ${{ vars.NUGET_USER }}
-
-      - name: Push to NuGet
-        if: steps.nuget.outcome == 'success'
-        run: dotnet nuget push "dist/*.nupkg" --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
-
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -104,3 +93,15 @@ jobs:
           Put the unpacked folder on your `PATH` to use `fmstudio validate`, `pack`, `smoke` and the rest from any mod folder.
           EOF
           gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes-file notes.md --generate-notes
+
+      # After the GitHub release, so a NuGet problem never holds the archives back.
+      - name: Log in to NuGet
+        id: nuget
+        if: vars.NUGET_USER != ''
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Push to NuGet
+        if: steps.nuget.outcome == 'success'
+        run: dotnet nuget push "dist/*.nupkg" --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
