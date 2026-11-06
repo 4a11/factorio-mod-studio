@@ -26,8 +26,9 @@
           projectFile = "src/FactorioModStudio.Cli/FactorioModStudio.Cli.csproj";
           # No NuGet packages: the projects use only .NET and ASP.NET Core.
           nugetDeps = ./nix/deps.json;
-          dotnet-sdk = pkgs.dotnetCorePackages.sdk_10_0;
-          dotnet-runtime = pkgs.dotnetCorePackages.aspnetcore_10_0;
+          # The -bin packages are Microsoft's builds: a download, not a compile of .NET from source.
+          dotnet-sdk = pkgs.dotnetCorePackages.sdk_10_0-bin;
+          dotnet-runtime = pkgs.dotnetCorePackages.aspnetcore_10_0-bin;
           dotnetFlags = [ "-p:PackAsTool=false" ];
           executables = [ "fmstudio" ];
 
