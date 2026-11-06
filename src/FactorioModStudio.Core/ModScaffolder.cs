@@ -106,7 +106,8 @@ public static class ModScaffolder
             var path = Render(file.Path, values);
             rendered[path] = file.Binary is { } generate
                 ? generate(name)
-                : new UTF8Encoding(false).GetBytes(Render(file.Text!, values));
+                // LF always: the templates are C# string literals, whose line endings follow the checkout the tool was built from.
+                : new UTF8Encoding(false).GetBytes(Render(file.Text!, values).Replace("\r\n", "\n", StringComparison.Ordinal));
         }
 
         var parent = Path.GetFullPath(parentDirectory);
