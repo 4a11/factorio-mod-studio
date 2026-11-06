@@ -1,7 +1,8 @@
 # Publishes a release when a version tag is pushed: git tag v0.1.0 && git push origin v0.1.0
 # The tag has to match <Version> in Directory.Build.props.
 # The GitHub release gets a ready-to-run build per system (no .NET needed). The NuGet package is pushed too
-# when the NUGET_API_KEY repository secret is set.
+# when the NUGET_USER repository variable is set: NuGet Trusted Publishing, no API key is stored. It needs a
+# Trusted Publishing policy on nuget.org for this repository and the workflow file release.yml.
 name: Release
 
 on:
@@ -67,17 +68,25 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write   # NuGet Trusted Publishing exchanges the workflow's identity for a short-lived key
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
 
+      - name: Log in to NuGet
+        id: nuget
+        if: vars.NUGET_USER != ''
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
       - name: Push to NuGet
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        if: env.NUGET_API_KEY != ''
-        run: dotnet nuget push "dist/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        if: steps.nuget.outcome == 'success'
+        run: dotnet nuget push "dist/*.nupkg" --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: GitHub release
         env:
