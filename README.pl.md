@@ -56,7 +56,7 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 
 **0.5: tworzenie zawartości**
 - [ ] edytor sprite'ów w studiu: tworzenie i edycja ikon i sprite'ów oraz animacje (klatki, arkusz sprite'ów, podgląd na żywo) bez wychodzenia ze studia
-- [ ] zestaw przykładów typowych rzeczy do dodania, każdy wczytywany w grze: magazyn, przedmiot, broń, pojazd, logistyka (rury, taśmociągi, rozdzielacze, taśmociągi podziemne)
+- [ ] zestaw przykładów typowych rzeczy do dodania, każdy wczytywany w grze: magazyn, przedmiot, broń, pojazd, logistyka (rury, taśmociągi, rozdzielacze, taśmociągi podziemne); zobacz [plan przykładów](docs/examples-plan.md)
 
 **Później**
 - końcowe prototypy przez `--dump-data`: „który mod zmienił ten przedmiot i na co?”

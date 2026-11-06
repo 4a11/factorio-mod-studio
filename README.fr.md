@@ -56,7 +56,7 @@ navigateur (Aperçu, Fichiers, Prototypes, Ressources, Localisation, Problèmes,
 
 **0.5 : créer du contenu**
 - [ ] un éditeur de sprites dans le studio : créer et modifier des icônes et des sprites, et monter des animations (images, feuille de sprites, aperçu en direct) sans quitter le studio
-- [ ] un ensemble d'exemples pour les ajouts courants, chacun chargé dans le jeu : stockage, objet, arme, véhicule, logistique (tuyaux, convoyeurs, répartiteurs, convoyeurs souterrains)
+- [ ] un ensemble d'exemples pour les ajouts courants, chacun chargé dans le jeu : stockage, objet, arme, véhicule, logistique (tuyaux, convoyeurs, répartiteurs, convoyeurs souterrains) ; voir le [plan des exemples](docs/examples-plan.md)
 
 **Plus tard**
 - les prototypes finaux via `--dump-data` : « quel mod a modifié cet objet, et en quoi ? »

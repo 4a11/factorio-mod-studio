@@ -56,7 +56,7 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 
 **0.5: Inhalte erstellen**
 - [ ] ein Sprite-Editor im Studio: Icons und Sprites erstellen und bearbeiten, Animationen bauen (Frames, Spritesheet, Live-Vorschau), ohne das Studio zu verlassen
-- [ ] eine Sammlung von Beispielen für typische Inhalte, jedes im Spiel ladbar: Lager, Gegenstand, Waffe, Fahrzeug, Logistik (Rohre, Förderbänder, Splitter, unterirdische Förderbänder)
+- [ ] eine Sammlung von Beispielen für typische Inhalte, jedes im Spiel ladbar: Lager, Gegenstand, Waffe, Fahrzeug, Logistik (Rohre, Förderbänder, Splitter, unterirdische Förderbänder); siehe den [Beispielplan](docs/examples-plan.md)
 
 **Später**
 - die endgültigen Prototypen über `--dump-data`: „Welche Mod hat diesen Gegenstand geändert, und wie?“

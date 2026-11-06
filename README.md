@@ -54,7 +54,7 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 
 **0.5: making content**
 - [ ] a sprite editor in the studio: create and edit icons and sprites, and build animations (frames, sprite sheet, live preview) without leaving the studio
-- [ ] a set of examples for common things to add, each one loading in the game: storage, item, weapon, vehicle, logistics (pipes, belts, splitters, underground belts)
+- [ ] a set of examples for common things to add, each one loading in the game: storage, item, weapon, vehicle, logistics (pipes, belts, splitters, underground belts); see the [examples plan](docs/examples-plan.md)
 
 **Later**
 - the final prototypes via `--dump-data`: "which mod changed this item, and to what?"

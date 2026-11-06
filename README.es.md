@@ -56,7 +56,7 @@ navegador (Resumen, Archivos, Prototipos, Recursos, Localización, Problemas, Co
 
 **0.5: crear contenido**
 - [ ] un editor de sprites en el estudio: crear y editar iconos y sprites, y montar animaciones (fotogramas, hoja de sprites, vista previa en vivo) sin salir del estudio
-- [ ] un conjunto de ejemplos de cosas habituales que añadir, cada uno cargado en el juego: almacenamiento, objeto, arma, vehículo, logística (tuberías, cintas, divisores, cintas subterráneas)
+- [ ] un conjunto de ejemplos de cosas habituales que añadir, cada uno cargado en el juego: almacenamiento, objeto, arma, vehículo, logística (tuberías, cintas, divisores, cintas subterráneas); ver el [plan de ejemplos](docs/examples-plan.md)
 
 **Más adelante**
 - los prototipos finales mediante `--dump-data`: «¿qué mod cambió este objeto, y cómo?»
