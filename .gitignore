@@ -49,3 +49,6 @@ CLAUDE.md
 # Nix build output
 result
 result-*
+
+# Windows shortcuts
+*.lnk
