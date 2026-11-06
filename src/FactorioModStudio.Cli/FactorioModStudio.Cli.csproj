@@ -9,6 +9,7 @@
     <PackageId>FactorioModStudio.Cli</PackageId>
     <Description>Command-line toolkit for Factorio mod developers: validate, pack, run profiles, analyze logs, smoke-test.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>factorio;factorio-mod;modding;mod-tools;dotnet-tool</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

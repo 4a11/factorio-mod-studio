@@ -1,0 +1,42 @@
+# Publishes a release when a version tag is pushed: git tag v0.1.0 && git push origin v0.1.0
+# The tag has to match <Version> in Directory.Build.props. Needs the NUGET_API_KEY repository secret.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Check the tag matches the version
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match <Version>$version</Version> in Directory.Build.props"
+            exit 1
+          fi
+
+      - name: Test
+        run: dotnet test -c Release
+
+      - name: Pack
+        run: dotnet pack src/FactorioModStudio.Cli -c Release -o nupkg
+
+      - name: Push to NuGet
+        run: dotnet nuget push "nupkg/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" nupkg/*.nupkg --title "$GITHUB_REF_NAME" --generate-notes

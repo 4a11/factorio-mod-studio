@@ -7,6 +7,9 @@
     <Version>0.1.0</Version>
     <Authors>Factorio Mod Studio contributors</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/4a11/factorio-mod-studio</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/4a11/factorio-mod-studio</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 </Project>
