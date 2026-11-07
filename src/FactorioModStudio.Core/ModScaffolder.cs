@@ -12,7 +12,8 @@ public sealed record TemplateInfo(string Id, string Title, string Description, I
 /// <param name="Template">Id of one of <see cref="ModScaffolder.Templates"/>.</param>
 /// <param name="FactorioVersion">Target game version, MAJOR.MINOR (default "2.0"); must be one of the template's supported versions.</param>
 /// <param name="Title">Optional; defaults to the humanized name. Same for Author (FMS_AUTHOR or "Your Name") and Description.</param>
-public sealed record ScaffoldRequest(string Name, string Template = "empty", string? Title = null, string? Author = null, string? Description = null, string FactorioVersion = ModScaffolder.DefaultFactorioVersion);
+/// <param name="Content">Ids of <see cref="ModContent.Blocks"/> added to the new mod, each named "&lt;mod name&gt;-&lt;its default name&gt;".</param>
+public sealed record ScaffoldRequest(string Name, string Template = "empty", string? Title = null, string? Author = null, string? Description = null, string FactorioVersion = ModScaffolder.DefaultFactorioVersion, IReadOnlyList<string>? Content = null);
 
 /// <param name="Folder">Full path of the new mod folder.</param>
 /// <param name="Files">Relative paths with '/' separators, sorted ordinally.</param>
@@ -79,6 +80,18 @@ public static class ModScaffolder
                 $"The template \"{template.Info.Id}\" does not support Factorio {targetVersion} (supported: {string.Join(", ", template.Info.SupportedVersions)}).");
         var modern = int.Parse(targetVersion.Split('.')[0], CultureInfo.InvariantCulture) >= 2;
 
+        var content = new List<ContentBlockInfo>();
+        foreach (var id in (request.Content ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal))
+        {
+            var block = ModContent.Blocks.FirstOrDefault(b => string.Equals(b.Id, id, StringComparison.Ordinal))
+                        ?? throw new ScaffoldException(ScaffoldError.UnknownTemplate,
+                            $"Unknown block \"{id}\". Available: {string.Join(", ", ModContent.Blocks.Select(b => b.Id))}.");
+            if (!block.SupportedVersions.Contains(targetVersion, StringComparer.Ordinal))
+                throw new ScaffoldException(ScaffoldError.UnsupportedVersion,
+                    $"The block \"{block.Id}\" is written for Factorio {string.Join(" and ", block.SupportedVersions)}, not {targetVersion}.");
+            content.Add(block);
+        }
+
         var title = CleanField(request.Title, "Title", MaxTitleLength) ?? Humanize(name);
         var author = CleanField(request.Author, "Author", MaxAuthorLength) ?? AuthorFromEnvironment() ?? DefaultAuthor;
         var description = CleanField(request.Description, "Description", MaxDescriptionLength) ?? DefaultDescription;
@@ -113,6 +126,7 @@ public static class ModScaffolder
         var parent = Path.GetFullPath(parentDirectory);
         var target = Path.Combine(parent, name);
 
+        List<string> files;
         lock (Gate)
         {
             if (FindExisting(parent, name) is { } existing)
@@ -131,6 +145,16 @@ public static class ModScaffolder
                     File.WriteAllBytes(destination, bytes);
                 }
 
+                // Blocks go into the staging copy too, so the mod appears complete or not at all.
+                foreach (var block in content)
+                {
+                    try { ModContent.Apply(staging, new ContentRequest(block.Id, $"{name}-{block.DefaultName}", ContentTitle(title, block.DefaultName))); }
+                    catch (ContentException ex) { throw new ScaffoldException(ScaffoldError.InvalidField, ex.Message); }
+                }
+                files = Directory.EnumerateFiles(staging, "*", SearchOption.AllDirectories)
+                    .Select(f => Path.GetRelativePath(staging, f).Replace(Path.DirectorySeparatorChar, '/'))
+                    .OrderBy(f => f, StringComparer.Ordinal).ToList();
+
                 try
                 {
                     Directory.Move(staging, target);
@@ -148,7 +172,7 @@ public static class ModScaffolder
             }
         }
 
-        return new ScaffoldResult(name, InitialVersion, target, rendered.Keys.ToList());
+        return new ScaffoldResult(name, InitialVersion, target, files);
     }
 
     // ------------------------------------------------------------------ helpers
@@ -187,6 +211,13 @@ public static class ModScaffolder
             if (removeParentIfEmpty && Directory.Exists(parent) && !Directory.EnumerateFileSystemEntries(parent).Any()) Directory.Delete(parent);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best effort */ }
+    }
+
+    /// <summary>"My Mod" and "solar-panel" give "My Mod solar panel"; shortened when that would be too long.</summary>
+    private static string ContentTitle(string modTitle, string defaultName)
+    {
+        var title = $"{modTitle} {defaultName.Replace('-', ' ')}";
+        return title.Length <= ModContent.MaxTitleLength ? title : Humanize(defaultName);
     }
 
     /// <summary>"hello-world" becomes "Hello World".</summary>

@@ -81,7 +81,7 @@ public static class UiServer
         "lua-highlight.js", "locale-placeholders.js", "locale-view.js", "build-view.js", "i18n.js",
         "theme-init.js", "theme.js", "ui-state.js", "palette-logic.js", "palette.js", "editor-tabs.js",
         "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js", "prototypes-view.js", "resources-view.js",
-        "import-logic.js"
+        "import-logic.js", "content-dialog.js"
     ];
 
     private const string ContentSecurityPolicy =
@@ -581,11 +581,19 @@ public static class UiServer
                 }
 
                 var template = Text("template");
+                var content = new List<string>();
+                if (root.TryGetProperty("content", out var list) && list.ValueKind != JsonValueKind.Null)
+                {
+                    if (list.ValueKind != JsonValueKind.Array || list.EnumerateArray().Any(e => e.ValueKind != JsonValueKind.String))
+                        throw new FormatException("\"content\" must be a list of block ids.");
+                    content.AddRange(list.EnumerateArray().Select(e => e.GetString()!));
+                }
                 request = new ScaffoldRequest(
                     Text("name") ?? "",
                     string.IsNullOrEmpty(template) ? "empty" : template,
                     Text("title"), Text("author"), Text("description"),
-                    Text("factorioVersion") is { Length: > 0 } version ? version : ModScaffolder.DefaultFactorioVersion);
+                    Text("factorioVersion") is { Length: > 0 } version ? version : ModScaffolder.DefaultFactorioVersion,
+                    content);
             }
             catch (Exception ex) when (ex is JsonException or FormatException or InvalidOperationException)
             {
@@ -616,6 +624,61 @@ public static class UiServer
             catch (Exception ex) when (ex is FmsException or IOException or UnauthorizedAccessException)
             {
                 return Error(StatusCodes.Status500InternalServerError, $"Could not create the mod: {ex.Message}");
+            }
+        });
+
+        // ------------------------------------------------------------ building blocks for an existing mod
+
+        app.MapGet("/api/content/blocks", () => ModContent.Blocks);
+
+        // { block, name, title?, dryRun? } -> what was (or would be) created and changed. Never overwrites a file.
+        app.MapPost("/api/mods/{id}/content", async (HttpContext http, string id) =>
+        {
+            var entry = catalog.Find(id);
+            if (entry is null) return Error(StatusCodes.Status404NotFound, "Unknown mod.");
+            if (!entry.Editable || entry.Kind != "directory") return Error(StatusCodes.Status403Forbidden, "This mod is read-only.");
+
+            byte[] body;
+            try { body = await ReadLimited(http.Request.Body, MaxNewModBodyBytes, http.RequestAborted); }
+            catch (InvalidDataException) { return Error(StatusCodes.Status413PayloadTooLarge, "The request is too large (limit 16 KB)."); }
+
+            ContentRequest request;
+            bool dryRun;
+            try
+            {
+                using var document = JsonDocument.Parse(body);
+                var root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object) return Error(StatusCodes.Status400BadRequest, "The body must be a JSON object.");
+                string? Text(string field) =>
+                    !root.TryGetProperty(field, out var value) || value.ValueKind == JsonValueKind.Null ? null
+                    : value.ValueKind == JsonValueKind.String ? value.GetString() : throw new FormatException($"\"{field}\" must be a string.");
+                request = new ContentRequest(Text("block") ?? "", Text("name") ?? "", Text("title"));
+                dryRun = root.TryGetProperty("dryRun", out var d) && d.ValueKind == JsonValueKind.True;
+            }
+            catch (Exception ex) when (ex is JsonException or FormatException)
+            {
+                return Error(StatusCodes.Status400BadRequest, ex is FormatException ? ex.Message : "The body is not valid JSON.");
+            }
+
+            try
+            {
+                var plan = dryRun ? ModContent.Plan(entry.Path, request) : ModContent.Apply(entry.Path, request);
+                return Results.Json(new { plan.Block, plan.Name, plan.Title, plan.Create, plan.Change, plan.Prototypes, dryRun },
+                    statusCode: dryRun ? StatusCodes.Status200OK : StatusCodes.Status201Created);
+            }
+            catch (ContentException ex)
+            {
+                var status = ex.Kind switch
+                {
+                    ContentError.Exists => StatusCodes.Status409Conflict,
+                    ContentError.UnsupportedVersion or ContentError.NotAMod => StatusCodes.Status422UnprocessableEntity,
+                    _ => StatusCodes.Status400BadRequest
+                };
+                return Results.Json(new { error = ex.Message, kind = ex.Kind.ToString(), existing = ex.ExistingPath }, statusCode: status);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return Error(StatusCodes.Status500InternalServerError, $"Could not add the block: {ex.Message}");
             }
         });
     }

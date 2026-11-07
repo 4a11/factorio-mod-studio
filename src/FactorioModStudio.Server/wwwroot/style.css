@@ -444,6 +444,34 @@ button.primary:disabled { opacity: .6; cursor: default; }
   .import-check-dialog { padding: 14px; }
 }
 
+/* Building blocks: the "Add to mod" dialog and the starting content of the New mod dialog */
+.content-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); padding: 20px 22px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); overflow: auto; }
+.content-dialog::backdrop { background: rgba(0, 0, 0, .5); }
+.content-dialog h2 { margin: 0 0 4px; overflow-wrap: anywhere; }
+.cd-hint { margin: 0 0 12px; }
+.cd-hint.bad, .cd-preview.bad { color: var(--error); }
+.cd-tabs { display: inline-flex; flex-wrap: wrap; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.cd-tab { padding: 4px 12px; font-size: 13px; border: 0; border-radius: 0; background: none; }
+.cd-tab + .cd-tab { border-left: 1px solid var(--border); }
+.cd-tab[aria-pressed="true"] { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+.cd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin-bottom: 14px; }
+.cd-card { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; padding: 8px 10px; text-align: left; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.cd-card[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.cd-card:disabled { opacity: .55; cursor: default; }
+.cd-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.cd-preview { min-height: 36px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.cd-preview div + div { margin-top: 2px; }
+@media (max-width: 600px) { .cd-fields { grid-template-columns: 1fr; } .content-dialog { padding: 14px; } .content-dialog input { font-size: 16px; } }
+.nm-content-list { display: flex; flex-direction: column; gap: 6px; }
+.nm-content-group { display: flex; flex-direction: column; gap: 3px; }
+.nm-content-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 6px; font-size: 12.5px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
+.chip:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.chip:has(input:disabled) { opacity: .55; cursor: default; }
+.chip input { margin: 0; }
+.ab-add { display: inline-flex; align-items: center; gap: 4px; }
+.ab-add .glyph { color: var(--accent); font-weight: 700; }
+
 /* New mod dialog: keep the buttons reachable and avoid iOS focus zoom */
 .nm-actions { position: sticky; bottom: -20px; padding: 10px 0 0; background: var(--surface); }
 @media (max-width: 700px) { .nm-field input, .nm-field textarea { font-size: 16px; } }

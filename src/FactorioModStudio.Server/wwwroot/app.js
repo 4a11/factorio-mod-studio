@@ -13,6 +13,7 @@ import { createActionBar } from '/action-bar.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
 import { findMods, readInfo, zipIdentity, assess, MAX_IMPORT_FILES } from '/import-logic.js';
+import { createContentDialog, loadBlocks, blockTitle, blockDescription, supportsVersion, CATEGORIES } from '/content-dialog.js';
 import { renderPrototypes as renderPrototypesView } from '/prototypes-view.js';
 import { renderResources as renderResourcesView, stopResourceSound } from '/resources-view.js';
 import { LANGUAGES, initI18n, setLanguage, getLanguage, onLanguageChange, t, formatNumber } from '/i18n.js';
@@ -592,8 +593,27 @@ const bottom = createBottomPanel({
   openLocation: (path, line) => openFile(path, line),
 });
 
+// "Add to mod": building blocks (copies of vanilla prototypes) for the open, editable mod.
+const contentDialog = createContentDialog({
+  el, api,
+  onAdded: async (mod, result) => {
+    const files = [...result.create, ...result.change].join(', ');
+    showImportStatus(() => ({ text: t('content.added', { title: result.title, files }) }));
+    if (state.currentId !== mod.id) return;
+    await refreshOverview();
+    await openFile(`prototypes/${result.name}.lua`);
+  },
+});
+
+function openContentDialog() {
+  const mod = currentMod();
+  if (!mod?.editable) return;
+  const info = state.overview?.info || {};
+  contentDialog.open({ id: mod.id, name: info.name || mod.name, title: info.title, factorioVersion: info.factorioVersion });
+}
+
 const actionBar = createActionBar({
-  el, mount: $('#action-bar'), buildView,
+  el, mount: $('#action-bar'), buildView, onAddContent: openContentDialog,
   onFactorio: () => { if (state.currentId) go(state.currentId, 'build'); },
   onJob: () => bottom.open('output'),
   onProblems: () => { if (bottom.isOpen() && bottom.getTab() === 'problems') bottom.close(); else bottom.open('problems'); },
@@ -673,6 +693,7 @@ function commandList() {
     }
   }
   add('new-mod', t('ui.cmd.newMod'), openNewModDialog);
+  if (currentMod()?.editable) add('add-content', t('ui.cmd.addContent'), openContentDialog);
   add('add-mod', t('ui.cmd.addMod'), () => $('#zip-input').click());
   add('add-folder', t('ui.cmd.addFolder'), () => $('#folder-input').click());
   add('toggle-bottom', t('ui.cmd.togglePanel'), () => bottom.toggle(), shortcutText('Ctrl+J'));
@@ -1232,6 +1253,26 @@ function updateTemplateAvailability() {
   const hint = $('#nm-version-hint');
   hint.textContent = custom && !version ? t('newmod.versionInvalid') : '';
   hint.className = 'small nm-hint ' + (custom && !version ? 'bad' : 'muted');
+  renderStartContent();
+}
+
+// Starting content: building blocks put into the new mod right away, grouped by category. Ticks survive re-rendering.
+let startBlocks = null;
+
+function renderStartContent() {
+  const list = $('#nm-content-list');
+  const hint = $('#nm-content-hint');
+  if (!startBlocks) { list.replaceChildren(); hint.textContent = ''; return; }
+  const version = newModVersion();
+  const usable = !!version && startBlocks.length > 0 && supportsVersion(startBlocks[0], version);
+  const ticked = new Set([...list.querySelectorAll('input:checked')].map((i) => i.value));
+  hint.textContent = usable ? t('content.startHint') : t('content.startUnsupported', { versions: startBlocks[0]?.supportedVersions.join(', ') || '' });
+  hint.className = 'small nm-hint ' + (usable ? 'muted' : 'bad');
+  list.replaceChildren(...CATEGORIES.filter((c) => startBlocks.some((b) => b.category === c)).map((category) => el('div', { class: 'nm-content-group' },
+    el('span', { class: 'nm-content-category small muted', text: t(`content.category.${category}`) }),
+    el('div', { class: 'nm-content-chips' }, ...startBlocks.filter((b) => b.category === category).map((block) => el('label', { class: 'chip', title: blockDescription(block) },
+      el('input', { type: 'checkbox', value: block.id, checked: usable && ticked.has(block.id), disabled: !usable }),
+      el('span', { text: blockTitle(block) })))))));
 }
 
 function openNewModDialog() {
@@ -1249,6 +1290,8 @@ function openNewModDialog() {
     const first = $('#nm-template-list input');
     if (first && !$('#nm-template-list input:checked')) first.checked = true;
   }).catch((error) => newModText('dialog.loadTemplatesFailed', { message: error.message }, true));
+  $('#nm-content-list').replaceChildren();
+  loadBlocks(api).then((blocks) => { startBlocks = blocks; renderStartContent(); }).catch(() => { /* the dialog works without blocks */ });
 }
 
 async function showNewMod(id) {
@@ -1279,6 +1322,7 @@ async function submitNewMod(event) {
     title: $('#nm-title').value.trim(),
     author,
     description: $('#nm-description').value.trim(),
+    content: [...$('#nm-content-list').querySelectorAll('input:checked')].map((i) => i.value),
   };
 
   newMod.busy = true;
@@ -1338,6 +1382,8 @@ function rerender() {
   buildView.retranslate();
   editorTabs.retranslate();
   actionBar.retranslate();
+  contentDialog.retranslate();
+  renderStartContent();
   bottom.retranslate();
   searchPanel.retranslate();
   palette.retranslate();

@@ -58,6 +58,7 @@ public static class Program
                 "factorio" => FactorioCommand(cmd, output, runner, http),
                 "ui" => Ui(cmd, output),
                 "new" => New(cmd, output, error),
+                "add" => Add(cmd, output, error),
                 _ => UnknownCommand(command, error)
             };
         }
@@ -100,14 +101,15 @@ public static class Program
             }
 
             if (cmd.Positional.Count == 0)
-                throw new FmsException("Usage: fmstudio new <name> [--template <id>] [--title T] [--author A] [--description D] [--factorio-version <MAJOR.MINOR>] [--out <dir>] [--json]  (see `fmstudio new --list`)");
+                throw new FmsException("Usage: fmstudio new <name> [--template <id>] [--title T] [--author A] [--description D] [--factorio-version <MAJOR.MINOR>] [--content block,block] [--out <dir>] [--json]  (see `fmstudio new --list`, `fmstudio add --list`)");
             if (cmd.Positional.Count > 1)
                 throw new FmsException($"Unexpected argument \"{cmd.Positional[1]}\". Quote values that contain spaces, e.g. --title \"My Mod\".");
 
             var parent = cmd.Get("--out", "-o") is { } o ? Path.GetFullPath(o) : LoadProject(cmd).WorkspaceDirectory;
             var request = new ScaffoldRequest(
                 cmd.Positional[0], cmd.Get("--template") ?? "empty", cmd.Get("--title"), cmd.Get("--author"), cmd.Get("--description"),
-                cmd.Get("--factorio-version") ?? ModScaffolder.DefaultFactorioVersion);
+                cmd.Get("--factorio-version") ?? ModScaffolder.DefaultFactorioVersion,
+                cmd.Get("--content")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             var result = ModScaffolder.Create(request, parent);
 
             if (json)
@@ -136,6 +138,69 @@ public static class Program
             else error.WriteLine($"error: {ex.Message}");
             return ExitUsageError;
         }
+    }
+
+    private static int Add(CommandLine cmd, TextWriter output, TextWriter error)
+    {
+        var json = cmd.Has("--json");
+        try
+        {
+            if (cmd.Has("--list"))
+            {
+                if (json) output.WriteLine(JsonSerializer.Serialize(ModContent.Blocks, NewJson));
+                else
+                {
+                    foreach (var group in ModContent.Blocks.GroupBy(b => b.Category))
+                    {
+                        output.WriteLine($"{group.Key}:");
+                        foreach (var b in group) output.WriteLine($"  {b.Id.PadRight(10)} named <mod>-{b.DefaultName} unless you give a name (Factorio {string.Join(", ", b.SupportedVersions)})");
+                    }
+                }
+                return ExitOk;
+            }
+
+            if (cmd.Positional.Count is 0 or > 2)
+                throw new FmsException("Usage: fmstudio add <block> [name] [--title T] [--dry-run] [--json]  (see `fmstudio add --list`)");
+
+            var modDirectory = LoadProject(cmd).ModDirectory;
+            var blockId = cmd.Positional[0];
+            var name = cmd.Positional.Count == 2 ? cmd.Positional[1] : DefaultContentName(modDirectory, blockId);
+            var request = new ContentRequest(blockId, name, cmd.Get("--title"));
+            var dryRun = cmd.Has("--dry-run");
+            var plan = dryRun ? ModContent.Plan(modDirectory, request) : ModContent.Apply(modDirectory, request);
+
+            if (json)
+            {
+                output.WriteLine(JsonSerializer.Serialize(new { plan.Block, plan.Name, plan.Title, plan.Create, plan.Change, plan.Prototypes, DryRun = dryRun }, NewJson));
+                return ExitOk;
+            }
+
+            output.WriteLine(dryRun ? $"Would add {plan.Block} \"{plan.Name}\" ({plan.Title}):" : $"Added {plan.Block} \"{plan.Name}\" ({plan.Title}):");
+            foreach (var file in plan.Create) output.WriteLine($"  + {file}");
+            foreach (var file in plan.Change) output.WriteLine($"  ~ {file}");
+            output.WriteLine($"Prototypes: {string.Join(", ", plan.Prototypes)}");
+            return ExitOk;
+        }
+        catch (FmsException ex)
+        {
+            if (json)
+            {
+                var kind = ex is ContentException c ? c.Kind.ToString() : "usage";
+                error.WriteLine(JsonSerializer.Serialize(new { Error = ex.Message, Kind = char.ToLowerInvariant(kind[0]) + kind[1..] }, NewJson));
+            }
+            else error.WriteLine($"error: {ex.Message}");
+            return ExitUsageError;
+        }
+    }
+
+    /// <summary>"&lt;mod name&gt;-&lt;the block's default name&gt;", like the blocks of a new mod.</summary>
+    private static string DefaultContentName(string modDirectory, string blockId)
+    {
+        string? modName = null;
+        try { modName = ModInfo.Load(Path.Combine(modDirectory, "info.json")).Name; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { /* reported by ModContent */ }
+        var suffix = ModContent.Blocks.FirstOrDefault(b => b.Id == blockId)?.DefaultName ?? blockId;
+        return string.IsNullOrEmpty(modName) ? suffix : $"{modName}-{suffix}";
     }
 
     private static int Init(CommandLine cmd, TextWriter output)
@@ -587,7 +652,11 @@ public static class Program
           init                   Create fmstudio.json in the project folder
           new <name>             Create a mod from a template (empty, item-recipe, entity, runtime-script)
                                  [--template <id>] [--title T] [--author A] [--description D] [--factorio-version <MAJOR.MINOR, default 2.0>]
+                                 [--content block,block: building blocks to add right away (Factorio 2.0+)]
                                  [--out <folder, default: the workspace>] [--json]   `new --list` shows the templates
+          add <block> [name]     Add a building block (armor, enemy, belt tier, assembler, car, ...) to the project mod
+                                 [--title T] [--dry-run] [--json]   `add --list` shows the blocks; name: <mod>-<block>
+                                 Writes prototypes/<name>.lua and appends to data.lua and locale/en; never overwrites
           factorio               List the Factorio installations found and the one chosen for the project's mod  [--json]
           factorio available     Factorio's headless server releases (Linux x64)  [--all] [--json]
           factorio install [v]   Download a headless server release into the studio's folder, where smoke finds it

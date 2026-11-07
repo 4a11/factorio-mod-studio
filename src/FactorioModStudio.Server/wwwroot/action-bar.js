@@ -9,10 +9,10 @@ import { formatElapsed } from '/bottom-panel.js';
 const KINDS = ['validate', 'pack', 'smoke', 'run'];
 
 /**
- * @param {{ el: Function, mount: HTMLElement, buildView: object,
+ * @param {{ el: Function, mount: HTMLElement, buildView: object, onAddContent: () => void,
  *           onFactorio: () => void, onJob: () => void, onProblems: () => void }} host
  */
-export function createActionBar({ el, mount, buildView, onFactorio, onJob, onProblems }) {
+export function createActionBar({ el, mount, buildView, onFactorio, onJob, onProblems, onAddContent }) {
   const s = { overview: null, tick: 0 };
 
   const title = el('h2', { class: 'ab-title', 'data-testid': 'action-title' });
@@ -26,7 +26,9 @@ export function createActionBar({ el, mount, buildView, onFactorio, onJob, onPro
   }
   const cancel = el('button', { type: 'button', class: 'ab-cancel', 'data-testid': 'action-cancel', onclick: () => buildView.cancel() });
   cancel.hidden = true;
-  const actions = el('div', { class: 'ab-actions', role: 'group' }, buttons.validate, buttons.pack, buttons.smoke, buttons.run, cancel);
+  const addContent = el('button', { type: 'button', class: 'ab-add', 'data-testid': 'action-add-content', onclick: () => onAddContent?.() },
+    el('span', { class: 'glyph', 'aria-hidden': 'true', text: '+' }), el('span', { class: 'ab-add-label' }));
+  const actions = el('div', { class: 'ab-actions', role: 'group' }, addContent, buttons.validate, buttons.pack, buttons.smoke, buttons.run, cancel);
 
   const factorio = el('button', { type: 'button', class: 'ab-badge', 'data-testid': 'action-factorio', 'data-mode': 'none', onclick: onFactorio });
   const job = el('button', { type: 'button', class: 'ab-job', 'data-testid': 'action-job', 'data-state': 'idle', onclick: onJob });
@@ -59,6 +61,9 @@ export function createActionBar({ el, mount, buildView, onFactorio, onJob, onPro
       if (disabled && reasonKey) node.setAttribute('title', t(reasonKey)); else node.removeAttribute('title');
     };
     for (const kind of KINDS) buttons[kind].textContent = t(`build.${kind}`);
+    addContent.querySelector('.ab-add-label').textContent = t('content.open');
+    set(addContent, !st.editable, !st.editable ? 'build.readonlyShort' : null);
+    if (st.editable) addContent.setAttribute('title', t('content.openTitle'));
     cancel.textContent = t('build.cancel');
     set(buttons.validate, busy);
     set(buttons.pack, busy || !st.editable, !st.editable ? 'build.readonlyShort' : null);
