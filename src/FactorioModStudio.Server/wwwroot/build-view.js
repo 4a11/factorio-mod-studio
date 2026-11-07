@@ -361,18 +361,31 @@ export function createBuildView({ api, el, openFile, modName }) {
         class: 'build-verdict', 'data-testid': 'build-verdict', 'data-ok': result.passed ? 'true' : 'false',
         text: result.passed ? t('build.result.smokePassed') : t('build.result.smokeFailed', { reason: result.failureReason || '' }),
       }));
-      nodes.push(el('p', { class: 'muted small', text: t('build.result.smokeCounts', { errors: result.errorCount, warnings: result.warningCount }) }));
-      const own = modName();
-      const rows = (result.diagnostics || []).map((d) => issueRow({
-        severity: d.severity, code: d.category || '', message: d.message,
-        file: d.file && d.mod && d.mod === own ? d.file : null, line: d.line,
-      }));
-      if (rows.length) nodes.push(el('ul', { class: 'build-issues' }, rows));
+      nodes.push(...gameLog(result));
     } else if (result && snap.kind === 'run') {
       nodes.push(el('p', { class: 'build-verdict', 'data-ok': result.exitCode === 0 ? 'true' : 'false', 'data-testid': 'build-exit-code', text: t('build.result.runExit', { code: result.exitCode }) }));
+      if (Array.isArray(result.diagnostics)) nodes.push(...gameLog(result));
     }
 
     refs.result.replaceChildren(...nodes);
+  }
+
+  /** What the game's log said (smoke test output, or factorio-current.log after a run): the counts and every message. */
+  function gameLog(result) {
+    const rows = gameIssuesOf(result).map((issue) => issueRow(issue));
+    return [
+      el('p', { class: 'muted small', text: t('build.result.smokeCounts', { errors: result.errorCount ?? 0, warnings: result.warningCount ?? 0 }) }),
+      ...(rows.length ? [el('ul', { class: 'build-issues' }, rows)] : []),
+    ];
+  }
+
+  /** Log diagnostics as issues; a location is kept only when it is a file of this mod (it can be opened). */
+  function gameIssuesOf(result) {
+    const own = modName();
+    return (Array.isArray(result?.diagnostics) ? result.diagnostics : []).map((d) => ({
+      severity: d.severity, code: d.category || 'game', message: d.message,
+      file: d.file && d.mod && d.mod === own ? d.file : null, line: d.line,
+    }));
   }
 
   function issueList(issues) {
@@ -1123,6 +1136,11 @@ export function createBuildView({ api, el, openFile, modName }) {
     cancel,
     getState,
     getLog,
+    /** Problems the game reported in the newest smoke test or run of this mod (empty when it has none or is still running). */
+    gameIssues() {
+      const newest = s.history[0] ? s.entries.get(s.history[0].id)?.snap ?? s.history[0] : null;
+      return newest && (newest.kind === 'smoke' || newest.kind === 'run') ? gameIssuesOf(newest.result) : [];
+    },
     onChange(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     onStarted(listener) { startedListeners.add(listener); return () => startedListeners.delete(listener); },
 

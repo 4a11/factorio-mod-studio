@@ -203,7 +203,7 @@ export function createBottomPanel({ el, api, uiState, buildView, search, mount, 
         el('span', { class: 'problem-text', text: issue.message }),
         file ? el('span', { class: 'mono muted problem-where', text: line ? `${file}:${line}` : file }) : null));
     }));
-    tabButtons.problems.replaceChildren(tabLabel('problems'), sorted.length ? el('span', { class: 'count', text: String(sorted.length) }) : null);
+    tabButtons.problems.replaceChildren(tabLabel('problems'), ...(sorted.length ? [el('span', { class: 'count', text: String(sorted.length) })] : []));
   }
 
   // ------------------------------------------------------------ output

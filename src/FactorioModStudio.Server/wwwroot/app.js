@@ -691,8 +691,20 @@ buildView.onStarted(({ origin }) => {
 /** Pushes the open mod (or its absence) to the persistent action bar and the Problems list. */
 function syncChrome() {
   actionBar.setOverview(state.overview);
-  bottom.setIssues(state.overview ? state.overview.issues : null);
+  syncProblems();
 }
+
+// Problems: the mod's own checks plus what the game said in its newest smoke test or run.
+let problemsSignature = '';
+function syncProblems() {
+  if (!state.overview) { problemsSignature = ''; bottom.setIssues(null); return; }
+  const game = buildView.gameIssues();
+  const signature = `${state.currentId}|${state.overview.issues?.length ?? 0}|${JSON.stringify(game)}`;
+  if (signature === problemsSignature) return;
+  problemsSignature = signature;
+  bottom.setIssues([...(state.overview.issues || []), ...game]);
+}
+buildView.onChange(syncProblems);
 
 // "Open files: n" in the status strip: brings back the viewer after the Back button hid it (the tabs were kept).
 const revealButton = el('button', {

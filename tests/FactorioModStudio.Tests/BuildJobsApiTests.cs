@@ -774,6 +774,24 @@ public class BuildJobsApiTests
         Assert.False(string.IsNullOrWhiteSpace(bad.Str("error")));
     }
 
+    [Fact]
+    public async Task Run_ReportsWhatTheGameLogged_AsDiagnostics()
+    {
+        if (Unsupported) return;
+        using var env = await Env.Create();
+        env.Mode("logerror");
+        var job = await RunToEnd(env, "alpha", new { kind = "run" });
+
+        // The game ran and closed normally; its log still had an error, which the result carries (here from its output:
+        // the fake game has no install folder and so no factorio-current.log).
+        Assert.Equal("succeeded", job.State);
+        Assert.True(job.Result.GetProperty("errorCount").GetInt32() >= 1);
+        var diag = job.Result.GetProperty("diagnostics").EnumerateArray().ToList();
+        Assert.Contains(diag, d => d.GetProperty("message").GetString()!.Contains("Failed to load mod"));
+        Assert.Equal(JsonValueKind.Null, job.Result.TryGetProperty("logFile", out var log) ? log.ValueKind : JsonValueKind.Null);
+        Assert.Contains(job.Lines, l => l.Text.Contains("Game output: 1 error(s)"));
+    }
+
     // ------------------------------------------------------------------ busy rules
 
     [Fact]

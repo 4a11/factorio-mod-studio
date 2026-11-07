@@ -22,7 +22,8 @@ internal sealed record PackJobResult(bool Success, string? Archive, string? Down
 
 internal sealed record SmokeJobResult(bool Passed, string? FailureReason, int ErrorCount, int WarningCount, IReadOnlyList<LogDiagnostic> Diagnostics);
 
-internal sealed record RunJobResult(int ExitCode);
+/// <param name="LogFile">The factorio-current.log that was read; null when the game's own output was used instead.</param>
+internal sealed record RunJobResult(int ExitCode, int ErrorCount = 0, int WarningCount = 0, IReadOnlyList<LogDiagnostic>? Diagnostics = null, string? LogFile = null);
 
 internal sealed record FactorioStatus(bool Found, string? Path, string? Error, string Source = "none", string? Version = null);
 
@@ -545,7 +546,9 @@ internal sealed class BuildJobs : IDisposable
 
         token.ThrowIfCancellationRequested();
         Log(job, $"Starting {factorio}");
-        var process = _runner.Run(factorio, args, TimeSpan.FromDays(365), line => Log(job, line), token);
+        var started = DateTime.UtcNow;
+        var output = new List<string>();
+        var process = _runner.Run(factorio, args, TimeSpan.FromDays(365), line => { lock (output) output.Add(line); Log(job, line); }, token);
 
         if (process.Cancelled)
         {
@@ -554,8 +557,19 @@ internal sealed class BuildJobs : IDisposable
             return;
         }
 
-        var result = new RunJobResult(process.ExitCode);
+        // The game's log holds what happened while playing (script errors included); its console output is the fallback.
+        var logPath = FactorioLog.CurrentLogPath(factorio);
+        var logLines = FactorioLog.ReadIfWrittenSince(logPath, started);
+        List<string> captured;
+        lock (output) captured = new List<string>(output);
+        var report = LogParser.Parse(logLines ?? captured);
+        var result = new RunJobResult(process.ExitCode, report.ErrorCount, report.WarningCount, report.Diagnostics, logLines is null ? null : logPath);
         Log(job, $"Factorio exited with code {process.ExitCode}.");
+        Log(job, logLines is null
+            ? $"Game output: {report.ErrorCount} error(s), {report.WarningCount} warning(s)."
+            : $"Read {logPath}: {report.ErrorCount} error(s), {report.WarningCount} warning(s).");
+        foreach (var d in report.Diagnostics)
+            Log(job, $"{(d.Severity == DiagnosticSeverity.Error ? "error" : "warning")}: {d.Message}{(d.File is null ? "" : $" ({d.File}:{d.Line})")}");
         if (process.ExitCode == 0) Complete(job, JobState.Succeeded, null, result);
         else Complete(job, JobState.Failed, $"Factorio exited with code {process.ExitCode}.", result);
     }
