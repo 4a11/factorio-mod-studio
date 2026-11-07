@@ -16,6 +16,9 @@ public static class Program
         // A double click in Explorer: open the studio instead of printing the help into a window that closes at once.
         if (args.Length > 0 || !ConsoleWindow.IsOwn()) return Run(args, Console.Out, Console.Error);
 
+        // The release archives ship the studio's desktop window next to this program: open that rather than a browser tab.
+        if (StartDesktopApp()) return ExitOk;
+
         var exitCode = Run(["ui", "--create-workspace"], Console.Out, Console.Error);
         if (exitCode != ExitOk)
         {
@@ -23,6 +26,19 @@ public static class Program
             Console.ReadLine();
         }
         return exitCode;
+    }
+
+    /// <summary>Starts FactorioModStudio(.exe) from this program's folder in the current folder; false when it is not there.</summary>
+    private static bool StartDesktopApp()
+    {
+        var app = Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "FactorioModStudio.exe" : "FactorioModStudio");
+        if (!File.Exists(app)) return false;
+        try
+        {
+            Process.Start(new ProcessStartInfo(app) { WorkingDirectory = Directory.GetCurrentDirectory(), UseShellExecute = false });
+            return true;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return false; }
     }
 
     /// <summary>Entry point with injectable streams, process runner and HTTP client, so it can be tested.</summary>

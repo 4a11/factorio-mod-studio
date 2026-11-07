@@ -42,11 +42,12 @@ jobs:
         if: matrix.rid == 'linux-x64'
         run: dotnet test -c Release
 
-      - name: Publish a single executable
-        run: >
-          dotnet publish src/FactorioModStudio.Cli -c Release -r ${{ matrix.rid }} --self-contained
-          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
-          -p:DebugType=none -p:PackAsTool=false -o "out/fmstudio"
+      - name: Publish the command-line tool and the desktop window
+        run: |
+          common="-c Release -r ${{ matrix.rid }} --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o out/fmstudio"
+          dotnet publish src/FactorioModStudio.Cli $common -p:PackAsTool=false
+          dotnet publish src/FactorioModStudio.Desktop $common
+          rm -f out/fmstudio/*.pdb   # native debug symbols of the graphics libraries (about 100 MB), not needed to run
 
       - name: Archive
         run: |
@@ -86,8 +87,10 @@ jobs:
 
           Download the archive for your system, unpack it anywhere, done: no .NET needed.
 
-          - **Windows** (`win-x64.zip`): double-click `fmstudio.exe` and the studio opens in your browser, with a `mods` folder next to it as the workspace. Windows may warn about an unknown publisher: *More info → Run anyway*.
-          - **Linux** (`linux-x64.tar.gz`) and **macOS** (`osx-arm64` for Apple Silicon, `osx-x64` for Intel): run `./fmstudio ui` in the unpacked folder. On macOS, clear the download quarantine first: `xattr -d com.apple.quarantine fmstudio`.
+          - **Windows** (`win-x64.zip`): double-click `FactorioModStudio.exe` (or `fmstudio.exe`) and the studio opens in a window of its own, with a `mods` folder next to it as the workspace. Windows may warn about an unknown publisher: *More info → Run anyway*.
+          - **Linux** (`linux-x64.tar.gz`): run `./FactorioModStudio` in the unpacked folder; the window needs the WebKitGTK package (`webkit2gtk-4.1`). Without it, `./fmstudio ui` opens the studio in your browser.
+          - **macOS** (`osx-arm64` for Apple Silicon, `osx-x64` for Intel): clear the download quarantine first (`xattr -dr com.apple.quarantine .` in the unpacked folder), then run `./FactorioModStudio`, or `./fmstudio ui` for the browser.
+          - The desktop window is new and has been tried on Windows; reports from Linux and macOS are welcome.
           - **With the .NET 10 SDK**: `dotnet tool install -g FactorioModStudio.Cli` installs `fmstudio` from NuGet (the `.nupkg` here is the same package).
 
           Put the unpacked folder on your `PATH` to use `fmstudio validate`, `pack`, `smoke` and the rest from any mod folder.

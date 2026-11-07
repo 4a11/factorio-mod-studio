@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Platform;
@@ -28,6 +29,44 @@ public sealed class MainWindow : Window
 
         Opened += async (_, _) => await StartAsync();
         Closing += OnClosing;
+        // The system's web engine is created after the window: when it cannot start (Linux without WebKitGTK, a broken
+        // WebView2), the error surfaces here instead of ending the program.
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            e.Handled = true;
+            ShowFallback(e.Exception.Message);
+        };
+    }
+
+    /// <summary>The studio still runs: say why the window cannot show it and offer the browser instead.</summary>
+    private void ShowFallback(string reason)
+    {
+        var url = _ui?.Url;
+        var panel = new StackPanel { Spacing = 12, MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        panel.Children.Add(new TextBlock
+        {
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            Text = "This window cannot show the studio: " + reason + Environment.NewLine + Environment.NewLine +
+                   (OperatingSystem.IsLinux() ? "On Linux the window needs the WebKitGTK package (webkit2gtk-4.1). " : "") +
+                   (url is null ? "" : "The studio is running and can be opened in your browser.")
+        });
+        if (url is not null)
+        {
+            var open = new Button { Content = "Open in the browser" };
+            open.Click += (_, _) => OpenInBrowser(url);
+            panel.Children.Add(open);
+        }
+        Content = panel;
+    }
+
+    private static void OpenInBrowser(string url)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows()) Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            else Process.Start(OperatingSystem.IsMacOS() ? "open" : "xdg-open", url);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { /* no browser either */ }
     }
 
     private async Task StartAsync()
