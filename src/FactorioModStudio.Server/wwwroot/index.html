@@ -19,11 +19,17 @@
           <p id="project-path" class="muted small"></p>
         </div>
       </header>
-      <input id="mod-search" type="search" placeholder="Search mods" aria-label="Search mods" autocomplete="off" data-i18n-placeholder="sidebar.search" data-i18n-aria-label="sidebar.search">
-      <div class="import-actions">
-        <button id="add-mod" type="button" data-i18n="sidebar.addMod">Add mod…</button>
-        <button id="new-mod" type="button" data-i18n="sidebar.newMod">New mod…</button>
-        <button id="add-folder" type="button" class="linklike" data-i18n="sidebar.addFolder">Add folder…</button>
+      <div class="sidebar-actions">
+        <button id="new-mod" type="button" class="sb-action"><span class="glyph" aria-hidden="true">+</span><span data-i18n="sidebar.newMod">New mod…</span></button>
+        <button id="add-open" type="button" class="sb-action" aria-haspopup="menu" aria-expanded="false" aria-controls="add-menu" data-testid="add-open"><span class="glyph" aria-hidden="true">↑</span><span data-i18n="sidebar.add">Add</span><span class="caret" aria-hidden="true">▾</span></button>
+      </div>
+      <div id="add-menu" class="files-menu" role="menu" hidden>
+        <button id="add-mod" type="button" role="menuitem" tabindex="-1" data-i18n="sidebar.addZip">Mod archive (.zip)…</button>
+        <button id="add-folder" type="button" role="menuitem" tabindex="-1" data-i18n="sidebar.addFolderItem">Folder: one mod or many…</button>
+      </div>
+      <div class="sidebar-search">
+        <input id="mod-search" type="search" placeholder="Search mods" aria-label="Search mods" autocomplete="off" data-i18n-placeholder="sidebar.search" data-i18n-aria-label="sidebar.search">
+        <span id="mod-count" class="count-pill" aria-live="polite"></span>
       </div>
       <input id="zip-input" type="file" accept=".zip,application/zip" multiple hidden>
       <input id="folder-input" type="file" webkitdirectory hidden>

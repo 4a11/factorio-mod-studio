@@ -9,7 +9,8 @@ public sealed record AvailableMod(
     ModVersion Version,
     string Path,
     bool IsDirectory,
-    IReadOnlyList<Dependency> Dependencies);
+    IReadOnlyList<Dependency> Dependencies,
+    string? Title = null);
 
 /// <summary>Scans a folder (typically Factorio's "mods" directory) for installed mods, both zips and unpacked folders.</summary>
 public static class ModSource
@@ -61,7 +62,7 @@ public static class ModSource
         {
             var info = ModInfo.Parse(infoJson);
             if (info.Name is null || !ModVersion.TryParse(info.Version, out var version)) return null;
-            return new AvailableMod(info.Name, version, path, isDirectory, info.ParsedDependencies.ToList());
+            return new AvailableMod(info.Name, version, path, isDirectory, info.ParsedDependencies.ToList(), info.Title);
         }
         catch (JsonException)
         {

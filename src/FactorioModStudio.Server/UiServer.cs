@@ -276,7 +276,7 @@ public static class UiServer
             gameData = catalog.GameDataDirectory
         });
 
-        app.MapGet("/api/mods", () => catalog.List().Select(e => new { e.Id, e.Name, e.Version, e.Source, e.Kind, e.Editable }));
+        app.MapGet("/api/mods", () => catalog.List().Select(e => new { e.Id, e.Name, e.Version, e.Source, e.Kind, e.Editable, e.Title, e.Thumbnail }));
 
         app.MapGet("/api/mods/{id}", (string id) =>
         {

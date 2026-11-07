@@ -9,7 +9,9 @@ namespace FactorioModStudio.Server;
 /// "installed" (a mods folder) or "game" (the Factorio data folder).</param>
 /// <param name="Kind">"directory" or "zip".</param>
 /// <param name="Editable">Only unpacked mods in the workspace and the project mod can be edited; everything else is read-only.</param>
-public sealed record CatalogEntry(string Id, string Name, string Version, string Source, string Kind, string Path, bool Editable);
+/// <param name="Title">The title from info.json, if any.</param>
+/// <param name="Thumbnail">An unpacked mod with a thumbnail.png; zips are left out so listing never unpacks them.</param>
+public sealed record CatalogEntry(string Id, string Name, string Version, string Source, string Kind, string Path, bool Editable, string? Title = null, bool Thumbnail = false);
 
 /// <summary>
 /// The set of mods the UI may show. Mods are addressed by opaque ids so the HTTP API never accepts arbitrary file system paths.
@@ -69,7 +71,7 @@ internal sealed class ModCatalog
             try
             {
                 var info = ModInfo.Load(projectInfo);
-                entries.Add(new CatalogEntry(ProjectId, info.Name ?? "(unnamed mod)", info.Version ?? "", "project", "directory", _context.ModDirectory, Editable: true));
+                entries.Add(new CatalogEntry(ProjectId, info.Name ?? "(unnamed mod)", info.Version ?? "", "project", "directory", _context.ModDirectory, Editable: true, info.Title, HasThumbnail(_context.ModDirectory)));
             }
             catch (System.Text.Json.JsonException)
             {
@@ -82,7 +84,7 @@ internal sealed class ModCatalog
             foreach (var mod in ModSource.Scan(WorkspaceDirectory).OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase).ThenByDescending(m => m.Version))
             {
                 if (string.Equals(Path.GetFullPath(mod.Path), Path.GetFullPath(_context.ModDirectory), PathComparison)) continue; // already listed as the project mod
-                entries.Add(new CatalogEntry(IdFor(mod.Path), mod.Name, mod.Version.ToString(), "workspace", mod.IsDirectory ? "directory" : "zip", mod.Path, Editable: mod.IsDirectory));
+                entries.Add(new CatalogEntry(IdFor(mod.Path), mod.Name, mod.Version.ToString(), "workspace", mod.IsDirectory ? "directory" : "zip", mod.Path, Editable: mod.IsDirectory, mod.Title, mod.IsDirectory && HasThumbnail(mod.Path)));
             }
         }
 
@@ -95,6 +97,8 @@ internal sealed class ModCatalog
         lock (_gate) _entries = map;
         return map.Values.ToList();
     }
+
+    private static bool HasThumbnail(string directory) => File.Exists(Path.Combine(directory, "thumbnail.png"));
 
     /// <summary>The game's data folder and installed-mod folders change rarely and can be large, so they are rescanned at most every few seconds.</summary>
     private List<CatalogEntry> ReadOnlyEntries()
@@ -112,7 +116,7 @@ internal sealed class ModCatalog
                 try
                 {
                     var info = ModInfo.Load(Path.Combine(dir, "info.json"));
-                    entries.Add(new CatalogEntry(IdFor(dir), info.Name ?? Path.GetFileName(dir), info.Version ?? "", "game", "directory", dir, Editable: false));
+                    entries.Add(new CatalogEntry(IdFor(dir), info.Name ?? Path.GetFileName(dir), info.Version ?? "", "game", "directory", dir, Editable: false, info.Title, HasThumbnail(dir)));
                 }
                 catch (System.Text.Json.JsonException) { /* not a readable mod folder */ }
             }
@@ -121,7 +125,7 @@ internal sealed class ModCatalog
         foreach (var folder in _modFolders)
         {
             foreach (var mod in ModSource.Scan(folder).OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase).ThenByDescending(m => m.Version))
-                entries.Add(new CatalogEntry(IdFor(mod.Path), mod.Name, mod.Version.ToString(), "installed", mod.IsDirectory ? "directory" : "zip", mod.Path, Editable: false));
+                entries.Add(new CatalogEntry(IdFor(mod.Path), mod.Name, mod.Version.ToString(), "installed", mod.IsDirectory ? "directory" : "zip", mod.Path, Editable: false, mod.Title, mod.IsDirectory && HasThumbnail(mod.Path)));
         }
 
         lock (_gate) _readOnly = (DateTime.UtcNow, entries);

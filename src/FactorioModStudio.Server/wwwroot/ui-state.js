@@ -1,4 +1,5 @@
-// Small, defensive memory of the user's layout choices: theme, sidebar width, bottom panel, last mod / tab, open editor tabs.
+// Small, defensive memory of the user's layout choices: theme, sidebar width, collapsed sidebar groups, bottom panel,
+// last mod / tab, open editor tabs.
 // One JSON document in localStorage under `fms.ui.v1`. Storage can be missing, blocked or hold garbage: every access is wrapped,
 // unknown shapes are ignored field by field, and the UI works exactly the same without it (the state then lives in memory only).
 // Plain ES module, no DOM access at import time.
@@ -7,6 +8,7 @@ export const STORAGE_KEY = 'fms.ui.v1';
 export const THEMES = ['auto', 'light', 'dark'];
 export const MOD_TABS = ['overview', 'files', 'prototypes', 'resources', 'locale', 'problems', 'build'];
 export const BOTTOM_TABS = ['problems', 'output', 'search'];
+export const SIDEBAR_GROUPS = ['project', 'workspace', 'game', 'installed'];
 export const SIDEBAR_MIN = 200;
 export const SIDEBAR_MAX = 480;
 export const SIDEBAR_DEFAULT = 280;
@@ -21,6 +23,7 @@ const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 export const defaults = () => ({
   theme: 'auto',
   sidebarWidth: null,
+  collapsedGroups: [],
   bottom: { open: false, height: null, tab: 'problems' },
   lastMod: null,
   lastTab: {},
@@ -47,6 +50,7 @@ export function sanitize(raw) {
   if (!isObject(raw)) return state;
   if (THEMES.includes(raw.theme)) state.theme = raw.theme;
   if (finite(raw.sidebarWidth)) state.sidebarWidth = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(raw.sidebarWidth)));
+  if (Array.isArray(raw.collapsedGroups)) state.collapsedGroups = SIDEBAR_GROUPS.filter((g) => raw.collapsedGroups.includes(g));
   if (isObject(raw.bottom)) {
     state.bottom.open = raw.bottom.open === true;
     if (finite(raw.bottom.height) && raw.bottom.height > 0) state.bottom.height = Math.round(raw.bottom.height);
@@ -90,6 +94,12 @@ export function createUiState(storage = defaultStorage()) {
     persist,
     setTheme(mode) { if (THEMES.includes(mode)) { state.theme = mode; persist(); } },
     setSidebarWidth(width) { state.sidebarWidth = finite(width) ? Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(width))) : null; persist(); },
+    setGroupCollapsed(group, collapsed) {
+      if (!SIDEBAR_GROUPS.includes(group)) return;
+      const others = state.collapsedGroups.filter((g) => g !== group);
+      state.collapsedGroups = collapsed ? [...others, group] : others;
+      persist();
+    },
     setBottom(patch) {
       if (typeof patch.open === 'boolean') state.bottom.open = patch.open;
       if (patch.height === null || (finite(patch.height) && patch.height > 0)) state.bottom.height = patch.height === null ? null : Math.round(patch.height);

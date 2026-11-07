@@ -177,28 +177,97 @@ async function route() {
 
 // ---------------------------------------------------------------- sidebar
 
+const SIDEBAR_GROUPS = ['project', 'workspace', 'game', 'installed'];
+
+/** A stable hue per mod name, so a mod without a thumbnail keeps the same coloured letter. */
+function hueOf(name) {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.codePointAt(0)) % 360;
+  return h;
+}
+
+function letterIcon(mod) {
+  const icon = el('span', { class: 'mod-icon letter', 'aria-hidden': 'true', text: (mod.name.match(/[A-Za-z0-9]/)?.[0] || '?').toUpperCase() });
+  icon.style.setProperty('--hue', String(hueOf(mod.name))); // CSSOM: the page's CSP has no inline styles
+  return icon;
+}
+
+function modIcon(mod) {
+  if (!mod.thumbnail) return letterIcon(mod);
+  const img = el('img', { class: 'mod-icon', alt: '', loading: 'lazy', decoding: 'async', src: `/api/mods/${encodeURIComponent(mod.id)}/file?path=thumbnail.png` });
+  img.addEventListener('error', () => img.replaceWith(letterIcon(mod)), { once: true });
+  return img;
+}
+
 function renderModList() {
   const list = $('#mod-list');
   list.replaceChildren();
-  const filter = state.modFilter.toLowerCase();
-  const groups = ['project', 'workspace', 'game', 'installed'];
+  const filter = state.modFilter.trim().toLowerCase();
+  const matches = (m) => !filter || m.name.toLowerCase().includes(filter) || (m.title || '').toLowerCase().includes(filter);
+  const collapsed = new Set(uiState.get().collapsedGroups);
+  let shown = 0;
 
-  for (const source of groups) {
-    const items = state.mods.filter((m) => m.source === source && m.name.toLowerCase().includes(filter));
+  for (const source of SIDEBAR_GROUPS) {
+    const items = state.mods.filter((m) => m.source === source && matches(m));
     if (!items.length) continue;
-    list.append(el('div', { class: 'group-label', text: t(`sidebar.group.${source}`) }));
+    shown += items.length;
+    // While searching every group with a match is open, whatever was collapsed before.
+    const open = !!filter || !collapsed.has(source);
+    const readOnly = items.every((m) => !m.editable);
+    const body = el('div', { class: 'mod-group-body', role: 'group', id: `mod-group-${source}`, hidden: !open });
+    list.append(el('button', {
+      class: 'mod-group', type: 'button', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': body.id, 'data-group': source,
+      onclick: () => { if (!filter) { uiState.setGroupCollapsed(source, open); renderModList(); } },
+    },
+    el('span', { class: 'chevron', 'aria-hidden': 'true' }),
+    el('span', { class: 'mod-group-name', text: t(`sidebar.group.${source}`) }),
+    readOnly ? el('span', { class: 'lock', title: t('sidebar.readOnly'), 'aria-label': t('sidebar.readOnly') }) : null,
+    el('span', { class: 'count-pill', text: String(items.length) })));
+
     for (const mod of items) {
-      list.append(el('button', {
-        class: 'mod-item', type: 'button', 'aria-current': mod.id === state.currentId ? 'true' : null,
+      const tip = [mod.title && mod.title !== mod.name ? mod.title : null, `${mod.name} ${mod.version}`.trim(), mod.editable ? null : t('sidebar.readOnly')]
+        .filter(Boolean).join('\n');
+      body.append(el('button', {
+        class: 'mod-item', type: 'button', title: tip, 'aria-current': mod.id === state.currentId ? 'true' : null,
         onclick: () => go(mod.id, state.tab),
-      }, el('span', { class: 'name', text: mod.name }), mod.editable && el('span', { class: 'pencil', title: t('sidebar.editable'), text: '✎' }), el('span', { class: 'ver', text: mod.version })));
+      }, modIcon(mod), el('span', { class: 'name', text: mod.name }), el('span', { class: 'ver', text: mod.version })));
     }
+    list.append(body);
   }
 
-  if (!list.children.length) {
-    list.append(el('p', { class: 'muted small', text: state.mods.length ? t('sidebar.noMatch') : t('sidebar.noMods', { folder: '<folder>' }) }));
+  const count = $('#mod-count');
+  count.textContent = state.mods.length ? (filter ? `${shown} / ${state.mods.length}` : String(state.mods.length)) : '';
+  count.hidden = !state.mods.length;
+
+  if (!shown) {
+    list.append(el('p', { class: 'muted small sidebar-empty', text: state.mods.length ? t('sidebar.noMatch') : t('sidebar.noMods', { folder: '<folder>' }) }));
   }
 }
+
+// "Add" menu: a mod archive, or a folder that may hold one mod or many.
+function setAddMenu(open, focusFirst = false) {
+  const menu = $('#add-menu');
+  const button = $('#add-open');
+  if (open) {
+    const r = button.getBoundingClientRect();
+    menu.hidden = false;
+    menu.style.setProperty('left', `${Math.round(r.left)}px`);
+    menu.style.setProperty('top', `${Math.round(r.bottom + 4)}px`);
+    if (focusFirst) menu.querySelector('[role="menuitem"]')?.focus();
+  } else menu.hidden = true;
+  button.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+$('#add-open').addEventListener('click', (e) => setAddMenu($('#add-menu').hidden, e.detail === 0));
+$('#add-menu').addEventListener('click', () => setAddMenu(false));
+$('#add-menu').addEventListener('keydown', (e) => {
+  const items = [...$('#add-menu').querySelectorAll('[role="menuitem"]')];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { e.preventDefault(); setAddMenu(false); $('#add-open').focus(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus(); }
+});
+document.addEventListener('pointerdown', (e) => {
+  if (!$('#add-menu').hidden && !e.target.closest('#add-menu, #add-open')) setAddMenu(false);
+});
 
 // ---------------------------------------------------------------- main content
 
