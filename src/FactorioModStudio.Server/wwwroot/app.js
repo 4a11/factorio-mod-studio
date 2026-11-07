@@ -994,13 +994,22 @@ async function runImports() {
     if (good.length) showImportStatus(() => ({ text: okText(good[0]) }));
     else showImportStatus(bad[0].failure);
   } else {
-    showImportStatus(() => {
-      const parts = [...good.map(okText), ...bad.map((o) => o.failure().text)];
-      return {
-        text: t('import.summary', { good: good.length, total, details: parts.join(' · ') }),
-        actions: bad.length === 1 ? bad[0].failure().actions : [],
-      };
-    });
+    // Short: the count and the names that failed; every line (failures first, with the reason) under "Details".
+    const shortName = (label) => zipIdentity(label)?.name || label;
+    showImportStatus(() => ({
+      text: t('import.summary', {
+        good: good.length, total,
+        details: bad.length ? t('import.notImported', { names: bad.map((o) => shortName(o.label)).join(', ') }) : '',
+      }).trim(),
+      actions: [
+        ...(bad.length === 1 ? bad[0].failure().actions : []),
+        el('details', { class: 'import-details' },
+          el('summary', { text: t('import.details') }),
+          el('ul', {},
+            ...bad.map((o) => el('li', { class: 'bad', text: o.failure().text })),
+            ...good.map((o) => el('li', { text: okText(o) })))),
+      ],
+    }));
   }
 }
 

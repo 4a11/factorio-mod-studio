@@ -241,6 +241,8 @@
   "import.imported": "Импортирован {name} {version} ({files})",
   "import.importedSkipped": "Импортирован {name} {version} ({files}, пропущено: {skipped})",
   "import.summary": "Импортировано {good} из {total}. {details}",
+  "import.details": "Подробнее",
+  "import.notImported": "Не импортированы: {names}.",
   "import.dropHint": "перетащите .zip-файл или папку с модом.",
   "import.folderLabel": "папка",
   "import.created": "Создан {name} {version} ({files})",

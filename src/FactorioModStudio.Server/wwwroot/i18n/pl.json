@@ -241,6 +241,8 @@
   "import.imported": "Zaimportowano {name} {version} ({files})",
   "import.importedSkipped": "Zaimportowano {name} {version} ({files}, pominięto: {skipped})",
   "import.summary": "Zaimportowano {good} z {total}. {details}",
+  "import.details": "Szczegóły",
+  "import.notImported": "Nie zaimportowano: {names}.",
   "import.dropHint": "upuść plik .zip lub folder moda.",
   "import.folderLabel": "folder",
   "import.created": "Utworzono {name} {version} ({files})",

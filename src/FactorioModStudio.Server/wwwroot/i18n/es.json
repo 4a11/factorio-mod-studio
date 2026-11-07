@@ -238,6 +238,8 @@
   "import.imported": "Importado {name} {version} ({files})",
   "import.importedSkipped": "Importado {name} {version} ({files}, {skipped} omitidos)",
   "import.summary": "{good} de {total} importados. {details}",
+  "import.details": "Detalles",
+  "import.notImported": "No importados: {names}.",
   "import.dropHint": "suelta un archivo .zip o una carpeta de mod.",
   "import.folderLabel": "carpeta",
   "import.created": "Creado {name} {version} ({files})",

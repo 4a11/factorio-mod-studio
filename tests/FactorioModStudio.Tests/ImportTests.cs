@@ -342,9 +342,9 @@ public class ImportTests
     [InlineData("nul.txt")]
     [InlineData("COM1.lua")]
     [InlineData("LPT9/EVIL.lua")]
-    [InlineData(".hidden/EVIL.lua")]
-    [InlineData("sub/.EVIL.lua")]
-    [InlineData(".git/config.json")]
+    [InlineData("../.EVIL.lua")]
+    [InlineData("sub/../../.hidden/EVIL.lua")]
+    [InlineData(".hidden\\..\\..\\EVIL.lua")]
     [InlineData("../")]
     [InlineData("sub//../../EVIL.lua")]
     public async Task Zip_UnsafeEntryPath_IsRejected_WithoutEscapingOrLeaving(string entryName)
@@ -364,6 +364,34 @@ public class ImportTests
             Assert.False(Directory.Exists(workspace.Combine("okmod")));
             AssertWorkspaceClean(workspace);
             canary.AssertIntact(workspace);
+        }
+    }
+
+    [Fact]
+    public async Task Zip_HiddenFilesAndFolders_AreSkipped_NotRejected()
+    {
+        using var project = new TempDir();
+        using var workspace = new TempDir();
+        await using var ui = await Start(project, workspace);
+        using var http = Client(ui);
+
+        // As in real mods from the portal: dotfiles left over from git, editors and macOS.
+        foreach (var prefix in new[] { "", "dotmod_1.0.0/" })
+        {
+            var r = await PostZip(http, Zip(Info("dotmod", prefix), (prefix + "data.lua", "-- ok"),
+                (prefix + ".gitignore", "*.zip"), (prefix + ".DS_Store", "x"), (prefix + ".github/workflows/ci.json", "{}"),
+                (prefix + "graphics/.hidden.png", "x")));
+
+            Assert.Equal(HttpStatusCode.Created, r.Status);
+            Assert.Equal(2, r.Json.GetProperty("files").GetInt32());
+            Assert.Equal(4, r.Json.GetProperty("skipped").GetInt32());
+            var root = workspace.Combine("dotmod");
+            Assert.True(File.Exists(Path.Combine(root, "data.lua")));
+            Assert.False(File.Exists(Path.Combine(root, ".gitignore")));
+            Assert.False(File.Exists(Path.Combine(root, ".DS_Store")));
+            Assert.False(Directory.Exists(Path.Combine(root, ".github")));
+            Assert.False(File.Exists(Path.Combine(root, "graphics", ".hidden.png")));
+            Directory.Delete(root, recursive: true);
         }
     }
 

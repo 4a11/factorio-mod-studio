@@ -372,6 +372,11 @@ button.linklike { background: none; border: 0; padding: 2px 4px; color: var(--ac
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .import-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 4px; padding: 8px 10px; font-size: 12.5px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 6px; overflow-wrap: anywhere; }
 .import-status[hidden], .drop-overlay[hidden] { display: none; }
+.import-details { flex-basis: 100%; order: 1; }
+.import-details summary { cursor: pointer; color: var(--accent); }
+.import-details ul { max-height: 40vh; overflow: auto; margin: 6px 0 0; padding-left: 18px; }
+.import-details li { margin-bottom: 2px; }
+.import-details li.bad { color: var(--error); }
 .drop-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .55); pointer-events: none; }
 .drop-overlay div { padding: 32px 48px; font-size: 22px; background: var(--surface); border: 3px dashed var(--accent); border-radius: 16px; }
 

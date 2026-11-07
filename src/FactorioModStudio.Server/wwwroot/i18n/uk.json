@@ -241,6 +241,8 @@
   "import.imported": "Імпортовано {name} {version} ({files})",
   "import.importedSkipped": "Імпортовано {name} {version} ({files}, пропущено: {skipped})",
   "import.summary": "Імпортовано {good} з {total}. {details}",
+  "import.details": "Докладніше",
+  "import.notImported": "Не імпортовано: {names}.",
   "import.dropHint": "перетягніть .zip-файл або теку з модом.",
   "import.folderLabel": "тека",
   "import.created": "Створено {name} {version} ({files})",

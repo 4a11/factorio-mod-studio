@@ -232,6 +232,8 @@
   "import.imported": "已导入 {name} {version}（{files}）",
   "import.importedSkipped": "已导入 {name} {version}（{files}，跳过 {skipped} 个）",
   "import.summary": "已导入 {good} / {total}。{details}",
+  "import.details": "详情",
+  "import.notImported": "未导入：{names}。",
   "import.dropHint": "请拖放 .zip 文件或模组文件夹。",
   "import.folderLabel": "文件夹",
   "import.created": "已创建 {name} {version}（{files}）",

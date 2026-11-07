@@ -235,6 +235,8 @@
   "import.imported": "{name} {version} importiert ({files})",
   "import.importedSkipped": "{name} {version} importiert ({files}, {skipped} übersprungen)",
   "import.summary": "{good} von {total} importiert. {details}",
+  "import.details": "Details",
+  "import.notImported": "Nicht importiert: {names}.",
   "import.dropHint": "ziehe eine .zip-Datei oder einen Mod-Ordner hierher.",
   "import.folderLabel": "Ordner",
   "import.created": "{name} {version} erstellt ({files})",

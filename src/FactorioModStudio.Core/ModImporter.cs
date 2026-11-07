@@ -106,6 +106,14 @@ public sealed class ModImporter
 
     public static bool IsAllowedFile(string fileName) => AllowedExtensions.Contains(Path.GetExtension(fileName));
 
+    /// <summary>A zip entry inside a hidden file or folder (a segment like ".git"), but no "..", backslash or other escape attempt.</summary>
+    private static bool IsHiddenEntry(string fullName)
+    {
+        if (fullName.Contains('\\')) return false;
+        var segments = fullName.TrimEnd('/').Split('/');
+        return !segments.Contains("..") && segments.Any(s => s.Length > 1 && s[0] == '.');
+    }
+
     public static bool IsValidModName(string? name) =>
         name is not null && ModName.IsMatch(name) && !Reserved.Contains(name);
 
@@ -245,7 +253,9 @@ public sealed class ModImporter
                 {
                     var fullName = entry.FullName;
                     var isDirectory = fullName.EndsWith('/');
-                    if (fullName.StartsWith("__MACOSX/", StringComparison.Ordinal))
+                    // Hidden files and folders (.gitignore, .DS_Store, .github/...) are skipped like in an uploaded folder;
+                    // skipping writes nothing. Paths that try to leave the mod are still rejected below.
+                    if (fullName.StartsWith("__MACOSX/", StringComparison.Ordinal) || IsHiddenEntry(fullName))
                     {
                         if (!isDirectory) skipped++;
                         continue;
