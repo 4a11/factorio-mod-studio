@@ -5,7 +5,7 @@
 import { createLocaleView } from '/locale-view.js';
 import { createBuildView } from '/build-view.js';
 import { createEditorTabs } from '/editor-tabs.js';
-import { createUiState, SIDEBAR_DEFAULT, SIDEBAR_MIN, SIDEBAR_MAX } from '/ui-state.js';
+import { createUiState, SIDEBAR_DEFAULT, SIDEBAR_MIN, SIDEBAR_MAX, VIEWER_DEFAULT, VIEWER_MIN, VIEWER_MAX } from '/ui-state.js';
 import { createTheme } from '/theme.js';
 import { createSearchPanel } from '/search-panel.js';
 import { createBottomPanel } from '/bottom-panel.js';
@@ -178,7 +178,13 @@ async function route() {
 
 // ---------------------------------------------------------------- sidebar
 
-const SIDEBAR_GROUPS = ['project', 'workspace', 'game', 'installed'];
+const SIDEBAR_GROUPS = ['pinned', 'project', 'workspace', 'game', 'installed'];
+
+const isPinned = (id) => uiState.get().pinnedMods.includes(id);
+function togglePin(id) {
+  uiState.setPinned(id, !isPinned(id));
+  renderModList();
+}
 
 /** A stable hue per mod name, so a mod without a thumbnail keeps the same coloured letter. */
 function hueOf(name) {
@@ -208,19 +214,26 @@ function renderModList() {
   const collapsed = new Set(uiState.get().collapsedGroups);
   let shown = 0;
 
+  // Pinned mods stand in their own group at the top, in the order they were pinned, and not in their usual group.
+  const pinned = uiState.get().pinnedMods;
+  const groupItems = (source) => source === 'pinned'
+    ? pinned.map((id) => state.mods.find((m) => m.id === id)).filter((m) => m && matches(m))
+    : state.mods.filter((m) => m.source === source && !pinned.includes(m.id) && matches(m));
+
   for (const source of SIDEBAR_GROUPS) {
-    const items = state.mods.filter((m) => m.source === source && matches(m));
+    const items = groupItems(source);
     if (!items.length) continue;
     shown += items.length;
     // While searching every group with a match is open, whatever was collapsed before.
     const open = !!filter || !collapsed.has(source);
-    const readOnly = items.every((m) => !m.editable);
+    const readOnly = source !== 'pinned' && items.every((m) => !m.editable);
     const body = el('div', { class: 'mod-group-body', role: 'group', id: `mod-group-${source}`, hidden: !open });
     list.append(el('button', {
       class: 'mod-group', type: 'button', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': body.id, 'data-group': source,
       onclick: () => { if (!filter) { uiState.setGroupCollapsed(source, open); renderModList(); } },
     },
     el('span', { class: 'chevron', 'aria-hidden': 'true' }),
+    source === 'pinned' ? el('span', { class: 'pin-icon', 'aria-hidden': 'true' }) : null,
     el('span', { class: 'mod-group-name', text: t(`sidebar.group.${source}`) }),
     readOnly ? el('span', { class: 'lock', title: t('sidebar.readOnly'), 'aria-label': t('sidebar.readOnly') }) : null,
     el('span', { class: 'count-pill', text: String(items.length) })));
@@ -228,10 +241,17 @@ function renderModList() {
     for (const mod of items) {
       const tip = [mod.title && mod.title !== mod.name ? mod.title : null, `${mod.name} ${mod.version}`.trim(), mod.editable ? null : t('sidebar.readOnly')]
         .filter(Boolean).join('\n');
-      body.append(el('button', {
-        class: 'mod-item', type: 'button', title: tip, 'aria-current': mod.id === state.currentId ? 'true' : null,
-        onclick: () => go(mod.id, state.tab),
-      }, modIcon(mod), el('span', { class: 'name', text: mod.name }), el('span', { class: 'ver', text: mod.version })));
+      const pinnedNow = pinned.includes(mod.id);
+      body.append(el('div', { class: 'mod-row' + (pinnedNow ? ' pinned' : ''), 'data-mod': mod.id },
+        el('button', {
+          class: 'mod-item', type: 'button', title: tip, 'aria-current': mod.id === state.currentId ? 'true' : null,
+          onclick: () => go(mod.id, state.tab),
+        }, modIcon(mod), el('span', { class: 'name', text: mod.name }), el('span', { class: 'ver', text: mod.version })),
+        el('button', {
+          class: 'pin', type: 'button', 'aria-pressed': pinnedNow ? 'true' : 'false', 'data-testid': 'pin-mod',
+          title: t(pinnedNow ? 'sidebar.unpin' : 'sidebar.pin'), 'aria-label': t(pinnedNow ? 'sidebar.unpin' : 'sidebar.pin') + ': ' + mod.name,
+          onclick: () => togglePin(mod.id),
+        }, el('span', { class: 'pin-icon', 'aria-hidden': 'true' }))));
     }
     list.append(body);
   }
@@ -581,6 +601,49 @@ setSidebarWidth(uiState.get().sidebarWidth ?? SIDEBAR_DEFAULT, false);
   sidebarSeparator.addEventListener('dblclick', () => setSidebarWidth(SIDEBAR_DEFAULT));
 }
 
+// Editor width: its share of the area right of the sidebar, so it keeps its proportion when the window is resized.
+const viewerSeparator = $('#viewer-resize');
+let viewerFraction = VIEWER_DEFAULT;
+function setViewerFraction(fraction, save = true) {
+  viewerFraction = Math.max(VIEWER_MIN, Math.min(VIEWER_MAX, fraction));
+  $('.app').style.setProperty('--viewer-frac', viewerFraction.toFixed(3));
+  viewerSeparator.setAttribute('aria-valuenow', String(Math.round(viewerFraction * 100)));
+  if (save) uiState.setViewerFraction(Math.abs(viewerFraction - VIEWER_DEFAULT) < 0.005 ? null : viewerFraction);
+}
+setViewerFraction(uiState.get().viewerFraction ?? VIEWER_DEFAULT, false);
+{
+  let drag = null;
+  const fractionAt = (clientX) => {
+    const app = $('.app').getBoundingClientRect();
+    const area = app.width - sidebarWidth - 6;
+    return area > 0 ? (app.right - clientX) / area : viewerFraction;
+  };
+  viewerSeparator.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button > 0) return;
+    drag = true;
+    viewerSeparator.setPointerCapture?.(e.pointerId);
+    viewerSeparator.classList.add('dragging');
+    e.preventDefault();
+  });
+  viewerSeparator.addEventListener('pointermove', (e) => { if (drag) setViewerFraction(fractionAt(e.clientX), false); });
+  const end = (e) => {
+    if (!drag) return;
+    drag = null;
+    viewerSeparator.classList.remove('dragging');
+    try { viewerSeparator.releasePointerCapture?.(e.pointerId); } catch { /* already released */ }
+    setViewerFraction(viewerFraction);
+  };
+  viewerSeparator.addEventListener('pointerup', end);
+  viewerSeparator.addEventListener('pointercancel', end);
+  viewerSeparator.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); setViewerFraction(viewerFraction + 0.03); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); setViewerFraction(viewerFraction - 0.03); }
+    else if (e.key === 'Home') { e.preventDefault(); setViewerFraction(VIEWER_MAX); }
+    else if (e.key === 'End') { e.preventDefault(); setViewerFraction(VIEWER_MIN); }
+  });
+  viewerSeparator.addEventListener('dblclick', () => setViewerFraction(VIEWER_DEFAULT));
+}
+
 const searchPanel = createSearchPanel({
   api, el,
   getModId: () => state.currentId,
@@ -694,6 +757,10 @@ function commandList() {
   }
   add('new-mod', t('ui.cmd.newMod'), openNewModDialog);
   if (currentMod()?.editable) add('add-content', t('ui.cmd.addContent'), openContentDialog);
+  if (currentMod()) {
+    const mod = currentMod();
+    add('pin-mod', t(isPinned(mod.id) ? 'ui.cmd.unpinMod' : 'ui.cmd.pinMod', { name: mod.name }), () => togglePin(mod.id));
+  }
   add('add-mod', t('ui.cmd.addMod'), () => $('#zip-input').click());
   add('add-folder', t('ui.cmd.addFolder'), () => $('#folder-input').click());
   add('toggle-bottom', t('ui.cmd.togglePanel'), () => bottom.toggle(), shortcutText('Ctrl+J'));

@@ -261,8 +261,9 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
       const first = treeEl.querySelector('.files-row');
       if (first) first.tabIndex = 0; // keep the tree reachable with Tab
     }
+    // replaceChildren() turns null into the text "null", so the optional note is spread in only when it exists.
     body.replaceChildren(rows.length ? treeEl : empty(),
-      rows.length > MAX_ROWS ? el('div', { class: 'muted small', text: t('files.moreNotShown', { n: rows.length - MAX_ROWS }) }) : null,
+      ...(rows.length > MAX_ROWS ? [el('div', { class: 'muted small', text: t('files.moreNotShown', { n: rows.length - MAX_ROWS }) })] : []),
       ...footer);
     wireTree();
 

@@ -1,4 +1,4 @@
-// Small, defensive memory of the user's layout choices: theme, sidebar width, collapsed sidebar groups, bottom panel,
+// Small, defensive memory of the user's layout choices: theme, sidebar width, collapsed sidebar groups, pinned mods, bottom panel,
 // last mod / tab, open editor tabs.
 // One JSON document in localStorage under `fms.ui.v1`. Storage can be missing, blocked or hold garbage: every access is wrapped,
 // unknown shapes are ignored field by field, and the UI works exactly the same without it (the state then lives in memory only).
@@ -8,10 +8,14 @@ export const STORAGE_KEY = 'fms.ui.v1';
 export const THEMES = ['auto', 'light', 'dark'];
 export const MOD_TABS = ['overview', 'files', 'prototypes', 'resources', 'locale', 'problems', 'build'];
 export const BOTTOM_TABS = ['problems', 'output', 'search'];
-export const SIDEBAR_GROUPS = ['project', 'workspace', 'game', 'installed'];
+export const SIDEBAR_GROUPS = ['pinned', 'project', 'workspace', 'game', 'installed'];
+const MAX_PINNED = 100;
 export const SIDEBAR_MIN = 200;
 export const SIDEBAR_MAX = 480;
 export const SIDEBAR_DEFAULT = 280;
+export const VIEWER_MIN = 0.2;
+export const VIEWER_MAX = 0.8;
+export const VIEWER_DEFAULT = 0.55;
 const MAX_MODS = 40;
 const MAX_PATHS = 20;
 const MAX_RECENT = 30;
@@ -23,7 +27,9 @@ const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 export const defaults = () => ({
   theme: 'auto',
   sidebarWidth: null,
+  viewerFraction: null,
   collapsedGroups: [],
+  pinnedMods: [],
   bottom: { open: false, height: null, tab: 'problems' },
   lastMod: null,
   lastTab: {},
@@ -50,6 +56,8 @@ export function sanitize(raw) {
   if (!isObject(raw)) return state;
   if (THEMES.includes(raw.theme)) state.theme = raw.theme;
   if (finite(raw.sidebarWidth)) state.sidebarWidth = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(raw.sidebarWidth)));
+  if (finite(raw.viewerFraction)) state.viewerFraction = Math.min(VIEWER_MAX, Math.max(VIEWER_MIN, raw.viewerFraction));
+  state.pinnedMods = pathList(raw.pinnedMods, MAX_PINNED).filter((id) => id.length <= 512);
   if (Array.isArray(raw.collapsedGroups)) state.collapsedGroups = SIDEBAR_GROUPS.filter((g) => raw.collapsedGroups.includes(g));
   if (isObject(raw.bottom)) {
     state.bottom.open = raw.bottom.open === true;
@@ -94,6 +102,14 @@ export function createUiState(storage = defaultStorage()) {
     persist,
     setTheme(mode) { if (THEMES.includes(mode)) { state.theme = mode; persist(); } },
     setSidebarWidth(width) { state.sidebarWidth = finite(width) ? Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(width))) : null; persist(); },
+    setViewerFraction(fraction) { state.viewerFraction = finite(fraction) ? Math.min(VIEWER_MAX, Math.max(VIEWER_MIN, fraction)) : null; persist(); },
+    /** Pins (to the end of the pinned list) or unpins a mod by its id. */
+    setPinned(id, pinned) {
+      if (!isString(id, 512)) return;
+      const others = state.pinnedMods.filter((p) => p !== id);
+      state.pinnedMods = pinned ? [...others, id].slice(-MAX_PINNED) : others;
+      persist();
+    },
     setGroupCollapsed(group, collapsed) {
       if (!SIDEBAR_GROUPS.includes(group)) return;
       const others = state.collapsedGroups.filter((g) => g !== group);

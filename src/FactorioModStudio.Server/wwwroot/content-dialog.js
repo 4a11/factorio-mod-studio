@@ -104,7 +104,7 @@ export function createContentDialog({ el, api, onAdded }) {
     if (!p.ok) { preview.textContent = p.error; return; }
     preview.replaceChildren(
       el('div', { text: t('content.creates', { files: p.result.create.join(', ') }) }),
-      p.result.change.length ? el('div', { class: 'muted', text: t('content.changes', { files: p.result.change.join(', ') }) }) : null);
+      ...(p.result.change.length ? [el('div', { class: 'muted', text: t('content.changes', { files: p.result.change.join(', ') }) })] : []));
   }
 
   function request(dryRun) {
