@@ -5,7 +5,7 @@
 import { t } from '/i18n.js';
 
 export const CATEGORIES = ['combat', 'logistics', 'production', 'vehicles'];
-const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+const NAME = /^[A-Za-z0-9_-]{1,200}$/;
 const PREVIEW_DELAY = 250;
 
 let blocksPromise = null;

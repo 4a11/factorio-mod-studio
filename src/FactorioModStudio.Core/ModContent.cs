@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace FactorioModStudio.Core;
 
 /// <param name="Block">Id of one of <see cref="ModContent.Blocks"/>.</param>
-/// <param name="Name">Prototype name: letters, digits, "_" and "-", starting with a letter or digit.</param>
+/// <param name="Name">Prototype name: letters, digits, "_" and "-" (like mod names, which it usually starts with).</param>
 /// <param name="Title">Optional display name; defaults to the humanized name.</param>
 public sealed record ContentRequest(string Block, string Name, string? Title = null);
 
@@ -43,7 +43,7 @@ public static class ModContent
     public const int MaxNameLength = 200;
     public const int MaxTitleLength = 100;
 
-    private static readonly Regex NamePattern = new(@"^[A-Za-z0-9][A-Za-z0-9_-]*$", RegexOptions.Compiled);
+    private static readonly Regex NamePattern = new(@"^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
     private static readonly Regex Token = new("@@(id|title|icons|sprites)@@", RegexOptions.Compiled);
     private static readonly object Gate = new();
 
@@ -80,7 +80,7 @@ public static class ModContent
         var name = (request.Name ?? "").Trim();
         if (name.Length == 0 || name.Length > MaxNameLength || !NamePattern.IsMatch(name))
             throw new ContentException(ContentError.InvalidName,
-                $"A prototype name has 1-{MaxNameLength} letters, digits, \"_\" or \"-\" and starts with a letter or digit.");
+                $"A prototype name has 1-{MaxNameLength} letters, digits, \"_\" or \"-\".");
         var title = CleanTitle(request.Title) ?? ModScaffolder.Humanize(name);
 
         var infoPath = Path.Combine(root, "info.json");

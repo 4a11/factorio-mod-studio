@@ -19,7 +19,7 @@
   "content.title": "Display name",
   "content.pick": "Choose a block.",
   "content.checking": "Checking…",
-  "content.badName": "Letters, digits, \"_\" and \"-\", starting with a letter or digit.",
+  "content.badName": "Letters, digits, \"_\" and \"-\".",
   "content.creates": "Creates: {files}",
   "content.changes": "Changes: {files}",
   "content.add": "Add",

@@ -19,7 +19,7 @@
   "content.title": "Anzeigename",
   "content.pick": "Wählen Sie einen Baustein.",
   "content.checking": "Wird geprüft…",
-  "content.badName": "Buchstaben, Ziffern, „_“ und „-“, beginnend mit Buchstabe oder Ziffer.",
+  "content.badName": "Buchstaben, Ziffern, „_“ und „-“.",
   "content.creates": "Neu: {files}",
   "content.changes": "Geändert: {files}",
   "content.add": "Hinzufügen",

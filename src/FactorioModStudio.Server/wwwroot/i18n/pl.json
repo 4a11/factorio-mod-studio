@@ -19,7 +19,7 @@
   "content.title": "Wyświetlana nazwa",
   "content.pick": "Wybierz blok.",
   "content.checking": "Sprawdzanie…",
-  "content.badName": "Litery, cyfry, „_” i „-”, zaczynając od litery lub cyfry.",
+  "content.badName": "Litery, cyfry, „_” i „-”.",
   "content.creates": "Zostanie utworzone: {files}",
   "content.changes": "Zostanie zmienione: {files}",
   "content.add": "Dodaj",

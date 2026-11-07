@@ -19,7 +19,7 @@
   "content.title": "Отображаемое название",
   "content.pick": "Выберите блок.",
   "content.checking": "Проверка…",
-  "content.badName": "Буквы, цифры, «_» и «-», начиная с буквы или цифры.",
+  "content.badName": "Буквы, цифры, «_» и «-».",
   "content.creates": "Будет создано: {files}",
   "content.changes": "Будет изменено: {files}",
   "content.add": "Добавить",

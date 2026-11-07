@@ -19,7 +19,7 @@
   "content.title": "Назва, що відображається",
   "content.pick": "Виберіть блок.",
   "content.checking": "Перевірка…",
-  "content.badName": "Літери, цифри, «_» і «-», починаючи з літери чи цифри.",
+  "content.badName": "Літери, цифри, «_» і «-».",
   "content.creates": "Буде створено: {files}",
   "content.changes": "Буде змінено: {files}",
   "content.add": "Додати",

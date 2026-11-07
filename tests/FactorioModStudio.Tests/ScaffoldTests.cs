@@ -1205,7 +1205,7 @@ public class ScaffoldTests
         Assert.Equal(title, doc.RootElement.GetProperty("title").GetString());
         Assert.Equal("Ünïcødé ✓", doc.RootElement.GetProperty("author").GetString());
         Assert.Equal("100% {{x}} ]]", doc.RootElement.GetProperty("description").GetString());
-        Assert.True(File.Exists(Path.Combine(folder, "graphics")) || Directory.Exists(Path.Combine(folder, "graphics")));
+        Assert.True(File.Exists(Path.Combine(folder, "prototypes", "opt-first-chest.lua")));
         Assert.True(ModValidator.Validate(folder).Issues.Count == 0);
     }
 

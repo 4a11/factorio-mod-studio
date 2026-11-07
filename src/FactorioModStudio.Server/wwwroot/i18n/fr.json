@@ -19,7 +19,7 @@
   "content.title": "Nom affiché",
   "content.pick": "Choisissez un bloc.",
   "content.checking": "Vérification…",
-  "content.badName": "Lettres, chiffres, « _ » et « - », en commençant par une lettre ou un chiffre.",
+  "content.badName": "Lettres, chiffres, « _ » et « - ».",
   "content.creates": "Crée : {files}",
   "content.changes": "Modifie : {files}",
   "content.add": "Ajouter",

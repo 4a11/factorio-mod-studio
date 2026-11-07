@@ -19,7 +19,7 @@
   "content.title": "显示名称",
   "content.pick": "请选择一个构件。",
   "content.checking": "正在检查…",
-  "content.badName": "字母、数字、“_”和“-”，以字母或数字开头。",
+  "content.badName": "字母、数字、“_”和“-”。",
   "content.creates": "将创建：{files}",
   "content.changes": "将修改：{files}",
   "content.add": "添加",

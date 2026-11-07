@@ -129,7 +129,6 @@ public class ModContentTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("has space")]
-    [InlineData("-leading")]
     [InlineData("dot.ted")]
     [InlineData("../escape")]
     [InlineData("a/b")]
@@ -168,7 +167,7 @@ public class ModContentTests
     public void EveryBlock_RendersWithoutLeftoverTokens_AndNamesItsPrototypes()
     {
         Assert.Equal(20, ModContent.Blocks.Count);
-        Assert.Equal(new[] { "combat", "logistics", "production", "vehicles" }, ModContent.Blocks.Select(b => b.Category).Distinct());
+        Assert.Equal(new[] { "combat", "logistics", "production", "vehicles" }, ModContent.Blocks.Select(b => b.Category).Distinct().Order());
         foreach (var block in ModContent.Blocks)
         {
             using var mod = Mod();

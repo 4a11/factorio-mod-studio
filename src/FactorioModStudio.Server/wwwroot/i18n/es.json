@@ -19,7 +19,7 @@
   "content.title": "Nombre visible",
   "content.pick": "Elige un bloque.",
   "content.checking": "Comprobando…",
-  "content.badName": "Letras, dígitos, «_» y «-», empezando por letra o dígito.",
+  "content.badName": "Letras, dígitos, «_» y «-».",
   "content.creates": "Se crea: {files}",
   "content.changes": "Se modifica: {files}",
   "content.add": "Añadir",
