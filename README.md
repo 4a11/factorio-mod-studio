@@ -3,11 +3,12 @@
 **English** · [Русский](README.ru.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [Українська](README.uk.md) · [Polski](README.pl.md) · [Français](README.fr.md) · [Español](README.es.md)
 
 **A local workbench for [Factorio](https://factorio.com) mod authors.** Create a mod, catch its mistakes before the game does,
-translate it, pack a clean release and test-run it with an isolated set of mods: from the command line or from a page in your
-browser. It runs entirely on your machine and works next to your usual code editor.
+translate it, pack a clean release and test-run it with an isolated set of mods: in a desktop window of its own, from the
+command line or in your browser. It runs entirely on your machine and works next to your usual code editor.
 
 > **Early version (0.1).** The logic is covered by tests; launching the real game (`run`, `smoke`) works with Factorio 2.1 on
 > Windows. Other versions and systems have not been tried yet. Feedback and bug reports are very welcome.
+> The desktop app is new: it works on Windows; Linux and macOS have not been tried yet.
 > Unofficial community project, not affiliated with Wube Software. "Factorio" is a trademark of Wube Software Ltd.
 
 ![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
@@ -20,7 +21,8 @@ browser. It runs entirely on your machine and works next to your usual code edit
 
 - **Start a mod in seconds.** Templates (empty, item + recipe, entity, runtime script) for Factorio 2.0 and 2.1 (all but the entity one also for 1.1) that pass every check out of the box.
 - **Catch mistakes early.** `info.json`, changelog, thumbnail, broken `__mod__/` paths and `require`s, missing or broken translations: all with file and line.
-- **See inside any mod.** A browser studio with the file tree, a Lua editor with live checks, the prototypes and recipes the mod defines, its graphics and sounds, and the files nothing uses.
+- **See inside any mod.** The studio, in a window of its own or in the browser, with the file tree, a Lua editor with live checks, the prototypes and recipes the mod defines, its graphics and sounds, and the files nothing uses.
+- **Bring mods in safely.** Add a mod or a whole folder of mods, such as Factorio's own `mods` folder: everything is checked before anything is copied.
 - **Translate comfortably.** Side-by-side editor with progress per language, placeholder checks and suggestions from your own earlier translations.
 - **Ship a clean release.** `NAME_VERSION.zip` with the right folder layout, built only when the mod validates.
 - **Test without touching your game.** Run Factorio or a headless smoke test with an isolated mod set per profile; your normal mods folder is never touched. Works in CI.
@@ -31,10 +33,11 @@ browser. It runs entirely on your machine and works next to your usual code edit
 Where the project stands and what comes next. Versions are goals, not dates; the order follows feedback, so
 [open an issue](https://github.com/4a11/factorio-mod-studio/issues) if something here (or missing here) matters to you.
 
-**0.1: now.** The CLI (`new`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) and the browser studio
-(Overview, Files, Prototypes, Resources, Localization, Problems, Build) in 8 interface languages.
+**0.1: now.** The CLI (`new`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) and the studio, in a desktop window or in the
+browser (Overview, Files, Prototypes, Resources, Localization, Problems, Build) in 8 interface languages.
 
 **0.2: proven against the real game**
+- [ ] the desktop app everywhere: in the release archives for Windows, Linux and macOS, and one program with the CLI (a double click opens the window); *works on Windows, built from source*
 - [ ] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1 on Windows, Linux and macOS, including the headless server; *2.1 on Windows works*
 - [ ] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
 - [ ] the prototypes the templates generate (entity, runtime script) loaded in the game, not only written from the documentation
@@ -69,7 +72,15 @@ real error in a wall of log output, translations that drift apart. Factorio Mod 
 
 ## Quick start
 
-**The easy way:** download the archive for your system from [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) and unpack it; no .NET needed. On Windows,
+**Desktop app:** the studio in a window of its own. For now it is built from source (needs the [.NET 10 SDK](https://dotnet.microsoft.com/download)); the release archives get it with the next version.
+
+```sh
+git clone https://github.com/4a11/factorio-mod-studio
+cd factorio-mod-studio
+dotnet run --project src/FactorioModStudio.Desktop -c Release   # your mods go into ./mods
+```
+
+**Without .NET:** download the archive for your system from [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) and unpack it; no .NET needed. On Windows,
 double-click `fmstudio.exe` and the studio opens in your browser; elsewhere run `./fmstudio ui`.
 
 **As a .NET tool** (needs the [.NET 10 SDK](https://dotnet.microsoft.com/download)):
@@ -103,13 +114,17 @@ matches the mod's `factorio_version` is used.
 ## Documentation
 
 - [Install](#install) · [Commands](#commands) · [Creating a mod](#creating-a-mod) · [Several Factorio versions](#several-factorio-versions) · [Configuration](#configuration) · [Smoke test](#smoke-test)
-- The browser studio: [overview and tabs](#graphical-mod-browser) · [Build tab](#build-tab-validate-pack-smoke-test-and-run) · [Files tab](#files-tab) · [Search](#search-api) · [Localization editor](#localization-editor)
+- The studio: [desktop app, overview and tabs](#graphical-mod-browser) · [Build tab](#build-tab-validate-pack-smoke-test-and-run) · [Files tab](#files-tab) · [Search](#search-api) · [Localization editor](#localization-editor)
 - [Validation rules](#validation-rules) · [Translating the interface](#translating-the-interface) · [CI example](#ci-example) · [Development](#development) · [Architecture](#architecture) · [Roadmap](#roadmap)
 
 ## Install
 
 Ready-to-run builds for Windows, Linux and macOS (no .NET needed) are on the [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) page: unpack the
-archive and put the folder on your `PATH`. Building from source requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+archive and put the folder on your `PATH`. They hold the `fmstudio` command, whose studio opens in the browser; the desktop app
+joins them with the next release. Building from source requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+
+The desktop app: `dotnet run --project src/FactorioModStudio.Desktop -c Release`, or `dotnet build` it and start
+`src/FactorioModStudio.Desktop/bin/Release/net10.0/FactorioModStudio` (`.exe` on Windows). The command-line tool:
 
 ```sh
 dotnet pack src/FactorioModStudio.Cli -c Release -o ./nupkg
@@ -271,6 +286,13 @@ fmstudio ui --mods <mods-folder>           # ...plus installed mods (read-only; 
 ```
 
 Opens a local page where you pick a mod and look inside it.
+
+**Desktop app.** `FactorioModStudio` (the project `src/FactorioModStudio.Desktop`) shows the same studio in a window of its own
+(Avalonia 12), without a browser: the page is drawn by the system's web engine (WebView2 on Windows, WebKit on macOS, WebKitGTK on
+Linux). Like `fmstudio ui` it serves the studio on the loopback interface only, here on a free port, with the folder it is started
+in as the project and that folder's `mods` as the workspace (created when missing). Closing the window stops everything, Factorio
+processes started from the Build tab included. The web engine keeps its data in `<user data dir>/FactorioModStudio/webview`.
+It has been tried on Windows; on Linux the WebKitGTK package (`webkit2gtk-4.1`) is expected to be needed, which is not verified yet.
 
 **Workspace.** Put your mods (one unpacked folder each, with an `info.json`) into the workspace folder, `mods` by default
 (set `"workspace"` in `fmstudio.json` or pass `--workspace`). They show up under *Workspace* in the sidebar and are watched
@@ -618,23 +640,24 @@ English README is the reference.
 ```sh
 dotnet build
 dotnet test
-node --test tests/js/*.test.mjs   # the browser-side logic: highlighter, palette, files tree, i18n dictionaries (Node 18+, no dependencies)
+node --test tests/js/*.test.mjs   # the browser-side logic: highlighter, palette, files tree, import pre-check, i18n dictionaries (Node 18+, no dependencies)
 ```
 
 If `fmstudio ui` is running it locks the CLI's build output; build the tests elsewhere with
 `dotnet test --artifacts-path <folder>` and set `FMS_REPO_ROOT=<repository>` so the tests can find the repository.
 
 * `src/FactorioModStudio.Core` — library: validation, packaging, profiles, log parser, smoke test, mod inspector (Lua reading, locale, zip extraction). No console or HTTP code.
-* `src/FactorioModStudio.Server` — local web host: a JSON API over Core (read, plus guarded writes), live change events (server-sent events) and the embedded UI (`wwwroot`, plain HTML/CSS/JS, no build step). The page is a set of ES modules: `app.js` (routing, sidebar, Overview and Problems), one module per bigger tab (`files-view.js` with the pure `files-logic.js`, `prototypes-view.js`, `resources-view.js`, `locale-view.js`, `build-view.js`), `editor-tabs.js`, `action-bar.js`, `bottom-panel.js`, `search-panel.js`, `palette.js` with the pure `palette-logic.js`, `theme.js` / `theme-init.js` and `ui-state.js`. A new module has to be added to `StaticScripts` in `UiServer.cs`.
+* `src/FactorioModStudio.Server` — local web host: a JSON API over Core (read, plus guarded writes), live change events (server-sent events) and the embedded UI (`wwwroot`, plain HTML/CSS/JS, no build step). The page is a set of ES modules: `app.js` (routing, sidebar, Overview and Problems, importing mods with the pure pre-check in `import-logic.js`), one module per bigger tab (`files-view.js` with the pure `files-logic.js`, `prototypes-view.js`, `resources-view.js`, `locale-view.js`, `build-view.js`), `editor-tabs.js`, `action-bar.js`, `bottom-panel.js`, `search-panel.js`, `palette.js` with the pure `palette-logic.js`, `theme.js` / `theme-init.js` and `ui-state.js`. A new module has to be added to `StaticScripts` in `UiServer.cs`.
 * `src/FactorioModStudio.Cli` — the `fmstudio` command-line tool; a thin layer over Core and Server.
+* `src/FactorioModStudio.Desktop` — the desktop app: an Avalonia window with the system's web view over an in-process Server; no logic of its own.
 * `tests/FactorioModStudio.Tests` — xUnit tests; Factorio itself is replaced by a fake process runner.
 * `examples/hello-mod` — a minimal mod that passes all checks.
 
 ## Architecture
 
 ```
-clients:   CLI  |  web UI (browser)  |  future: editor extension, desktop shell
-hosts:     CLI (in-process)  |  Server (JSON API)
+clients:   desktop app (window)  |  web UI (browser)  |  CLI  |  future: editor extension
+hosts:     Server (JSON API; inside the desktop app or `fmstudio ui`)  |  CLI (in-process)
 core:      FactorioModStudio.Core
 ```
 

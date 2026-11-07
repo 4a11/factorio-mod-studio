@@ -3,9 +3,10 @@
 [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · **简体中文** · [Українська](README.uk.md) · [Polski](README.pl.md) · [Français](README.fr.md) · [Español](README.es.md)
 
 **为 [Factorio](https://factorio.com) 模组作者打造的本地工作台。** 创建模组、在游戏之前发现它的错误、翻译它、打包干净的发行版，
-并用隔离的模组组合试运行——既可以在命令行中操作，也可以在浏览器页面中操作。一切都在你自己的电脑上运行，与你常用的代码编辑器并行使用。
+并用隔离的模组组合试运行——可以在独立的应用窗口中、命令行中或浏览器中操作。一切都在你自己的电脑上运行，与你常用的代码编辑器并行使用。
 
 > **早期版本（0.1）。** 逻辑已有测试覆盖；启动真实游戏（`run`、`smoke`）在 Windows 上的 Factorio 2.1 中可以正常工作，其他版本和系统尚未验证。非常欢迎反馈和错误报告。
+> 桌面应用是新功能：已在 Windows 上可用，Linux 和 macOS 尚未验证。
 > 非官方社区项目，与 Wube Software 无关。“Factorio”是 Wube Software Ltd. 的商标。
 >
 > 这是简介部分的翻译。完整文档为[英文版](README.md#documentation)；如有出入，以英文 README 为准。
@@ -20,7 +21,8 @@
 
 - **几秒钟创建模组。** 适用于 Factorio 2.0 和 2.1 的模板（空模组、物品 + 配方、实体、运行时脚本；除实体外也支持 1.1），开箱即可通过所有检查。
 - **在游戏之前发现错误。** `info.json`、更新日志、缩略图、损坏的 `__mod__/` 路径和 `require`、缺失或有误的翻译——都附带文件和行号。
-- **查看任意模组的内部。** 浏览器中的工作室：文件树、带实时检查的 Lua 编辑器、模组定义的原型和配方、它的图形和声音，以及没有被任何地方引用的文件。
+- **查看任意模组的内部。** 工作室（独立窗口或浏览器）：文件树、带实时检查的 Lua 编辑器、模组定义的原型和配方、它的图形和声音，以及没有被任何地方引用的文件。
+- **安全地导入模组。** 添加单个模组或整个模组文件夹（例如 Factorio 自己的 `mods` 文件夹）：复制任何内容之前都会先检查。
 - **轻松翻译。** 原文与译文并排的编辑器，带每种语言的进度、占位符检查，以及来自你以往翻译的建议。
 - **干净的发行版。** 目录结构正确的 `NAME_VERSION.zip`，只有在模组通过检查时才会生成。
 - **测试时不动你的游戏。** 为每个配置使用隔离的模组组合启动 Factorio 或无界面冒烟测试；你平时的模组文件夹不会被改动。可在 CI 中使用。
@@ -31,10 +33,11 @@
 项目现状与下一步计划。版本号是目标而不是日期；顺序取决于反馈，所以如果某一项对你很重要（或这里缺少了什么），
 请[提交 issue](https://github.com/4a11/factorio-mod-studio/issues)。
 
-**0.1：现在。** 命令行（`new`、`validate`、`pack`、`prepare` / `run`、`smoke`、`log`、`factorio`）和浏览器工作室
+**0.1：现在。** 命令行（`new`、`validate`、`pack`、`prepare` / `run`、`smoke`、`log`、`factorio`）和工作室——独立窗口或浏览器
 （概览、文件、原型、资源、本地化、问题、构建），界面支持 8 种语言。
 
 **0.2：在真实游戏上验证**
+- [ ] 桌面应用全面可用：加入 Windows、Linux 和 macOS 的发行压缩包，并与命令行合为一个程序（双击打开窗口）；*已在 Windows 上从源码构建运行*
 - [ ] 在 Windows、Linux 和 macOS 上用 Factorio 1.1、2.0 和 2.1（包括无界面服务器）验证 `run` 和 `smoke`；*Windows 上的 2.1 已可用*
 - [ ] 运行或冒烟测试之后同时读取 `factorio-current.log`，并在“问题”和“输出”中显示其中的错误
 - [ ] 模板生成的原型（实体、运行时脚本）在游戏中实际加载过，而不只是按文档编写
@@ -69,7 +72,15 @@ Factorio Mod Studio 负责的正是这些胶水工作。
 
 ## 快速开始
 
-**最简单的方式：** 从 [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) 下载适合你系统的压缩包并解压，无需安装 .NET。在 Windows 上双击 `fmstudio.exe`，
+**桌面应用：** 独立窗口中的工作室。目前需从源码构建（需要 [.NET 10 SDK](https://dotnet.microsoft.com/download)）；下一个版本将加入发行压缩包。
+
+```sh
+git clone https://github.com/4a11/factorio-mod-studio
+cd factorio-mod-studio
+dotnet run --project src/FactorioModStudio.Desktop -c Release   # 模组放在 ./mods
+```
+
+**无需 .NET：** 从 [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) 下载适合你系统的压缩包并解压，无需安装 .NET。在 Windows 上双击 `fmstudio.exe`，
 工作室会在浏览器中打开；在其他系统上运行 `./fmstudio ui`。
 
 **作为 .NET 工具安装**（需要 [.NET 10 SDK](https://dotnet.microsoft.com/download)）：

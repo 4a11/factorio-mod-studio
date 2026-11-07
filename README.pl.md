@@ -3,11 +3,12 @@
 [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [Українська](README.uk.md) · **Polski** · [Français](README.fr.md) · [Español](README.es.md)
 
 **Lokalny warsztat dla autorów modów do [Factorio](https://factorio.com).** Utwórz moda, wyłap jego błędy, zanim zrobi to gra,
-przetłumacz go, spakuj czyste wydanie i uruchom z odizolowanym zestawem modów: z wiersza poleceń albo ze strony w przeglądarce.
+przetłumacz go, spakuj czyste wydanie i uruchom z odizolowanym zestawem modów: we własnym oknie aplikacji, z wiersza poleceń albo w przeglądarce.
 Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 
 > **Wczesna wersja (0.1).** Logika jest pokryta testami; uruchamianie prawdziwej gry (`run`, `smoke`) działa z Factorio 2.1 na Windows.
 > Inne wersje i systemy nie zostały jeszcze sprawdzone. Opinie i zgłoszenia błędów są bardzo mile widziane.
+> Aplikacja okienkowa jest nowa: działa na Windows; Linux i macOS nie zostały jeszcze sprawdzone.
 > Nieoficjalny projekt społeczności, niezwiązany z Wube Software. „Factorio” jest znakiem towarowym Wube Software Ltd.
 >
 > To tłumaczenie części wprowadzającej. Pełna dokumentacja jest [po angielsku](README.md#documentation); w razie rozbieżności obowiązuje angielskie README.
@@ -22,7 +23,8 @@ Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 
 - **Mod w kilka sekund.** Szablony (pusty, przedmiot + receptura, obiekt, skrypt czasu działania) dla Factorio 2.0 i 2.1 (wszystkie poza obiektem także dla 1.1), które od razu przechodzą każdą kontrolę.
 - **Błędy wcześniej niż w grze.** `info.json`, changelog, miniatura, zepsute ścieżki `__mod__/` i `require`, brakujące lub błędne tłumaczenia: wszystko z plikiem i wierszem.
-- **Wgląd w dowolny mod.** Studio w przeglądarce z drzewem plików, edytorem Lua ze sprawdzaniem na bieżąco, prototypami i recepturami moda, jego grafiką i dźwiękami oraz plikami, których nic nie używa.
+- **Wgląd w dowolny mod.** Studio we własnym oknie lub w przeglądarce, z drzewem plików, edytorem Lua ze sprawdzaniem na bieżąco, prototypami i recepturami moda, jego grafiką i dźwiękami oraz plikami, których nic nie używa.
+- **Mody bez niespodzianek.** Dodaj moda albo cały folder modów, np. folder `mods` z Factorio: wszystko jest sprawdzane, zanim cokolwiek zostanie skopiowane.
 - **Wygodne tłumaczenie.** Edytor „oryginał obok tłumaczenia” z postępem dla każdego języka, sprawdzaniem placeholderów i podpowiedziami z Twoich wcześniejszych tłumaczeń.
 - **Czyste wydanie.** `NAME_VERSION.zip` z poprawną strukturą folderów, budowane tylko wtedy, gdy mod przechodzi kontrolę.
 - **Testy bez ruszania Twojej gry.** Uruchom Factorio albo bezgłowy test dymny z odizolowanym zestawem modów dla każdego profilu; Twój zwykły folder modów pozostaje nietknięty. Działa w CI.
@@ -33,10 +35,11 @@ Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność wyznaczają opinie, więc
 [otwórz zgłoszenie](https://github.com/4a11/factorio-mod-studio/issues), jeśli jakiś punkt jest dla Ciebie ważny (albo go tu brakuje).
 
-**0.1: teraz.** Wiersz poleceń (`new`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) i studio w przeglądarce
-(Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy, Budowanie) w 8 językach interfejsu.
+**0.1: teraz.** Wiersz poleceń (`new`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) i studio — we własnym oknie lub w
+przeglądarce (Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy, Budowanie) w 8 językach interfejsu.
 
 **0.2: sprawdzone na prawdziwej grze**
+- [ ] aplikacja okienkowa wszędzie: w archiwach wydania dla Windows, Linux i macOS oraz jeden program razem z wierszem poleceń (podwójne kliknięcie otwiera okno); *działa na Windows po zbudowaniu ze źródeł*
 - [ ] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1 na Windows, Linux i macOS, łącznie z serwerem bez interfejsu; *2.1 na Windows działa*
 - [ ] po uruchomieniu lub teście dymnym odczytywany jest także `factorio-current.log`, a jego błędy widać w zakładkach Problemy i Wyjście
 - [ ] prototypy tworzone przez szablony (obiekt, skrypt czasu działania) wczytane w grze, a nie tylko napisane według dokumentacji
@@ -71,7 +74,15 @@ prawdziwy błąd w ścianie logów, tłumaczenia, które się rozjeżdżają. Fa
 
 ## Szybki start
 
-**Najprościej:** pobierz archiwum dla swojego systemu ze strony [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) i rozpakuj je; .NET nie jest potrzebny.
+**Aplikacja okienkowa:** studio we własnym oknie. Na razie buduje się ją ze źródeł (wymaga [.NET 10 SDK](https://dotnet.microsoft.com/download)); do archiwów wydania trafi z następną wersją.
+
+```sh
+git clone https://github.com/4a11/factorio-mod-studio
+cd factorio-mod-studio
+dotnet run --project src/FactorioModStudio.Desktop -c Release   # Twoje mody trafiają do ./mods
+```
+
+**Bez .NET:** pobierz archiwum dla swojego systemu ze strony [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) i rozpakuj je; .NET nie jest potrzebny.
 W Windows kliknij dwukrotnie `fmstudio.exe`, a studio otworzy się w przeglądarce; w innych systemach uruchom `./fmstudio ui`.
 
 **Jako narzędzie .NET** (wymaga [.NET 10 SDK](https://dotnet.microsoft.com/download)):

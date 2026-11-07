@@ -3,11 +3,12 @@
 [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [Українська](README.uk.md) · [Polski](README.pl.md) · [Français](README.fr.md) · **Español**
 
 **Un taller local para quienes crean mods de [Factorio](https://factorio.com).** Crea un mod, encuentra sus errores antes que el
-juego, tradúcelo, empaqueta una versión limpia y pruébalo con un conjunto de mods aislado: desde la línea de comandos o desde una
-página en tu navegador. Todo funciona en tu equipo, junto a tu editor de código habitual.
+juego, tradúcelo, empaqueta una versión limpia y pruébalo con un conjunto de mods aislado: en una ventana propia, desde la línea de
+comandos o en tu navegador. Todo funciona en tu equipo, junto a tu editor de código habitual.
 
 > **Versión temprana (0.1).** La lógica está cubierta por pruebas; el lanzamiento del juego real (`run`, `smoke`) funciona con Factorio 2.1 en
 > Windows. Otras versiones y sistemas aún no se han probado. Los comentarios y los informes de errores son muy bienvenidos.
+> La aplicación de escritorio es nueva: funciona en Windows; Linux y macOS aún no se han probado.
 > Proyecto comunitario no oficial, sin relación con Wube Software. «Factorio» es una marca de Wube Software Ltd.
 >
 > Esta es una traducción de la parte introductoria. La documentación completa está [en inglés](README.md#documentation); en caso de discrepancia, prevalece el README en inglés.
@@ -22,7 +23,8 @@ página en tu navegador. Todo funciona en tu equipo, junto a tu editor de códig
 
 - **Un mod en segundos.** Plantillas (vacía, objeto + receta, entidad, script en tiempo de ejecución) para Factorio 2.0 y 2.1 (todas salvo la de entidad también para 1.1) que pasan todas las comprobaciones desde el principio.
 - **Errores antes que el juego.** `info.json`, changelog, miniatura, rutas `__mod__/` y `require` rotas, traducciones que faltan o están mal: todo con archivo y línea.
-- **Ver por dentro cualquier mod.** Un estudio en el navegador con el árbol de archivos, un editor de Lua con comprobaciones al vuelo, los prototipos y recetas del mod, sus gráficos y sonidos, y los archivos que nada usa.
+- **Ver por dentro cualquier mod.** El estudio, en una ventana propia o en el navegador, con el árbol de archivos, un editor de Lua con comprobaciones al vuelo, los prototipos y recetas del mod, sus gráficos y sonidos, y los archivos que nada usa.
+- **Añadir mods sin sorpresas.** Añade un mod o una carpeta entera de mods, como la carpeta `mods` de Factorio: todo se comprueba antes de copiar nada.
 - **Traducir con comodidad.** Editor con original y traducción lado a lado, progreso por idioma, comprobación de marcadores y sugerencias de tus traducciones anteriores.
 - **Una versión limpia.** `NAME_VERSION.zip` con la estructura de carpetas correcta, que solo se genera si el mod pasa la comprobación.
 - **Probar sin tocar tu juego.** Lanza Factorio o una prueba de humo sin interfaz con un conjunto de mods aislado por perfil; tu carpeta de mods habitual nunca se toca. Funciona en CI.
@@ -33,10 +35,11 @@ página en tu navegador. Todo funciona en tu equipo, junto a tu editor de códig
 Dónde está el proyecto y qué viene después. Las versiones son objetivos, no fechas; el orden lo marcan los comentarios, así que
 [abre una issue](https://github.com/4a11/factorio-mod-studio/issues) si algún punto te importa (o si falta aquí).
 
-**0.1: ahora.** La línea de comandos (`new`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) y el estudio en el
+**0.1: ahora.** La línea de comandos (`new`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) y el estudio, en una ventana propia o en el
 navegador (Resumen, Archivos, Prototipos, Recursos, Localización, Problemas, Compilación) en 8 idiomas de interfaz.
 
 **0.2: probado con el juego real**
+- [ ] la aplicación de escritorio en todas partes: en los archivos de la versión para Windows, Linux y macOS, y un solo programa junto con la línea de comandos (un doble clic abre la ventana); *funciona en Windows, compilada desde el código fuente*
 - [ ] `run` y `smoke` verificados con Factorio 1.1, 2.0 y 2.1 en Windows, Linux y macOS, incluido el servidor sin interfaz; *2.1 en Windows funciona*
 - [ ] tras un lanzamiento o una prueba de humo, leer también `factorio-current.log` y mostrar sus errores en Problemas y Salida
 - [ ] los prototipos que generan las plantillas (entidad, script en tiempo de ejecución) cargados en el juego, no solo escritos según la documentación
@@ -71,7 +74,15 @@ para lanzar, el único error real en un muro de log, traducciones que se desincr
 
 ## Inicio rápido
 
-**Lo más fácil:** descarga el archivo para tu sistema desde [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) y descomprímelo; no hace falta .NET. En Windows,
+**Aplicación de escritorio:** el estudio en una ventana propia. Por ahora se compila desde el código fuente (necesita el [SDK de .NET 10](https://dotnet.microsoft.com/download)); llegará a los archivos de la versión con la próxima.
+
+```sh
+git clone https://github.com/4a11/factorio-mod-studio
+cd factorio-mod-studio
+dotnet run --project src/FactorioModStudio.Desktop -c Release   # tus mods van en ./mods
+```
+
+**Sin .NET:** descarga el archivo para tu sistema desde [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) y descomprímelo; no hace falta .NET. En Windows,
 haz doble clic en `fmstudio.exe` y el estudio se abre en tu navegador; en otros sistemas ejecuta `./fmstudio ui`.
 
 **Como herramienta de .NET** (necesita el [SDK de .NET 10](https://dotnet.microsoft.com/download)):
