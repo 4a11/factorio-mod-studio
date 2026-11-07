@@ -35,41 +35,39 @@ Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność wyznaczają opinie, więc
 [otwórz zgłoszenie](https://github.com/4a11/factorio-mod-studio/issues), jeśli jakiś punkt jest dla Ciebie ważny (albo go tu brakuje).
 
-**0.1: teraz.** Wiersz poleceń (`new`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) i studio — we własnym oknie lub w
-przeglądarce (Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy, Budowanie) w 8 językach interfejsu.
+**0.1: teraz.** Wiersz poleceń (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) i studio — we własnym oknie lub w przeglądarce, w 8 językach interfejsu: zakładki Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy i Budowanie; 20 bloków (pancerz, wrogowie, poziomy taśmociągów, maszyny, pojazdy…) jako przemalowane kopie oryginałów, sprawdzone w Factorio 2.1; całe foldery modów dodawane po wcześniejszym sprawdzeniu.
 
-**0.2: sprawdzone na prawdziwej grze**
+**0.2: gotowe dla ludzi**
 - [ ] aplikacja okienkowa wszędzie: w archiwach wydania dla Windows, Linux i macOS oraz jeden program razem z wierszem poleceń (podwójne kliknięcie otwiera okno); *działa na Windows po zbudowaniu ze źródeł*
 - [ ] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1 na Windows, Linux i macOS, łącznie z serwerem bez interfejsu; *2.1 na Windows działa*
 - [ ] po uruchomieniu lub teście dymnym odczytywany jest także `factorio-current.log`, a jego błędy widać w zakładkach Problemy i Wyjście
-- [ ] prototypy tworzone przez szablony (obiekt, skrypt czasu działania) wczytane w grze, a nie tylko napisane według dokumentacji
-- [ ] instalacja jednym poleceniem: narzędzie opublikowane w NuGet (`dotnet tool install -g FactorioModStudio.Cli`), bez klonowania
+- [x] prototypy tworzone przez szablony (obiekt, skrypt czasu działania) wczytane w grze, a nie tylko napisane według dokumentacji; *wszystkie cztery wczytują się w Factorio 2.1*
+- [x] instalacja jednym poleceniem: narzędzie opublikowane w NuGet (`dotnet tool install -g FactorioModStudio.Cli`), bez klonowania; *opublikowano: 0.1.1*
 - [ ] wersje Factorio instalowane przez studio: `fmstudio factorio install 2.0` pobiera darmowy serwer bez interfejsu (Linux, WSL, CI), gdzie znajdzie go `smoke`, także z zakładki Budowanie; *zrobione, jeszcze niesprawdzone z prawdziwym pobieraniem*
 
-**0.3: pozostałe zakładki**
+**0.3: widzieć i edytować zawartość**
+- [ ] zakładka Prototypy na podstawie danych samej gry (`--dump-data`): co mod naprawdę tworzy i zmienia, ze wszystkimi wartościami, także dla kopii przez `table.deepcopy`; „który mod zmienił ten przedmiot i na co?”
+- [ ] panel właściwości bloku: zdrowie, prędkość, ekwipunek, obrażenia… jako pola „oryginał → twoja wartość”, zapisywane z powrotem w Lua bloku
+- [ ] szybka próba w grze: jeden przycisk uruchamia Factorio na mapie testowej, a nowości są już w ekwipunku
+- [ ] bezpieczna zmiana nazwy i usuwanie bloku: plik, require, klucze tłumaczeń, ikony i wszystkie odwołania zmieniają się razem
+- [ ] kolor bloku wybierany suwakiem, z podglądem przemalowanej ikony przed dodaniem
+- [ ] tłumaczenia nowych bloków: ich klucze trafiają do wszystkich języków moda, oznaczone jako nieprzetłumaczone w zakładce Lokalizacja
+
+**0.4: wygodny edytor**
 - [ ] podpowiedzi Lua w edytorze: uzupełnianie, dokumentacja po najechaniu i pomoc dla parametrów API Factorio (`data.raw`, pola prototypów, `game`, `script`, `defines`, zdarzenia), czytane z opisu API dołączonego do zainstalowanej gry (`doc-html/*-api.json`), więc zgodne z jej wersją
 - [ ] Problemy w nowym stylu: grupowanie według pliku i reguły, bezpieczne szybkie poprawki (dodanie brakującego klucza tłumaczenia, poprawienie wielkości liter w ścieżce)
-- [ ] Budowanie: wybór profilu, dodatkowych modów i zapisu gry; historia uruchomień do porównania
 - [ ] ikony składników i produktów pochodzących z gry podstawowej lub zależności
 - [ ] zależności w jednym miejscu: wymagane, opcjonalne, niezgodne i które z nich są dostępne w `modsSource`
+- [ ] edytor receptur i technologii: składniki wybierane z ikonami z gry i zależności oraz technologia odblokowująca recepturę
 
-**0.4: proces wydawania**
+**0.5: proces wydawania**
 - [ ] podbicie wersji i wpis do changelogu w jednym kroku (`fmstudio bump patch|minor|major`)
 - [ ] wysyłanie na portal modów Factorio (opcjonalnie, z Twoim własnym kluczem API)
 - [ ] gotowy workflow GitHub Actions (`fmstudio init --ci`): sprawdzanie, pakowanie i test dymny przy każdym pushu
+- [ ] Budowanie: wybór profilu, dodatkowych modów i zapisu gry; historia uruchomień do porównania
 
-**0.5: tworzenie zawartości**
+**0.6: grafika**
 - [ ] edytor sprite'ów w studiu: tworzenie i edycja ikon i sprite'ów oraz animacje (klatki, arkusz sprite'ów, podgląd na żywo) bez wychodzenia ze studia
-- [ ] zestaw przykładów typowych rzeczy do dodania, każdy wczytywany w grze: magazyn, przedmiot, broń, pojazd, logistyka (rury, taśmociągi, rozdzielacze, taśmociągi podziemne); zobacz [plan przykładów](docs/examples-plan.md)
-
-**0.6: edycja zawartości**
-- [ ] zakładka Prototypy na podstawie danych samej gry (`--dump-data`): co mod naprawdę tworzy i zmienia, ze wszystkimi wartościami, także dla kopii przez `table.deepcopy`; „który mod zmienił ten przedmiot i na co?”
-- [ ] panel właściwości bloku: zdrowie, prędkość, ekwipunek, obrażenia… jako pola „oryginał → twoja wartość”, zapisywane z powrotem w Lua bloku
-- [ ] edytor receptur i technologii: składniki wybierane z ikonami z gry i zależności oraz technologia odblokowująca recepturę
-- [ ] bezpieczna zmiana nazwy i usuwanie bloku: plik, require, klucze tłumaczeń, ikony i wszystkie odwołania zmieniają się razem
-- [ ] kolor bloku wybierany suwakiem, z podglądem przemalowanej ikony przed dodaniem
-- [ ] szybka próba w grze: jeden przycisk uruchamia Factorio na mapie testowej, a nowości są już w ekwipunku
-- [ ] tłumaczenia nowych bloków: ich klucze trafiają do wszystkich języków moda, oznaczone jako nieprzetłumaczone w zakładce Lokalizacja
 
 **Później**
 - uruchamianie testów napisanych dla [FactorioTest](https://mods.factorio.com/mod/factorio-test) bezpośrednio ze studia
@@ -98,10 +96,7 @@ W Windows kliknij dwukrotnie `fmstudio.exe`, a studio otworzy się w przeglądar
 
 ```sh
 # 1. Zainstaluj narzędzie `fmstudio` (jednorazowo)
-git clone https://github.com/4a11/factorio-mod-studio
-cd factorio-mod-studio
-dotnet pack src/FactorioModStudio.Cli -c Release -o ./nupkg
-dotnet tool install --global FactorioModStudio.Cli --add-source ./nupkg
+dotnet tool install --global FactorioModStudio.Cli
 
 # 2. Utwórz moda w dowolnym folderze i otwórz studio
 cd ~/factorio-dev

@@ -33,41 +33,39 @@
 项目现状与下一步计划。版本号是目标而不是日期；顺序取决于反馈，所以如果某一项对你很重要（或这里缺少了什么），
 请[提交 issue](https://github.com/4a11/factorio-mod-studio/issues)。
 
-**0.1：现在。** 命令行（`new`、`validate`、`pack`、`prepare` / `run`、`smoke`、`log`、`factorio`）和工作室——独立窗口或浏览器
-（概览、文件、原型、资源、本地化、问题、构建），界面支持 8 种语言。
+**0.1：现在。** 命令行（`new`、`add`、`validate`、`pack`、`prepare` / `run`、`smoke`、`log`、`factorio`）和工作室——独立窗口或浏览器中均可使用，界面支持 8 种语言：概览、文件、原型、资源、本地化、问题和构建标签页；20 个构件（护甲、敌人、传送带等级、机器、载具……）均为原版的换色副本，已在 Factorio 2.1 中验证；整个模组文件夹添加前会先检查。
 
-**0.2：在真实游戏上验证**
+**0.2：可以交给大家使用**
 - [ ] 桌面应用全面可用：加入 Windows、Linux 和 macOS 的发行压缩包，并与命令行合为一个程序（双击打开窗口）；*已在 Windows 上从源码构建运行*
 - [ ] 在 Windows、Linux 和 macOS 上用 Factorio 1.1、2.0 和 2.1（包括无界面服务器）验证 `run` 和 `smoke`；*Windows 上的 2.1 已可用*
 - [ ] 运行或冒烟测试之后同时读取 `factorio-current.log`，并在“问题”和“输出”中显示其中的错误
-- [ ] 模板生成的原型（实体、运行时脚本）在游戏中实际加载过，而不只是按文档编写
-- [ ] 一行命令安装：工具发布到 NuGet（`dotnet tool install -g FactorioModStudio.Cli`），无需克隆仓库
+- [x] 模板生成的原型（实体、运行时脚本）在游戏中实际加载过，而不只是按文档编写; *四个模板均可在 Factorio 2.1 中加载*
+- [x] 一行命令安装：工具发布到 NuGet（`dotnet tool install -g FactorioModStudio.Cli`），无需克隆仓库; *已发布：0.1.1*
 - [ ] 由工作室安装 Factorio 版本：`fmstudio factorio install 2.0` 下载免费的无界面服务器（Linux、WSL、CI），`smoke` 会自动找到它，“构建”标签页中也可以安装；*已实现，尚未用真实下载验证*
 
-**0.3：其余标签页**
+**0.3：查看和编辑内容**
+- [ ] 基于游戏自身数据（`--dump-data`）的“原型”标签页：模组真正创建和修改了什么，包含所有数值，也包括用 `table.deepcopy` 复制的原型；“哪个模组修改了这个物品，改成了什么？”
+- [ ] 构件属性面板：生命值、速度、物品栏、伤害……以“原版 → 你的值”字段显示，并写回构件的 Lua
+- [ ] 在游戏中快速试用：一个按钮在测试地图上启动 Factorio，新内容已放在物品栏中
+- [ ] 安全地重命名或移除构件：文件、require、翻译键、图标和所有引用一起修改
+- [ ] 用滑块选择构件颜色，添加前预览换色后的图标
+- [ ] 新构件的翻译：其键加入模组的所有语言，并在“本地化”标签页中标为未翻译
+
+**0.4：顺手的编辑器**
 - [ ] 编辑器中的 Lua 提示：Factorio API（`data.raw`、原型字段、`game`、`script`、`defines`、事件）的自动补全、悬停文档和参数提示，读取已安装游戏自带的 API 描述（`doc-html/*-api.json`），因此与其版本一致
 - [ ] 新风格的“问题”页：按文件和规则分组，提供安全的快速修复（添加缺失的翻译键、修正路径的大小写）
-- [ ] “构建”页：选择配置、额外模组和存档；可对比的运行历史
 - [ ] 显示来自基础游戏或依赖模组的原料和产物图标
 - [ ] 依赖一目了然：必需、可选、不兼容，以及哪些可在 `modsSource` 中找到
+- [ ] 配方和科技编辑器：用游戏和依赖中的图标选择原料，并选择解锁该配方的科技
 
-**0.4：发布流程**
+**0.5：发布流程**
 - [ ] 一步完成版本号提升和更新日志条目（`fmstudio bump patch|minor|major`）
 - [ ] 上传到 Factorio 模组门户（可选，使用你自己的 API 密钥）
 - [ ] 现成的 GitHub Actions 工作流（`fmstudio init --ci`）：每次 push 时检查、打包并进行冒烟测试
+- [ ] “构建”页：选择配置、额外模组和存档；可对比的运行历史
 
-**0.5：制作内容**
+**0.6：图形**
 - [ ] 工作室内的精灵图编辑器：创建和编辑图标与精灵图，并直接在工作室中制作动画（帧、精灵表、实时预览）
-- [ ] 一组常见内容的示例，每个都能在游戏中加载：储物箱、物品、武器、载具、物流（管道、传送带、分流器、地下传送带）；详见[示例计划](docs/examples-plan.md)
-
-**0.6：编辑内容**
-- [ ] 基于游戏自身数据（`--dump-data`）的“原型”标签页：模组真正创建和修改了什么，包含所有数值，也包括用 `table.deepcopy` 复制的原型；“哪个模组修改了这个物品，改成了什么？”
-- [ ] 构件属性面板：生命值、速度、物品栏、伤害……以“原版 → 你的值”字段显示，并写回构件的 Lua
-- [ ] 配方和科技编辑器：用游戏和依赖中的图标选择原料，并选择解锁该配方的科技
-- [ ] 安全地重命名或移除构件：文件、require、翻译键、图标和所有引用一起修改
-- [ ] 用滑块选择构件颜色，添加前预览换色后的图标
-- [ ] 在游戏中快速试用：一个按钮在测试地图上启动 Factorio，新内容已放在物品栏中
-- [ ] 新构件的翻译：其键加入模组的所有语言，并在“本地化”标签页中标为未翻译
 
 **以后**
 - 在工作室中运行为 [FactorioTest](https://mods.factorio.com/mod/factorio-test) 编写的测试
@@ -96,10 +94,7 @@ dotnet run --project src/FactorioModStudio.Desktop -c Release   # 模组放在 .
 
 ```sh
 # 1. 安装 `fmstudio` 工具（只需一次）
-git clone https://github.com/4a11/factorio-mod-studio
-cd factorio-mod-studio
-dotnet pack src/FactorioModStudio.Cli -c Release -o ./nupkg
-dotnet tool install --global FactorioModStudio.Cli --add-source ./nupkg
+dotnet tool install --global FactorioModStudio.Cli
 
 # 2. 在任意文件夹中创建模组并打开工作室
 cd ~/factorio-dev

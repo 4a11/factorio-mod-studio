@@ -88,7 +88,7 @@ jobs:
 
           - **Windows** (`win-x64.zip`): double-click `fmstudio.exe` and the studio opens in your browser, with a `mods` folder next to it as the workspace. Windows may warn about an unknown publisher: *More info → Run anyway*.
           - **Linux** (`linux-x64.tar.gz`) and **macOS** (`osx-arm64` for Apple Silicon, `osx-x64` for Intel): run `./fmstudio ui` in the unpacked folder. On macOS, clear the download quarantine first: `xattr -d com.apple.quarantine fmstudio`.
-          - **With the .NET 10 SDK**: the `.nupkg` installs `fmstudio` as a global tool: `dotnet tool install -g FactorioModStudio.Cli --add-source <folder with the .nupkg>`.
+          - **With the .NET 10 SDK**: `dotnet tool install -g FactorioModStudio.Cli` installs `fmstudio` from NuGet (the `.nupkg` here is the same package).
 
           Put the unpacked folder on your `PATH` to use `fmstudio validate`, `pack`, `smoke` and the rest from any mod folder.
           EOF
