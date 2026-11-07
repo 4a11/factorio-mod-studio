@@ -12,6 +12,7 @@ import { createBottomPanel } from '/bottom-panel.js';
 import { createActionBar } from '/action-bar.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
+import { findMods, readInfo, zipIdentity, assess, MAX_IMPORT_FILES } from '/import-logic.js';
 import { renderPrototypes as renderPrototypesView } from '/prototypes-view.js';
 import { renderResources as renderResourcesView, stopResourceSound } from '/resources-view.js';
 import { LANGUAGES, initI18n, setLanguage, getLanguage, onLanguageChange, t, formatNumber } from '/i18n.js';
@@ -715,7 +716,6 @@ function connectEvents() {
 // ---------------------------------------------------------------- importing mods (drag & drop, zip, folder)
 
 const IMPORT_EXT = new Set(['lua', 'cfg', 'json', 'txt', 'md', 'csv', 'png', 'jpg', 'jpeg', 'ogg', 'wav', 'mp3', 'flac']);
-const MAX_IMPORT_FILES = 20000;
 const UPLOAD_CONCURRENCY = 4;
 const importQueue = [];
 let importRunning = false;
@@ -753,36 +753,163 @@ async function readAllEntries(directory) {
   return all;
 }
 
-async function collectEntry(entry, prefix, out, counts) {
+// A collected folder is `{ entries, label }`: every file as `{ file, path, size }` with its path relative to the folder.
+// Hidden files and folders are left out; which files a mod may contain is decided once the mods in it are known.
+
+async function collectEntry(entry, prefix, out) {
+  if (entry.name.startsWith('.')) return;
   if (entry.isFile) {
-    const path = prefix + entry.name;
-    if (!isUsableFile(path)) { counts.skipped++; return; }
     const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
-    out.push({ file, path });
+    out.push({ file, path: prefix + entry.name, size: file.size });
   } else if (entry.isDirectory) {
-    if (entry.name.startsWith('.')) { counts.skipped++; return; }
-    for (const child of await readAllEntries(entry)) await collectEntry(child, `${prefix}${entry.name}/`, out, counts);
+    for (const child of await readAllEntries(entry)) await collectEntry(child, `${prefix}${entry.name}/`, out);
   }
 }
 
 async function collectDroppedFolder(entry) {
-  const files = [];
-  const counts = { skipped: 0 };
-  for (const child of await readAllEntries(entry)) await collectEntry(child, '', files, counts);
-  return { files, skipped: counts.skipped, label: entry.name };
+  const entries = [];
+  for (const child of await readAllEntries(entry)) await collectEntry(child, '', entries);
+  return { entries, label: entry.name };
 }
 
 function collectInputFolder(fileList) {
-  const files = [];
-  let skipped = 0;
+  const entries = [];
   let label = t('import.folderLabel');
   for (const file of fileList) {
     const parts = (file.webkitRelativePath || file.name).split('/');
-    label = parts.length > 1 ? parts[0] : label;
+    if (parts.length > 1) label = parts[0];
     const path = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
-    if (isUsableFile(path)) files.push({ file, path }); else skipped++;
+    if (!path.split('/').some((p) => p.startsWith('.'))) entries.push({ file, path, size: file.size });
   }
-  return { files, skipped, label };
+  return { entries, label };
+}
+
+/** What importFolder uploads for one mod: its usable files and how many others were left out. */
+function uploadOf(files, label) {
+  const usable = files.filter((f) => isUsableFile(f.path));
+  return { files: usable, skipped: files.length - usable.length, label };
+}
+
+// ---------------------------------------------------------------- pre-check of a folder before anything is uploaded
+
+const MAX_INFO_BYTES = 1024 * 1024;
+
+async function infoOf(files) {
+  const info = files.find((f) => f.path === 'info.json');
+  if (!info || info.size > MAX_INFO_BYTES) return { problem: 'import.check.infoJson' };
+  try { return readInfo(await info.file.text()); } catch { return { problem: 'import.check.infoJson' }; }
+}
+
+const workspaceModNamed = (name) => state.mods.find((m) => m.source === 'workspace' && m.name.toLowerCase() === name?.toLowerCase());
+
+/**
+ * Looks at a collected folder before uploading it. A single mod with no problems is added right away; a problem is shown
+ * without uploading anything. A folder of mods (like Factorio's mods folder) opens a list to choose from.
+ */
+async function checkFolder({ entries, label }) {
+  const found = findMods(entries);
+  if (found.layout === 'none') { importText('import.check.none', { label }); return; }
+
+  importText('import.check.reading', { label });
+  const candidates = await Promise.all([
+    ...found.mods.map(async (m) => {
+      const upload = uploadOf(m.files, m.folder || label);
+      return { kind: 'folder', label: upload.label, ...(await infoOf(m.files)), files: upload.files.length, upload };
+    }),
+    ...found.zips.map((z) => ({ kind: 'zip', label: z.path, ...zipIdentity(z.path), size: z.size, file: z.file })),
+  ]);
+  const checked = assess(candidates, state.mods.filter((m) => m.source === 'workspace').map((m) => m.name));
+  showImportStatus(null);
+
+  if (found.layout === 'single') {
+    const only = checked[0];
+    if (only.status === 'ok') { enqueue([{ kind: 'folder', folder: only.upload, label }]); return; }
+    const existing = only.reason === 'import.check.exists' ? workspaceModNamed(only.name) : null;
+    showImportStatus(() => ({
+      text: t('import.failure', { label, message: t(only.reason, only.params) }),
+      actions: existing ? [el('button', { type: 'button', text: t('import.openExisting'), onclick: () => go(existing.id, 'overview') })] : [],
+    }));
+    return;
+  }
+  await chooseMods(label, checked, found.others);
+}
+
+let importCheck = null;
+
+function importCheckDialog() {
+  if (importCheck) return importCheck;
+  const refs = {
+    dialog: el('dialog', { class: 'import-check-dialog', 'aria-labelledby': 'ic-heading', 'data-testid': 'import-check' }),
+    heading: el('h2', { id: 'ic-heading' }),
+    hint: el('p', { class: 'small muted' }),
+    summary: el('p', { class: 'ic-summary', 'data-testid': 'import-check-summary' }),
+    list: el('div', { class: 'ic-list', role: 'list' }),
+    others: el('p', { class: 'small muted ic-others' }),
+    cancel: el('button', { type: 'button', 'data-testid': 'import-check-cancel' }),
+    confirm: el('button', { type: 'button', class: 'primary', 'data-testid': 'import-check-add' }),
+  };
+  refs.dialog.append(refs.heading, refs.hint, refs.summary, refs.list, refs.others, el('div', { class: 'nm-actions' }, refs.cancel, refs.confirm));
+  document.body.append(refs.dialog);
+  importCheck = refs;
+  return refs;
+}
+
+/** Shows the mods found in a folder with what the pre-check says about each; resolves once the dialog is closed. */
+function chooseMods(label, checked, others) {
+  const refs = importCheckDialog();
+  const ready = checked.filter((c) => c.status === 'ok');
+  refs.heading.textContent = t('import.check.heading', { label });
+  refs.hint.textContent = t('import.check.hint');
+  refs.summary.textContent = t('import.check.summary', { found: checked.length, ready: ready.length });
+  refs.others.hidden = others.length === 0;
+  refs.others.textContent = others.length ? t('import.check.others', { names: others.slice(0, 8).join(', ') + (others.length > 8 ? ', …' : '') }) : '';
+  refs.cancel.textContent = t('dialog.cancel');
+
+  const boxes = new Map();
+  refs.list.replaceChildren(...checked.map((c) => {
+    const ok = c.status === 'ok';
+    const box = el('input', { type: 'checkbox', checked: ok, disabled: !ok, 'aria-label': c.name || c.label });
+    if (ok) boxes.set(box, c);
+    const shownName = c.name || c.label;
+    return el('label', { class: 'ic-row' + (ok ? '' : ' blocked'), role: 'listitem' },
+      box,
+      el('span', { class: 'ic-main' },
+        el('span', {}, el('strong', { text: shownName }), c.version ? el('span', { class: 'muted', text: ` ${c.version}` }) : null),
+        c.title ? el('span', { class: 'small muted ic-title', text: c.title }) : null,
+        c.label !== shownName ? el('span', { class: 'small muted ic-folder', text: c.label }) : null),
+      el('span', { class: 'small muted ic-size', text: c.kind === 'zip' ? formatSize(c.size) : t('count.file', { n: c.files }) }),
+      el('span', { class: 'small ic-status ' + (ok ? 'good' : 'bad'), text: t(c.reason, c.params) }));
+  }));
+
+  const selected = () => [...boxes].filter(([box]) => box.checked).map(([, c]) => c);
+  const update = () => {
+    const n = selected().length;
+    refs.confirm.textContent = t('import.check.add', { n });
+    refs.confirm.disabled = n === 0;
+  };
+  refs.list.onchange = update;
+  update();
+
+  return new Promise((resolve) => {
+    refs.cancel.onclick = () => refs.dialog.close();
+    refs.confirm.onclick = () => {
+      const jobs = selected().map((c) => (c.kind === 'zip' ? zipJob(c.file) : { kind: 'folder', folder: c.upload, label: c.label }));
+      refs.dialog.close();
+      enqueue(jobs);
+    };
+    refs.dialog.onclose = () => resolve();
+    refs.dialog.showModal();
+    (ready.length ? refs.confirm : refs.cancel).focus();
+  });
+}
+
+// Folders are checked one after another, so two drops never share the list.
+let folderChecks = Promise.resolve();
+function checkFolderLater(collect) {
+  folderChecks = folderChecks.then(async () => {
+    try { await checkFolder(await collect()); }
+    catch (error) { showImportStatus(() => ({ text: t('import.failure', { label: t('import.folderLabel'), message: errorText(error) }), actions: [] })); }
+  });
 }
 
 async function importZip(file) {
@@ -847,10 +974,7 @@ async function runImports() {
         let result;
         if (job.kind === 'error') throw job.error;
         if (job.kind === 'zip') result = await importZip(job.file);
-        else {
-          const folder = job.folder ? job.folder : await collectDroppedFolder(job.entry);
-          result = await importFolder(folder);
-        }
+        else result = await importFolder(job.folder);
         await refreshMods();
         outcomes.push({ ok: true, label: job.label, result });
         go(result.id, 'overview');
@@ -904,15 +1028,16 @@ window.addEventListener('drop', (e) => {
 
   // Entries must be taken synchronously; the DataTransfer is emptied once this handler returns.
   const jobs = [];
+  let folders = 0;
   for (const item of Array.from(e.dataTransfer.items || [])) {
     if (item.kind !== 'file') continue;
     const entry = item.webkitGetAsEntry?.();
     const file = item.getAsFile();
-    if (entry?.isDirectory) jobs.push({ kind: 'folder', entry, label: entry.name });
+    if (entry?.isDirectory) { folders++; checkFolderLater(() => collectDroppedFolder(entry)); } // checked before uploading
     else if (file && extOf(file.name) === 'zip') jobs.push(zipJob(file));
     else jobs.push({ kind: 'error', label: file?.name || 'item', error: new UiError('import.dropHint') });
   }
-  if (!jobs.length) for (const file of Array.from(e.dataTransfer.files || [])) jobs.push(extOf(file.name) === 'zip' ? zipJob(file) : { kind: 'error', label: file.name, error: new UiError('import.dropHint') });
+  if (!jobs.length && !folders) for (const file of Array.from(e.dataTransfer.files || [])) jobs.push(extOf(file.name) === 'zip' ? zipJob(file) : { kind: 'error', label: file.name, error: new UiError('import.dropHint') });
   enqueue(jobs);
 });
 
@@ -925,8 +1050,8 @@ $('#zip-input').addEventListener('change', (e) => {
 $('#folder-input').addEventListener('change', (e) => {
   const folder = collectInputFolder(Array.from(e.target.files));
   e.target.value = '';
-  if (folder.files.length === 0 && folder.skipped === 0) return;
-  enqueue([{ kind: 'folder', folder, label: folder.label }]);
+  if (folder.entries.length === 0) return;
+  checkFolderLater(() => folder);
 });
 
 // ---------------------------------------------------------------- creating a new mod from a template

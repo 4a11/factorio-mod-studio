@@ -30,7 +30,10 @@
       <div id="import-status" class="import-status" role="status" aria-live="polite" hidden></div>
       <nav id="mod-list" aria-label="Mods" data-i18n-aria-label="sidebar.mods"></nav>
       <footer class="sidebar-footer">
-        <div class="live" id="live-status" role="status"></div>
+        <div class="footer-top">
+          <div class="live" id="live-status" role="status"></div>
+          <button id="palette-open" type="button" class="palette-open" data-testid="palette-open" aria-label="Quick open and commands" title="Quick open and commands" data-i18n-aria-label="ui.palette.open" data-i18n-title="ui.palette.open" data-i18n="ui.palette.openShort">Go to…</button>
+        </div>
         <div class="footer-controls">
           <select id="theme-select" data-testid="theme-select" aria-label="Theme" data-i18n-aria-label="ui.theme.label" title="Theme" data-i18n-title="ui.theme.label">
             <option value="auto" data-i18n="ui.theme.auto">Auto</option>
@@ -40,7 +43,6 @@
           <select id="lang-select" aria-label="Language" data-i18n-aria-label="sidebar.language">
             <option value="en">English</option>
           </select>
-          <button id="palette-open" type="button" class="palette-open" data-testid="palette-open" aria-label="Quick open and commands" title="Quick open and commands" data-i18n-aria-label="ui.palette.open" data-i18n-title="ui.palette.open" data-i18n="ui.palette.openShort">Go to…</button>
         </div>
       </footer>
     </aside>

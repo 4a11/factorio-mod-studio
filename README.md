@@ -301,6 +301,12 @@ The mod (at the top level or inside one folder, with an `info.json` that has a v
 it). Only text, image and audio files (`.lua .cfg .json .txt .md .csv .png .jpg .jpeg .ogg .wav .mp3 .flac`) are imported;
 other and hidden files are skipped. Limits: 200 MB per zip, 50 MB per uploaded file, 500 MB unpacked, 20000 files.
 
+A folder is checked before anything is uploaded. A single mod with a problem (a broken `info.json`, too many files, already in
+the workspace) is reported right away. A folder of mods, such as Factorio's own `mods` folder, opens a list of what was found:
+every sub-folder with an `info.json` and every top-level `.zip`, each with its version, size and verdict. Mods that are already
+in the workspace, have a broken `info.json` or exceed a limit cannot be selected; when a mod is there in several versions, only
+the newest is offered. Folders without an `info.json` and loose files (`mod-list.json`, `mod-settings.dat`) are left out.
+
 **Layout.** With a mod open, a bar at the top of the page stays visible on every tab: the mod's title, version and target Factorio
 version, the buttons *Validate*, *Pack*, *Smoke test* and *Run in Factorio* (plus *Cancel* while a job of this mod runs), a badge
 with the Factorio installation chosen for the mod (click: the Build tab), a chip with the state of the latest job (click: its
