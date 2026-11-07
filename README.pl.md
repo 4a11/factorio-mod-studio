@@ -47,6 +47,7 @@ przeglądarce (Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy, Budow
 - [ ] wersje Factorio instalowane przez studio: `fmstudio factorio install 2.0` pobiera darmowy serwer bez interfejsu (Linux, WSL, CI), gdzie znajdzie go `smoke`, także z zakładki Budowanie; *zrobione, jeszcze niesprawdzone z prawdziwym pobieraniem*
 
 **0.3: pozostałe zakładki**
+- [ ] podpowiedzi Lua w edytorze: uzupełnianie, dokumentacja po najechaniu i pomoc dla parametrów API Factorio (`data.raw`, pola prototypów, `game`, `script`, `defines`, zdarzenia), czytane z opisu API dołączonego do zainstalowanej gry (`doc-html/*-api.json`), więc zgodne z jej wersją
 - [ ] Problemy w nowym stylu: grupowanie według pliku i reguły, bezpieczne szybkie poprawki (dodanie brakującego klucza tłumaczenia, poprawienie wielkości liter w ścieżce)
 - [ ] Budowanie: wybór profilu, dodatkowych modów i zapisu gry; historia uruchomień do porównania
 - [ ] ikony składników i produktów pochodzących z gry podstawowej lub zależności

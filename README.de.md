@@ -47,6 +47,7 @@ Browser (Übersicht, Dateien, Prototypen, Ressourcen, Lokalisierung, Probleme, B
 - [ ] Factorio-Versionen installiert das Studio selbst: `fmstudio factorio install 2.0` lädt den kostenlosen Headless-Server (Linux, WSL, CI), wo `smoke` ihn findet, auch aus dem Build-Tab; *gebaut, mit dem echten Download noch nicht erprobt*
 
 **0.3: die übrigen Tabs**
+- [ ] Lua-Hilfen im Editor: Vervollständigung, Dokumentation beim Überfahren und Parameterhilfe für die Factorio-API (`data.raw`, Prototyp-Felder, `game`, `script`, `defines`, Ereignisse), gelesen aus der API-Beschreibung, die das installierte Spiel mitbringt (`doc-html/*-api.json`), also passend zu dessen Version
 - [ ] Probleme im neuen Stil: nach Datei und Regel gruppiert, sichere Schnellkorrekturen (fehlenden Übersetzungsschlüssel anlegen, Groß-/Kleinschreibung eines Pfads korrigieren)
 - [ ] Build: Profil, zusätzliche Mods und einen Spielstand wählen; ein Verlauf der Läufe zum Vergleichen
 - [ ] Symbole für Zutaten und Ergebnisse aus dem Basisspiel oder einer Abhängigkeit

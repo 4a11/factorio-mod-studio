@@ -47,6 +47,7 @@ navigateur (Aperçu, Fichiers, Prototypes, Ressources, Localisation, Problèmes,
 - [ ] des versions de Factorio installées par le studio : `fmstudio factorio install 2.0` télécharge le serveur sans interface gratuit (Linux, WSL, CI), où `smoke` le trouve, aussi depuis l'onglet Compilation ; *fait, pas encore essayé avec le vrai téléchargement*
 
 **0.3 : les onglets restants**
+- [ ] aides Lua dans l'éditeur : complétion, documentation au survol et aide sur les paramètres pour l'API de Factorio (`data.raw`, champs des prototypes, `game`, `script`, `defines`, événements), lues dans la description de l'API fournie avec le jeu installé (`doc-html/*-api.json`), donc conformes à sa version
 - [ ] Problèmes dans le nouveau style : regroupés par fichier et par règle, corrections rapides sûres (ajouter une clé de traduction manquante, corriger la casse d'un chemin)
 - [ ] Compilation : choisir le profil, des mods supplémentaires et une sauvegarde ; un historique des lancements à comparer
 - [ ] icônes des ingrédients et résultats issus du jeu de base ou d'une dépendance
