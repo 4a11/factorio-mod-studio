@@ -1,0 +1,55 @@
+# Checks the studio against the real game on Linux: downloads Factorio's headless server with `fmstudio factorio install`
+# (the real download), creates a mod from every template and one with every building block, and smoke-tests each of them.
+name: Game
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        factorio: ['1.1', '2.0', '2.1']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build fmstudio
+        run: dotnet publish src/FactorioModStudio.Cli -c Release -p:PackAsTool=false -o "$RUNNER_TEMP/fms"
+
+      - name: Install the Factorio ${{ matrix.factorio }} headless server (real download)
+        run: |
+          "$RUNNER_TEMP/fms/fmstudio" factorio install ${{ matrix.factorio }}
+          "$RUNNER_TEMP/fms/fmstudio" factorio
+
+      - name: Smoke-test a mod from every template
+        run: |
+          set -e
+          fms="$RUNNER_TEMP/fms/fmstudio"
+          mkdir -p work && cd work
+          templates="empty item-recipe runtime-script"
+          if [ "${{ matrix.factorio }}" != "1.1" ]; then templates="$templates entity"; fi
+          for t in $templates; do
+            echo "::group::template $t"
+            "$fms" new "t-$t" --template "$t" --factorio-version ${{ matrix.factorio }}
+            (cd "mods/t-$t" && "$fms" validate && "$fms" smoke --ticks 300)
+            echo "::endgroup::"
+          done
+
+      - name: Smoke-test a mod with every building block
+        if: matrix.factorio != '1.1'
+        run: |
+          set -e
+          fms="$RUNNER_TEMP/fms/fmstudio"
+          cd work
+          blocks=$("$fms" add --list --json | python3 -c "import json, sys; print(','.join(b['id'] for b in json.load(sys.stdin)))")
+          echo "blocks: $blocks"
+          "$fms" new all-blocks --factorio-version ${{ matrix.factorio }} --content "$blocks"
+          (cd mods/all-blocks && "$fms" validate && "$fms" smoke --ticks 300)
