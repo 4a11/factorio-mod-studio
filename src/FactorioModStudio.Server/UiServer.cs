@@ -401,7 +401,9 @@ public static class UiServer
             await http.Response.WriteAsync("retry: 2000\n: connected\n\n", http.RequestAborted);
             await http.Response.Body.FlushAsync(http.RequestAborted);
 
-            var ct = http.RequestAborted;
+            // Also ends when the server stops; otherwise shutting down waits for every open tab to disconnect by itself.
+            using var open = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted, app.Lifetime.ApplicationStopping);
+            var ct = open.Token;
             while (!ct.IsCancellationRequested)
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);

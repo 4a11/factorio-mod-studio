@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using FactorioModStudio.Core;
 using FactorioModStudio.Server;
 
@@ -26,7 +27,7 @@ public sealed class MainWindow : Window
         Content = _status;
 
         Opened += async (_, _) => await StartAsync();
-        Closing += (_, _) => StopServer();
+        Closing += OnClosing;
     }
 
     private async Task StartAsync()
@@ -63,12 +64,22 @@ public sealed class MainWindow : Window
         catch (FmsException) { return null; }
     }
 
-    private void StopServer()
+    /// <summary>
+    /// The window goes away at once; the server (and any Factorio started from the Build tab) is stopped in the background and
+    /// the window is closed for real afterwards, which ends the program.
+    /// </summary>
+    private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
         var ui = _ui;
-        _ui = null;
         if (ui is null) return;
-        // Off the UI thread, so a slow shutdown (a running Factorio being stopped) cannot freeze the closing window for long.
-        Task.Run(() => ui.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(10));
+        e.Cancel = true;
+        _ui = null;
+        Hide();
+        _ = Task.Run(async () =>
+        {
+            try { await ui.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (Exception) { /* the program ends either way */ }
+            Dispatcher.UIThread.Post(Close);
+        });
     }
 }
