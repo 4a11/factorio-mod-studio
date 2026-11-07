@@ -70,7 +70,7 @@ internal static class ScaffoldTemplates
             }).ToList()),
 
         new TemplateDefinition(
-            new TemplateInfo("item-recipe", "Item and recipe", "One new item with an icon and a recipe that is available from the start.", AllVersions),
+            new TemplateInfo("item-recipe", "Item and recipe", "A recoloured copy of the iron gear wheel with a cheaper recipe (Factorio 2.0+); on 1.1 a new item with a generated icon.", AllVersions),
             Common("\n[item-name]\n@@name@@-item=@@cfg:title@@ item\n\n[item-description]\n@@name@@-item=An item added by @@cfg:title@@.\n").Concat(new[]
             {
                 new TemplateFile("data.lua", Unverified + """
@@ -99,7 +99,7 @@ internal static class ScaffoldTemplates
             }).ToList()),
 
         new TemplateDefinition(
-            new TemplateInfo("entity", "Placeable chest", "A craftable container entity with item, recipe, technology and generated sprites.", ModernVersions),
+            new TemplateInfo("entity", "Placeable chest", "A recoloured copy of the iron chest, icon and picture included, with 48 slots instead of 32.", ModernVersions),
             Common("\n[entity-name]\n@@name@@-chest=@@cfg:title@@ chest\n\n[entity-description]\n@@name@@-chest=A storage chest added by @@cfg:title@@.\n\n" +
                    "[item-name]\n@@name@@-chest=@@cfg:title@@ chest\n\n[technology-name]\n@@name@@-chest=@@cfg:title@@ chest\n\n" +
                    "[technology-description]\n@@name@@-chest=Unlocks the @@cfg:title@@ chest.\n").Concat(new[]

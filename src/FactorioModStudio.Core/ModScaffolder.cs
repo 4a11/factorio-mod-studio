@@ -13,7 +13,8 @@ public sealed record TemplateInfo(string Id, string Title, string Description, I
 /// <param name="FactorioVersion">Target game version, MAJOR.MINOR (default "2.0"); must be one of the template's supported versions.</param>
 /// <param name="Title">Optional; defaults to the humanized name. Same for Author (FMS_AUTHOR or "Your Name") and Description.</param>
 /// <param name="Content">Ids of <see cref="ModContent.Blocks"/> added to the new mod, each named "&lt;mod name&gt;-&lt;its default name&gt;".</param>
-public sealed record ScaffoldRequest(string Name, string Template = "empty", string? Title = null, string? Author = null, string? Description = null, string FactorioVersion = ModScaffolder.DefaultFactorioVersion, IReadOnlyList<string>? Content = null);
+/// <param name="GameDataDirectory">Factorio's data folder; the blocks' icon files are recoloured copies of the originals in it.</param>
+public sealed record ScaffoldRequest(string Name, string Template = "empty", string? Title = null, string? Author = null, string? Description = null, string FactorioVersion = ModScaffolder.DefaultFactorioVersion, IReadOnlyList<string>? Content = null, string? GameDataDirectory = null);
 
 /// <param name="Folder">Full path of the new mod folder.</param>
 /// <param name="Files">Relative paths with '/' separators, sorted ordinally.</param>
@@ -57,6 +58,9 @@ public static class ModScaffolder
 
     public static IReadOnlyList<TemplateInfo> Templates { get; } = ScaffoldTemplates.All.Select(t => t.Info).ToList();
 
+    /// <summary>Templates that are built from a building block on Factorio 2.0 and later.</summary>
+    private static readonly Dictionary<string, string> BlockTemplates = new(StringComparer.Ordinal) { ["item-recipe"] = "item", ["entity"] = "chest" };
+
     public static ScaffoldResult Create(ScaffoldRequest request, string parentDirectory, DateOnly? today = null)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -80,8 +84,17 @@ public static class ModScaffolder
                 $"The template \"{template.Info.Id}\" does not support Factorio {targetVersion} (supported: {string.Join(", ", template.Info.SupportedVersions)}).");
         var modern = int.Parse(targetVersion.Split('.')[0], CultureInfo.InvariantCulture) >= 2;
 
+        // From Factorio 2.0 on, the item and chest templates are an empty mod plus a building block: a recoloured copy of the
+        // iron gear wheel or the iron chest (see ModContent), named like before: <name>-item and <name>-chest.
+        var requested = (request.Content ?? Array.Empty<string>()).ToList();
+        if (modern && BlockTemplates.TryGetValue(template.Info.Id, out var blockId))
+        {
+            requested.Insert(0, blockId);
+            template = ScaffoldTemplates.All.First(t => t.Info.Id == "empty");
+        }
+
         var content = new List<ContentBlockInfo>();
-        foreach (var id in (request.Content ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal))
+        foreach (var id in requested.Distinct(StringComparer.Ordinal))
         {
             var block = ModContent.Blocks.FirstOrDefault(b => string.Equals(b.Id, id, StringComparison.Ordinal))
                         ?? throw new ScaffoldException(ScaffoldError.UnknownTemplate,
@@ -148,7 +161,7 @@ public static class ModScaffolder
                 // Blocks go into the staging copy too, so the mod appears complete or not at all.
                 foreach (var block in content)
                 {
-                    try { ModContent.Apply(staging, new ContentRequest(block.Id, $"{name}-{block.DefaultName}", ContentTitle(title, block.DefaultName))); }
+                    try { ModContent.Apply(staging, new ContentRequest(block.Id, $"{name}-{block.DefaultName}", ContentTitle(title, block.DefaultName)), request.GameDataDirectory); }
                     catch (ContentException ex) { throw new ScaffoldException(ScaffoldError.InvalidField, ex.Message); }
                 }
                 files = Directory.EnumerateFiles(staging, "*", SearchOption.AllDirectories)

@@ -240,29 +240,34 @@ public class ScaffoldTests
                 break;
             case "item-recipe":
                 {
-                    Assert.Equal((64, 64), PngOf(folder, $"graphics/icons/{name}-item.png"));
-                    Assert.True(Regex.Matches(lua, Regex.Escape($"{name}-item")).Count >= 2, "item and recipe both named <name>-item");
-                    Assert.True(Regex.IsMatch(lua, @"type\s*=\s*[""']item[""']"));
-                    Assert.True(Regex.IsMatch(lua, @"type\s*=\s*[""']recipe[""']"));
+                    // Factorio 2.0+: a recoloured copy of the iron gear wheel (the building block "item"); 1.1: a new item with a generated icon.
+                    if (disk.Contains($"prototypes/{name}-item.lua"))
+                    {
+                        Assert.Contains("copy.item(\"iron-gear-wheel\"", lua);
+                        Assert.Contains("copy.recipe(\"iron-gear-wheel\"", lua);
+                        Assert.Contains($"\"{name}-item\"", lua);
+                    }
+                    else
+                    {
+                        Assert.Equal((64, 64), PngOf(folder, $"graphics/icons/{name}-item.png"));
+                        Assert.True(Regex.Matches(lua, Regex.Escape($"{name}-item")).Count >= 2, "item and recipe both named <name>-item");
+                        Assert.True(Regex.IsMatch(lua, @"type\s*=\s*[""']item[""']"));
+                        Assert.True(Regex.IsMatch(lua, @"type\s*=\s*[""']recipe[""']"));
+                    }
                     Assert.True(cfg.ContainsKey("item-name") && cfg["item-name"].ContainsKey($"{name}-item"));
                     Assert.True(cfg.ContainsKey("item-description") && cfg["item-description"].ContainsKey($"{name}-item"));
                     break;
                 }
             case "entity":
                 {
-                    Assert.True(Regex.IsMatch(lua, @"type\s*=\s*[""']container[""']"), "container entity");
-                    Assert.Contains($"{name}-chest", lua);
-                    Assert.Contains("place_result", lua);
-                    Assert.True(Regex.IsMatch(lua, @"type\s*=\s*[""']recipe[""']"));
-                    Assert.True(Regex.IsMatch(lua, @"type\s*=\s*[""']technology[""']"));
-                    Assert.True(Regex.IsMatch(lua, @"[""']unlock-recipe[""']"), "technology unlocks the recipe");
-                    Assert.True(Regex.Matches(lua, Regex.Escape($"{name}-chest")).Count >= 5, "entity, item, recipe, technology and place_result use the chest name");
-                    var sizes = disk.Where(f => f.StartsWith("graphics/", StringComparison.Ordinal) && f.EndsWith(".png", StringComparison.Ordinal)).Select(f => PngOf(folder, f)).ToList();
-                    Assert.True(sizes.Count(s => s == (64, 64)) >= 2, "64x64 entity picture and item icon");
-                    Assert.True(sizes.Count(s => s == (256, 256)) >= 1, "256x256 technology icon");
-                    foreach (var section in new[] { "entity-name", "item-name", "technology-name" })
-                        Assert.True(cfg.ContainsKey(section) && cfg[section].ContainsKey($"{name}-chest"), section);
-                    Assert.True(Regex.Matches(lua, "__" + Regex.Escape(name) + "__/graphics/").Count >= 3);
+                    // A recoloured copy of the iron chest (the building block "chest"), placed by its own item.
+                    Assert.Contains($"prototypes/{name}-chest.lua", disk);
+                    Assert.Contains("copy.entity(\"container\", \"iron-chest\"", lua);
+                    Assert.Contains("copy.item(\"iron-chest\"", lua);
+                    Assert.Contains("copy.recipe(\"iron-chest\"", lua);
+                    Assert.Contains("copy.replace_sprites(chest)", lua);
+                    Assert.Contains($"require(\"prototypes.{name}-chest\")", Read(folder, "data.lua"));
+                    Assert.True(cfg.ContainsKey("entity-name") && cfg["entity-name"].ContainsKey($"{name}-chest"));
                     break;
                 }
             case "runtime-script":
@@ -554,10 +559,11 @@ public class ScaffoldTests
         var sets = TemplateIds.Select(t => Make(parent.Path, "m-" + t, t).Files.ToHashSet()).ToList();
         Assert.False(sets[0].Contains("settings.lua"));
         Assert.True(sets[3].Contains("settings.lua"));
-        Assert.True(sets[1].Any(f => f.EndsWith("-item.png", StringComparison.Ordinal)));
+        Assert.Contains("prototypes/m-item-recipe-item.lua", sets[1]);
+        Assert.Contains("prototypes/m-entity-chest.lua", sets[2]);
+        Assert.False(sets[0].Any(f => f.StartsWith("prototypes/", StringComparison.Ordinal)));
         Assert.False(sets[0].Any(f => f.EndsWith(".png", StringComparison.Ordinal) && f != "thumbnail.png"));
         Assert.False(sets[3].Any(f => f.EndsWith(".png", StringComparison.Ordinal) && f != "thumbnail.png"));
-        Assert.True(sets[2].Count(f => f.EndsWith(".png", StringComparison.Ordinal)) >= 4);
     }
 
     // ------------------------------------------------------------------ fields

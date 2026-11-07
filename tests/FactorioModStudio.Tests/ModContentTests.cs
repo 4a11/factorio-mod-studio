@@ -36,7 +36,7 @@ public class ModContentTests
 
         var lua = Read(mod, "prototypes/my-armor.lua");
         Assert.Contains("local name = \"my-armor\"", lua);
-        Assert.Contains("require(\"prototypes.fms-copy-v1\")", lua);
+        Assert.Contains("require(\"prototypes.fms-copy-v2\")", lua);
         Assert.DoesNotContain("@@", lua);
         Assert.Contains("function copy.item(", Read(mod, ModContent.HelperPath));
         Assert.Equal("-- data\nrequire(\"prototypes.my-armor\")\n", Read(mod, "data.lua"));
@@ -167,7 +167,7 @@ public class ModContentTests
     [Fact]
     public void EveryBlock_RendersWithoutLeftoverTokens_AndNamesItsPrototypes()
     {
-        Assert.Equal(18, ModContent.Blocks.Count);
+        Assert.Equal(20, ModContent.Blocks.Count);
         Assert.Equal(new[] { "combat", "logistics", "production", "vehicles" }, ModContent.Blocks.Select(b => b.Category).Distinct());
         foreach (var block in ModContent.Blocks)
         {
@@ -180,6 +180,71 @@ public class ModContentTests
             Assert.All(plan.Prototypes, p => Assert.StartsWith("x-" + block.DefaultName, p));
             Assert.Equal(new[] { "2.0", "2.1" }, block.SupportedVersions);
         }
+    }
+
+    /// <summary>A stand-in for Factorio's data folder holding a few base-game pictures (plain RGBA PNGs).</summary>
+    private static TempDir GameData(params string[] relativePngs)
+    {
+        var dir = new TempDir();
+        var rgba = new byte[8 * 4 * 4];
+        for (var i = 0; i < rgba.Length; i += 4) { rgba[i] = 128; rgba[i + 1] = 128; rgba[i + 2] = 128; rgba[i + 3] = 255; }
+        foreach (var rel in relativePngs)
+        {
+            var full = dir.Combine(("base/" + rel).Split('/'));
+            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+            File.WriteAllBytes(full, PngEncoder.Encode(8, 4, rgba));
+        }
+        return dir;
+    }
+
+    [Fact]
+    public void Apply_WithTheGameData_WritesRecolouredIcons_AndReferencesThem()
+    {
+        using var mod = Mod();
+        using var game = GameData("graphics/icons/express-transport-belt.png", "graphics/icons/express-splitter.png");
+        var plan = ModContent.Apply(mod.Path, new ContentRequest("belt", "b1"), game.Path);
+
+        // Only the originals that exist are recoloured (the underground belt has none here: it stays tinted in the game).
+        Assert.Contains("graphics/icons/b1.png", plan.Create);
+        Assert.Contains("graphics/icons/b1-splitter.png", plan.Create);
+        Assert.DoesNotContain("graphics/icons/b1-underground-belt.png", plan.Create);
+        var image = IconRecolor.Decode(File.ReadAllBytes(mod.Combine("graphics", "icons", "b1.png")))!;
+        Assert.Equal((8, 4), (image.Width, image.Height));
+        Assert.NotEqual(image.Rgba[0], image.Rgba[2]); // grey became a colour
+        var lua = Read(mod, "prototypes/b1.lua");
+        Assert.Contains("[\"b1\"] = \"__my-mod__/graphics/icons/b1.png\"", lua);
+        Assert.DoesNotContain("b1-underground-belt.png", lua);
+    }
+
+    [Fact]
+    public void Apply_KeepsAnIconFileThatIsAlreadyThere_AndUsesIt()
+    {
+        using var mod = Mod();
+        mod.Write("graphics/icons/w1.png", "mine");
+        using var game = GameData("graphics/icons/wall.png");
+        var plan = ModContent.Apply(mod.Path, new ContentRequest("wall", "w1"), game.Path);
+
+        Assert.DoesNotContain("graphics/icons/w1.png", plan.Create);
+        Assert.Equal("mine", Read(mod, "graphics/icons/w1.png"));
+        Assert.Contains("__my-mod__/graphics/icons/w1.png", Read(mod, "prototypes/w1.lua"));
+    }
+
+    [Fact]
+    public void ChestBlock_RecoloursThePictureOnTheMapToo()
+    {
+        using var mod = Mod();
+        using var game = GameData("graphics/icons/iron-chest.png", "graphics/entity/iron-chest/iron-chest.png");
+        var plan = ModContent.Apply(mod.Path, new ContentRequest("chest", "c1"), game.Path);
+
+        Assert.Contains("graphics/entity/c1.png", plan.Create);
+        Assert.Contains("[\"__base__/graphics/entity/iron-chest/iron-chest.png\"] = \"__my-mod__/graphics/entity/c1.png\"", Read(mod, "prototypes/c1.lua"));
+    }
+
+    [Fact]
+    public void IconRecolor_RejectsWhatItCannotRead()
+    {
+        Assert.Null(IconRecolor.Recolor(new byte[] { 1, 2, 3 }, 1, 0, 0));
+        Assert.Null(IconRecolor.Recolor(System.Text.Encoding.ASCII.GetBytes("\u0089PNG\r\n\u001a\nnot really a png at all, sorry"), 1, 0, 0));
     }
 
     [Fact]

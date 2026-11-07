@@ -110,7 +110,7 @@ public static class Program
                 cmd.Positional[0], cmd.Get("--template") ?? "empty", cmd.Get("--title"), cmd.Get("--author"), cmd.Get("--description"),
                 cmd.Get("--factorio-version") ?? ModScaffolder.DefaultFactorioVersion,
                 cmd.Get("--content")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-            var result = ModScaffolder.Create(request, parent);
+            var result = ModScaffolder.Create(request with { GameDataDirectory = GameData(cmd) }, parent);
 
             if (json)
             {
@@ -167,7 +167,8 @@ public static class Program
             var name = cmd.Positional.Count == 2 ? cmd.Positional[1] : DefaultContentName(modDirectory, blockId);
             var request = new ContentRequest(blockId, name, cmd.Get("--title"));
             var dryRun = cmd.Has("--dry-run");
-            var plan = dryRun ? ModContent.Plan(modDirectory, request) : ModContent.Apply(modDirectory, request);
+            var gameData = GameData(cmd);
+            var plan = dryRun ? ModContent.Plan(modDirectory, request, gameData) : ModContent.Apply(modDirectory, request, gameData);
 
             if (json)
             {
@@ -191,6 +192,21 @@ public static class Program
             else error.WriteLine($"error: {ex.Message}");
             return ExitUsageError;
         }
+    }
+
+    /// <summary>The data folder of --factorio or of the newest Factorio found; null without one (icons are then tinted in the game).</summary>
+    private static string? GameData(CommandLine cmd)
+    {
+        try
+        {
+            var context = LoadProject(cmd);
+            var configured = context.Config.FactorioPath is { } p ? context.ResolvePath(p) : null;
+            var factorio = cmd.Get("--factorio") is { } explicitPath
+                ? FactorioLocator.Locate(explicitPath, configured)
+                : FactorioInstallations.Pick(FactorioInstallations.Candidates(context, new FactorioSettings(context.StateDirectory).Read()), null).Chosen?.Path;
+            return ModCatalog.GameDataFor(factorio);
+        }
+        catch (FmsException) { return null; }
     }
 
     /// <summary>"&lt;mod name&gt;-&lt;the block's default name&gt;", like the blocks of a new mod.</summary>

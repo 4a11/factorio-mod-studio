@@ -602,7 +602,7 @@ public static class UiServer
 
             try
             {
-                var result = ModScaffolder.Create(request, workspace);
+                var result = ModScaffolder.Create(request with { GameDataDirectory = catalog.GameDataDirectory }, workspace);
                 catalog.List();
                 feed.Publish(new { type = "mods" });
                 watcher.EnsureWatching();
@@ -662,7 +662,7 @@ public static class UiServer
 
             try
             {
-                var plan = dryRun ? ModContent.Plan(entry.Path, request) : ModContent.Apply(entry.Path, request);
+                var plan = dryRun ? ModContent.Plan(entry.Path, request, catalog.GameDataDirectory) : ModContent.Apply(entry.Path, request, catalog.GameDataDirectory);
                 return Results.Json(new { plan.Block, plan.Name, plan.Title, plan.Create, plan.Change, plan.Prototypes, dryRun },
                     statusCode: dryRun ? StatusCodes.Status200OK : StatusCodes.Status201Created);
             }

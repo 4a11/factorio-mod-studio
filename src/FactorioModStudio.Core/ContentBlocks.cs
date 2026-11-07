@@ -8,7 +8,16 @@ public sealed record ContentBlockInfo(string Id, string Category, string Default
 /// <summary>One locale line the block needs; Key and Value may contain the @@id@@ and @@title@@ tokens.</summary>
 internal sealed record BlockLocale(string Section, string Key, string Value);
 
-internal sealed record ContentBlock(ContentBlockInfo Info, string Lua, IReadOnlyList<BlockLocale> Locale);
+/// <summary>An icon file the block ships: <see cref="Suffix"/> is appended to the prototype name, <see cref="Vanilla"/> names the
+/// original in data/base/graphics/icons that is recoloured for it.</summary>
+internal sealed record BlockIcon(string Suffix, string Vanilla);
+
+/// <summary>A picture the block recolours: <see cref="Vanilla"/> is relative to data/base, the copy is
+/// graphics/entity/&lt;prototype name&gt;&lt;<see cref="Suffix"/>&gt;.png and replaces the original in the copied prototype.</summary>
+internal sealed record BlockSprite(string Vanilla, string Suffix);
+
+/// <param name="Tint">The colour of the block, read from its <c>local tint</c> line; icon files are recoloured to it.</param>
+internal sealed record ContentBlock(ContentBlockInfo Info, string Lua, IReadOnlyList<BlockLocale> Locale, (double R, double G, double B) Tint, IReadOnlyList<BlockIcon> Icons, IReadOnlyList<BlockSprite> Sprites);
 
 /// <summary>
 /// The building blocks that can be added to a mod: each one is a Lua file that copies a vanilla prototype
@@ -20,21 +29,99 @@ internal static class ContentBlocks
 {
     private static readonly string[] Modern = { "2.0", "2.1" };
 
-    private static ContentBlock Block(string id, string category, string defaultName, string lua, params BlockLocale[] locale) =>
-        new(new ContentBlockInfo(id, category, defaultName, Modern), lua, locale);
+    private static readonly System.Text.RegularExpressions.Regex TintLine =
+        new(@"local tint = \{ r = ([0-9.]+), g = ([0-9.]+), b = ([0-9.]+)", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>The original icon each prototype of a block is recoloured from, by block id.</summary>
+    private static readonly Dictionary<string, BlockIcon[]> IconMap = new(StringComparer.Ordinal)
+    {
+        ["item"] = new[] { new BlockIcon("", "iron-gear-wheel") },
+        ["chest"] = new[] { new BlockIcon("", "iron-chest") },
+        ["armor"] = new[] { new BlockIcon("", "modular-armor") },
+        ["gun"] = new[] { new BlockIcon("", "submachine-gun"), new BlockIcon("-ammo", "firearm-magazine") },
+        ["grenade"] = new[] { new BlockIcon("", "grenade") },
+        ["turret"] = new[] { new BlockIcon("", "gun-turret") },
+        ["wall"] = new[] { new BlockIcon("", "wall") },
+        ["enemy"] = new[] { new BlockIcon("", "small-biter") },
+        ["shield"] = new[] { new BlockIcon("", "energy-shield-equipment") },
+        ["belt"] = new[] { new BlockIcon("", "express-transport-belt"), new BlockIcon("-underground-belt", "express-underground-belt"), new BlockIcon("-splitter", "express-splitter") },
+        ["inserter"] = new[] { new BlockIcon("", "fast-inserter") },
+        ["pipe"] = new[] { new BlockIcon("", "pipe"), new BlockIcon("-to-ground", "pipe-to-ground") },
+        ["pole"] = new[] { new BlockIcon("", "medium-electric-pole") },
+        ["assembler"] = new[] { new BlockIcon("", "assembling-machine-2") },
+        ["furnace"] = new[] { new BlockIcon("", "steel-furnace") },
+        ["ore"] = new[] { new BlockIcon("", "iron-ore") },
+        ["drill"] = new[] { new BlockIcon("", "electric-mining-drill") },
+        ["solar"] = new[] { new BlockIcon("", "solar-panel"), new BlockIcon("-accumulator", "accumulator") },
+        ["car"] = new[] { new BlockIcon("", "car") },
+        ["train"] = new[] { new BlockIcon("", "locomotive"), new BlockIcon("-wagon", "cargo-wagon") },
+    };
+
+    /// <summary>Pictures of placed entities that are recoloured too, by block id.</summary>
+    private static readonly Dictionary<string, BlockSprite[]> SpriteMap = new(StringComparer.Ordinal)
+    {
+        ["chest"] = new[] { new BlockSprite("graphics/entity/iron-chest/iron-chest.png", "") },
+    };
+
+    private static ContentBlock Block(string id, string category, string defaultName, string lua, params BlockLocale[] locale)
+    {
+        var m = TintLine.Match(lua);
+        if (!m.Success) throw new InvalidOperationException($"Block {id} has no `local tint` line.");
+        double Part(int i) => double.Parse(m.Groups[i].Value, System.Globalization.CultureInfo.InvariantCulture);
+        return new(new ContentBlockInfo(id, category, defaultName, Modern), lua, locale, (Part(1), Part(2), Part(3)),
+            IconMap.TryGetValue(id, out var icons) ? icons : Array.Empty<BlockIcon>(),
+            SpriteMap.TryGetValue(id, out var sprites) ? sprites : Array.Empty<BlockSprite>());
+    }
 
     private static BlockLocale L(string section, string key, string value) => new(section, key, value);
 
     private const string Head = """
         -- @@title@@ (@@id@@), added by Factorio Mod Studio.
         -- A copy of a vanilla prototype with its own name and numbers: change the values below to make it your own.
-        local copy = require("prototypes.fms-copy-v1")
+        local copy = require("prototypes.fms-copy-v2")
+        copy.use_icons({@@icons@@})
+        copy.use_sprites({@@sprites@@})
 
 
         """;
 
     public static IReadOnlyList<ContentBlock> All { get; } = new[]
     {
+        // ------------------------------------------------------------------ basics: the new-mod templates use these two
+        Block("item", "production", "item", Head + """
+            local name = "@@id@@"
+            local tint = { r = 0.3, g = 0.8, b = 1.0 }
+
+            -- A new item: the iron gear wheel in another colour, stacking higher, with a cheaper recipe of its own.
+            local item = copy.item("iron-gear-wheel", name, tint)
+            item.stack_size = 200
+
+            local recipe = copy.recipe("iron-gear-wheel", name)
+            recipe.ingredients = { { type = "item", name = "iron-plate", amount = 1 } }
+            recipe.energy_required = 0.25
+
+            data:extend({ item, recipe })
+            copy.unlock("automation", name)
+            """,
+            L("item-name", "@@id@@", "@@title@@"),
+            L("item-description", "@@id@@", "A recoloured iron gear wheel made from a single iron plate.")),
+
+        Block("chest", "logistics", "chest", Head + """
+            local name = "@@id@@"
+            local tint = { r = 0.95, g = 0.6, b = 0.2 }
+
+            -- The iron chest with more room. Its picture on the map is a recoloured copy too (see copy.replace_sprites).
+            local chest = copy.entity("container", "iron-chest", name)
+            chest.inventory_size = 48 -- the iron chest holds 32 stacks
+            chest.max_health = 300
+            copy.replace_sprites(chest)
+
+            data:extend({ chest, copy.item("iron-chest", name, tint, name), copy.recipe("iron-chest", name) })
+            copy.unlock("logistics", name)
+            """,
+            L("entity-name", "@@id@@", "@@title@@"),
+            L("entity-description", "@@id@@", "A recoloured iron chest with 48 slots instead of 32.")),
+
         // ------------------------------------------------------------------ combat
         Block("armor", "combat", "armor", Head + """
             local name = "@@id@@"
@@ -135,6 +222,7 @@ internal static class ContentBlocks
             -- A small biter in another colour: tougher, faster and with a harder bite.
             local biter = table.deepcopy(data.raw.unit["small-biter"])
             biter.name = name
+            copy.set_icon(biter, name, tint)
             biter.max_health = 75
             biter.movement_speed = 0.25
             copy.retint(biter.run_animation, tint)
@@ -317,12 +405,13 @@ internal static class ContentBlocks
             local resource_autoplace = require("resource-autoplace")
 
             local name = "@@id@@"
-            local tint = { r = 0.35, g = 0.85, b = 0.95 }
+            local tint = { r = 0.45, g = 0.95, b = 0.35 }
 
             -- A new ore on Nauvis: a copy of iron ore in another colour, placed in its own patches.
             resource_autoplace.initialize_patch_set(name, true)
             local ore = table.deepcopy(data.raw.resource["iron-ore"])
             ore.name = name
+            copy.set_icon(ore, name, tint)
             ore.minable.result = name
             ore.minable.results = nil
             ore.map_color = tint
@@ -380,7 +469,7 @@ internal static class ContentBlocks
         Block("solar", "production", "solar-panel", Head + """
             local panel_name = "@@id@@"
             local accumulator_name = panel_name .. "-accumulator"
-            local tint = { r = 0.4, g = 0.7, b = 1.0 }
+            local tint = { r = 1.0, g = 0.8, b = 0.25 }
 
             -- A stronger solar panel and an accumulator that stores twice as much.
             local panel = copy.entity("solar-panel", "solar-panel", panel_name)
@@ -472,12 +561,46 @@ internal static class ContentBlocks
           return icons
         end
 
-        --- A copy of the item `vanilla` called `name`, with a tinted icon; it places `place_result` when that is given.
+        --- Icon files this mod ships for some of its prototypes (recoloured copies of the originals), by prototype name.
+        copy.icon_files = {}
+
+        --- Registers icon files: { ["prototype-name"] = "__mod__/graphics/icons/prototype-name.png", ... }.
+        function copy.use_icons(files)
+          for name, file in pairs(files) do copy.icon_files[name] = file end
+        end
+
+        --- Recoloured copies of vanilla pictures this mod ships: { ["__base__/graphics/...png"] = "__mod__/graphics/entity/...png" }.
+        copy.sprite_files = {}
+
+        function copy.use_sprites(files)
+          for original, file in pairs(files) do copy.sprite_files[original] = file end
+        end
+
+        --- Points every picture inside `prototype` that the mod has a recoloured copy of to that copy.
+        function copy.replace_sprites(prototype)
+          copy.walk(prototype, function(node)
+            if type(node.filename) == "string" and copy.sprite_files[node.filename] then
+              node.filename = copy.sprite_files[node.filename]
+            end
+          end)
+        end
+
+        --- Gives `prototype` the mod's own icon file for `name` when there is one, else the original icon tinted with `tint`.
+        function copy.set_icon(prototype, name, tint)
+          local file = copy.icon_files[name]
+          if file then
+            prototype.icons = { { icon = file, icon_size = 64 } }
+          else
+            prototype.icons = copy.tinted_icons(prototype, tint)
+          end
+          prototype.icon = nil
+        end
+
+        --- A copy of the item `vanilla` called `name`, with its own icon; it places `place_result` when that is given.
         function copy.item(vanilla, name, tint, place_result)
           local item = table.deepcopy(copy.find_item(vanilla))
           item.name = name
-          item.icons = copy.tinted_icons(item, tint)
-          item.icon = nil
+          copy.set_icon(item, name, tint)
           item.order = (item.order or "z") .. "-" .. name
           if place_result then item.place_result = place_result end
           return item
@@ -503,6 +626,10 @@ internal static class ContentBlocks
             entity.minable.results = nil
           end
           entity.next_upgrade = nil -- vanilla tiers upgrade into each other; the copy stands on its own
+          if copy.icon_files[name] then -- the same icon as its item in the map and the Factoriopedia
+            entity.icons = { { icon = copy.icon_files[name], icon_size = 64 } }
+            entity.icon = nil
+          end
           return entity
         end
 
