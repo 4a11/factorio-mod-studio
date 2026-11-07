@@ -60,8 +60,16 @@ browser (Overview, Files, Prototypes, Resources, Localization, Problems, Build) 
 - [ ] a sprite editor in the studio: create and edit icons and sprites, and build animations (frames, sprite sheet, live preview) without leaving the studio
 - [ ] a set of examples for common things to add, each one loading in the game: storage, item, weapon, vehicle, logistics (pipes, belts, splitters, underground belts); see the [examples plan](docs/examples-plan.md)
 
+**0.6: editing content**
+- [ ] the Prototypes tab from the game's own data (`--dump-data`): what the mod really creates and changes, with every value, also for copies made with `table.deepcopy`; "which mod changed this item, and to what?"
+- [ ] a properties panel for building blocks: health, speed, inventory, damage... as fields showing "original → yours", written back into the block's Lua
+- [ ] a recipe and technology editor: ingredients picked with their icons from the game and the dependencies, and the technology that unlocks the recipe
+- [ ] rename or remove a block safely: its file, the require, the locale keys, the icons and every reference change together
+- [ ] the colour of a block chosen with a slider, with the recoloured icon previewed before it is added
+- [ ] a quick try in the game: one button starts Factorio on a test map with the new items already in the inventory
+- [ ] translations of new blocks: their keys added to every language of the mod, marked as untranslated in the Localization tab
+
 **Later**
-- the final prototypes via `--dump-data`: "which mod changed this item, and to what?"
 - running tests written for [FactorioTest](https://mods.factorio.com/mod/factorio-test) from the studio
 - an editor extension (VS Code) on top of the same API
 

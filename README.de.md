@@ -62,8 +62,16 @@ Browser (Übersicht, Dateien, Prototypen, Ressourcen, Lokalisierung, Probleme, B
 - [ ] ein Sprite-Editor im Studio: Icons und Sprites erstellen und bearbeiten, Animationen bauen (Frames, Spritesheet, Live-Vorschau), ohne das Studio zu verlassen
 - [ ] eine Sammlung von Beispielen für typische Inhalte, jedes im Spiel ladbar: Lager, Gegenstand, Waffe, Fahrzeug, Logistik (Rohre, Förderbänder, Splitter, unterirdische Förderbänder); siehe den [Beispielplan](docs/examples-plan.md)
 
+**0.6: Inhalte bearbeiten**
+- [ ] der Prototypen-Tab aus den Daten des Spiels selbst (`--dump-data`): was der Mod wirklich anlegt und ändert, mit allen Werten, auch für Kopien per `table.deepcopy`; „Welcher Mod hat diesen Gegenstand geändert, und wie?“
+- [ ] ein Eigenschaften-Panel für Bausteine: Lebenspunkte, Tempo, Inventar, Schaden… als Felder „Original → Ihr Wert“, die zurück ins Lua des Bausteins geschrieben werden
+- [ ] ein Editor für Rezepte und Technologien: Zutaten mit ihren Symbolen aus dem Spiel und den Abhängigkeiten, dazu die Technologie, die das Rezept freischaltet
+- [ ] Bausteine sicher umbenennen oder entfernen: Datei, require, Übersetzungsschlüssel, Symbole und alle Verweise ändern sich gemeinsam
+- [ ] die Farbe eines Bausteins per Schieberegler, mit Vorschau des umgefärbten Symbols vor dem Hinzufügen
+- [ ] schnell im Spiel ausprobieren: ein Knopf startet Factorio auf einer Testkarte, das Neue liegt schon im Inventar
+- [ ] Übersetzungen neuer Bausteine: ihre Schlüssel kommen in alle Sprachen des Mods, im Lokalisierungs-Tab als unübersetzt markiert
+
 **Später**
-- die endgültigen Prototypen über `--dump-data`: „Welche Mod hat diesen Gegenstand geändert, und wie?“
 - Tests, die für [FactorioTest](https://mods.factorio.com/mod/factorio-test) geschrieben sind, aus dem Studio starten
 - eine Editor-Erweiterung (VS Code) auf derselben API
 

@@ -62,8 +62,16 @@ navegador (Resumen, Archivos, Prototipos, Recursos, Localización, Problemas, Co
 - [ ] un editor de sprites en el estudio: crear y editar iconos y sprites, y montar animaciones (fotogramas, hoja de sprites, vista previa en vivo) sin salir del estudio
 - [ ] un conjunto de ejemplos de cosas habituales que añadir, cada uno cargado en el juego: almacenamiento, objeto, arma, vehículo, logística (tuberías, cintas, divisores, cintas subterráneas); ver el [plan de ejemplos](docs/examples-plan.md)
 
+**0.6: editar contenido**
+- [ ] la pestaña Prototipos con los datos del propio juego (`--dump-data`): lo que el mod crea y cambia de verdad, con todos los valores, también en copias hechas con `table.deepcopy`; «¿qué mod cambió este objeto, y cómo?»
+- [ ] un panel de propiedades para los bloques: vida, velocidad, inventario, daño… como campos «original → tu valor» que se escriben de vuelta en el Lua del bloque
+- [ ] un editor de recetas y tecnologías: ingredientes elegidos con sus iconos del juego y de las dependencias, y la tecnología que desbloquea la receta
+- [ ] renombrar o quitar un bloque con seguridad: el archivo, el require, las claves de traducción, los iconos y todas las referencias cambian a la vez
+- [ ] el color de un bloque elegido con un control deslizante, con vista previa del icono recoloreado antes de añadirlo
+- [ ] probar rápido en el juego: un botón abre Factorio en un mapa de prueba con lo nuevo ya en el inventario
+- [ ] traducciones de los bloques nuevos: sus claves se añaden a todos los idiomas del mod, marcadas como sin traducir en la pestaña Localización
+
 **Más adelante**
-- los prototipos finales mediante `--dump-data`: «¿qué mod cambió este objeto, y cómo?»
 - ejecutar desde el estudio las pruebas escritas para [FactorioTest](https://mods.factorio.com/mod/factorio-test)
 - una extensión de editor (VS Code) sobre la misma API
 

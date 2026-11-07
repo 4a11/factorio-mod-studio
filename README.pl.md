@@ -62,8 +62,16 @@ przeglądarce (Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy, Budow
 - [ ] edytor sprite'ów w studiu: tworzenie i edycja ikon i sprite'ów oraz animacje (klatki, arkusz sprite'ów, podgląd na żywo) bez wychodzenia ze studia
 - [ ] zestaw przykładów typowych rzeczy do dodania, każdy wczytywany w grze: magazyn, przedmiot, broń, pojazd, logistyka (rury, taśmociągi, rozdzielacze, taśmociągi podziemne); zobacz [plan przykładów](docs/examples-plan.md)
 
+**0.6: edycja zawartości**
+- [ ] zakładka Prototypy na podstawie danych samej gry (`--dump-data`): co mod naprawdę tworzy i zmienia, ze wszystkimi wartościami, także dla kopii przez `table.deepcopy`; „który mod zmienił ten przedmiot i na co?”
+- [ ] panel właściwości bloku: zdrowie, prędkość, ekwipunek, obrażenia… jako pola „oryginał → twoja wartość”, zapisywane z powrotem w Lua bloku
+- [ ] edytor receptur i technologii: składniki wybierane z ikonami z gry i zależności oraz technologia odblokowująca recepturę
+- [ ] bezpieczna zmiana nazwy i usuwanie bloku: plik, require, klucze tłumaczeń, ikony i wszystkie odwołania zmieniają się razem
+- [ ] kolor bloku wybierany suwakiem, z podglądem przemalowanej ikony przed dodaniem
+- [ ] szybka próba w grze: jeden przycisk uruchamia Factorio na mapie testowej, a nowości są już w ekwipunku
+- [ ] tłumaczenia nowych bloków: ich klucze trafiają do wszystkich języków moda, oznaczone jako nieprzetłumaczone w zakładce Lokalizacja
+
 **Później**
-- końcowe prototypy przez `--dump-data`: „który mod zmienił ten przedmiot i na co?”
 - uruchamianie testów napisanych dla [FactorioTest](https://mods.factorio.com/mod/factorio-test) bezpośrednio ze studia
 - rozszerzenie edytora (VS Code) na tym samym API
 

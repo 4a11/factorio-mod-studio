@@ -62,8 +62,16 @@ navigateur (Aperçu, Fichiers, Prototypes, Ressources, Localisation, Problèmes,
 - [ ] un éditeur de sprites dans le studio : créer et modifier des icônes et des sprites, et monter des animations (images, feuille de sprites, aperçu en direct) sans quitter le studio
 - [ ] un ensemble d'exemples pour les ajouts courants, chacun chargé dans le jeu : stockage, objet, arme, véhicule, logistique (tuyaux, convoyeurs, répartiteurs, convoyeurs souterrains) ; voir le [plan des exemples](docs/examples-plan.md)
 
+**0.6 : éditer le contenu**
+- [ ] l'onglet Prototypes d'après les données du jeu lui-même (`--dump-data`) : ce que le mod crée et modifie vraiment, avec toutes les valeurs, y compris les copies faites avec `table.deepcopy` ; « quel mod a modifié cet objet, et en quoi ? »
+- [ ] un panneau de propriétés pour les blocs : vie, vitesse, inventaire, dégâts… en champs « original → votre valeur », réécrits dans le Lua du bloc
+- [ ] un éditeur de recettes et de technologies : ingrédients choisis avec leurs icônes du jeu et des dépendances, et la technologie qui débloque la recette
+- [ ] renommer ou retirer un bloc en toute sécurité : le fichier, le require, les clés de traduction, les icônes et toutes les références changent ensemble
+- [ ] la couleur d'un bloc choisie avec un curseur, avec l'aperçu de l'icône recolorée avant l'ajout
+- [ ] un essai rapide en jeu : un bouton lance Factorio sur une carte de test avec les nouveautés déjà dans l'inventaire
+- [ ] traductions des nouveaux blocs : leurs clés ajoutées à toutes les langues du mod, marquées non traduites dans l'onglet Localisation
+
 **Plus tard**
-- les prototypes finaux via `--dump-data` : « quel mod a modifié cet objet, et en quoi ? »
 - lancer depuis le studio les tests écrits pour [FactorioTest](https://mods.factorio.com/mod/factorio-test)
 - une extension d'éditeur (VS Code) sur la même API
 
