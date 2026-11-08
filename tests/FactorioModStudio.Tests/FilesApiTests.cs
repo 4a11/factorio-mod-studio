@@ -1233,4 +1233,22 @@ public class FilesApiTests
         overview = overview.TryGetProperty("overview", out var inner) ? inner : overview;
         Assert.Equal(file, overview.GetProperty("blocks").EnumerateArray().Single().GetProperty("file").GetString());
     }
+
+    [Fact]
+    public async Task Delete_OfAFolderAnotherProgramHasOpen_SaysSo_AndLeavesNoTrashEntry()
+    {
+        if (!OperatingSystem.IsWindows()) return; // elsewhere an open file does not keep its folder from being moved
+        using var e = await Env.Create();
+        var id = await e.Id(Mod);
+
+        Resp del;
+        using (new FileStream(e.ModFile("dir/inner.txt"), FileMode.Open, FileAccess.Read, FileShare.None))
+            del = await Delete(e.Http, id, "dir");
+
+        Is(HttpStatusCode.Conflict, del);
+        Assert.Equal("in-use", del.Str("code"));
+        Assert.Contains("in use by another program", del.Str("error"));
+        Assert.True(File.Exists(e.ModFile("dir/inner.txt")));
+        Assert.Empty(Entries(await Trash(e.Http, id)));
+    }
 }

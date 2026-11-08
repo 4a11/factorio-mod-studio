@@ -44,6 +44,25 @@ internal static class FilesApi
 
     private static IResult Error(int status, string message) => Results.Json(new { error = message }, statusCode: status);
 
+    /// <summary>
+    /// A move that Windows refused because a program has the folder (or a file in it) open, or uses it as its current folder: a
+    /// file manager window, a terminal, an editor. That is said plainly with <c>code = "in-use"</c>, so the studio can tell what to do;
+    /// other failures keep the system's message.
+    /// </summary>
+    private static IResult CannotChange(Exception ex, string what)
+    {
+        // Directory.Move reports a folder in use as an IOException with ERROR_ACCESS_DENIED, File.Move as a sharing violation.
+        const int AccessDenied = 5, SharingViolation = 32, LockViolation = 33;
+        var inUse = ex is UnauthorizedAccessException || (ex.HResult & 0xFFFF) is AccessDenied or SharingViolation or LockViolation;
+        if (!inUse) return Error(StatusCodes.Status500InternalServerError, $"Could not {what}: {ex.Message}");
+        return Results.Json(new
+        {
+            error = $"Could not {what}: the folder or a file in it is in use by another program (a file manager window, a terminal or an editor has it open), or it may not be changed. Close that program and try again.",
+            code = "in-use",
+            detail = ex.Message
+        }, statusCode: StatusCodes.Status409Conflict);
+    }
+
     private static string Relative(string root, string full) => Path.GetRelativePath(root, full).Replace('\\', '/');
 
     public static void Map(WebApplication app, ModCatalog catalog, ProjectContext context, FileManagerLauncher? launcher)
@@ -129,7 +148,7 @@ internal static class FilesApi
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                return Error(StatusCodes.Status500InternalServerError, $"Could not move: {ex.Message}");
+                return CannotChange(ex, "move");
             }
             return Results.Json(new { from = Relative(root, from), to = Relative(root, to) });
         });
@@ -191,7 +210,7 @@ internal static class FilesApi
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 TryDeleteDirectory(entryDir);
-                return Error(StatusCodes.Status500InternalServerError, $"Could not delete: {ex.Message}");
+                return CannotChange(ex, "delete");
             }
 
             PurgeTrash(TrashDirFor(id));
@@ -233,7 +252,7 @@ internal static class FilesApi
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                return Error(StatusCodes.Status500InternalServerError, $"Could not restore: {ex.Message}");
+                return CannotChange(ex, "restore");
             }
 
             TryDeleteDirectory(entryDir);
@@ -379,7 +398,7 @@ internal static class FilesApi
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 TryDeleteDirectory(entryDir);
-                return Error(StatusCodes.Status500InternalServerError, $"Could not delete: {ex.Message}");
+                return CannotChange(ex, "delete");
             }
 
             PurgeTrash(modsTrash);
@@ -410,7 +429,7 @@ internal static class FilesApi
             catch (FolderLinkException ex) { return Error(StatusCodes.Status400BadRequest, ex.Message); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                return Error(StatusCodes.Status500InternalServerError, $"Could not restore: {ex.Message}");
+                return CannotChange(ex, "restore");
             }
 
             TryDeleteDirectory(entryDir);

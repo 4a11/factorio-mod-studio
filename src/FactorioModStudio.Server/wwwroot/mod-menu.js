@@ -106,7 +106,11 @@ export function createModMenu({ el, api, isPinned, togglePin, open, hasUnsaved, 
 
     let trashId;
     try { ({ trashId } = await api(`/api/mods/${enc(mod.id)}`, { method: 'DELETE' })); }
-    catch (error) { showToast(t('files.deleteFailed', { message: error.message }), [], true); return; }
+    catch (error) {
+      // Windows keeps a folder that a program has open (or uses as its current folder) from being moved: say what to do.
+      showToast(error.body?.code === 'in-use' ? t('sidebar.deleteInUse', { name: mod.name }) : t('files.deleteFailed', { message: error.message }), [], true);
+      return;
+    }
     // The id follows the folder, so after Undo the mod has it again; the pin comes back with it.
     const wasPinned = isPinned(mod.id);
     if (wasPinned) togglePin(mod.id);
@@ -120,7 +124,7 @@ export function createModMenu({ el, api, isPinned, togglePin, open, hasUnsaved, 
     hideToast();
     try { await api(`/api/workspace/trash/${enc(trashId)}/restore`, { method: 'POST' }); }
     catch (error) {
-      showToast(error.status === 409 ? t('sidebar.restoreOccupied') : t('sidebar.restoreFailed', { message: error.message }), [], true);
+      showToast(error.body?.code === 'in-use' ? t('files.inUse') : error.status === 409 ? t('sidebar.restoreOccupied') : t('sidebar.restoreFailed', { message: error.message }), [], true);
       return;
     }
     if (wasPinned && !isPinned(mod.id)) togglePin(mod.id);

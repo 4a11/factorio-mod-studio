@@ -547,7 +547,8 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
     toastTimer = setTimeout(hideToast, TOAST_MS);
   }
   function hideToast() { clearTimeout(toastTimer); toast.hidden = true; toast.replaceChildren(); }
-  const fail = (key, error) => showToast(t(key, { message: error?.message ?? String(error) }), [], true);
+  // A file or folder another program has open (Windows refuses to move it) gets a message that says what to do.
+  const fail = (key, error) => showToast(error?.body?.code === 'in-use' ? t('files.inUse') : t(key, { message: error?.message ?? String(error) }), [], true);
 
   // ------------------------------------------------------------ operations
 
