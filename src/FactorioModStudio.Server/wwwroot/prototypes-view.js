@@ -104,6 +104,11 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender }) 
   // What a recipe prototype crafts (the overview's recipe list, by name); none in the touched list.
   const recipes = new Map(touched ? [] : o.recipes.map((r) => [r.name, r]));
   const recipeOf = (p) => (p.type === 'recipe' ? recipes.get(p.name) : undefined);
+  // A prototype without an icon file of its own shows the one of the mod prototype with its name, as the game does for a
+  // recipe, a piece of equipment or a projectile named like their item; a recipe also the icon of what it makes.
+  const iconByName = new Map();
+  if (!touched) for (const p of o.prototypes) if (p.icon && !iconByName.has(p.name)) iconByName.set(p.name, p.icon);
+  const iconOf = (p) => p.icon || iconByName.get(p.name) || (recipeOf(p)?.results ?? []).map((r) => iconByName.get(r.name)).find(Boolean);
   const missingCount = touched ? 0 : list.filter(missing).length;
   if (!missingCount) state.protoMissingOnly = false;
 
@@ -137,8 +142,8 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender }) 
 
   // ------------------------------------------------------------ rows
 
-  const icon = (p) => (!touched && p.icon
-    ? el('img', { class: 'thumb proto-thumb', loading: 'lazy', alt: '', src: fileUrl(p.icon) })
+  const icon = (p) => (!touched && iconOf(p)
+    ? el('img', { class: 'thumb proto-thumb', loading: 'lazy', alt: '', src: fileUrl(iconOf(p)) })
     : el('span', { class: `fi-icon ${familyOf(p.type).icon}`, 'aria-hidden': 'true' }));
 
   const itemChip = (item) => el('span', { class: 'chip proto-item' + (item.type === 'fluid' ? ' accent' : ''), title: item.type,
