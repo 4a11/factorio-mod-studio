@@ -170,4 +170,92 @@ public class LuaTests
         var result = PrototypeScanner.Scan("-- data:extend({ { type = \"item\", name = \"ghost\" } })\n--[[ x = { type=\"item\", name=\"ghost2\" } ]]");
         Assert.Empty(result.Prototypes);
     }
+
+    [Fact]
+    public void Scanner_FollowsTheCopiesOfBuildingBlocks()
+    {
+        var result = PrototypeScanner.Scan("""
+            local copy = require("prototypes.fms-copy-v2")
+            copy.use_icons({ ["my-chest"] = "__my-mod__/graphics/icons/my-chest.png" })
+
+            local name = "my-chest"
+            local chest = copy.entity("container", "iron-chest", name)
+            chest.inventory_size = 48
+            local gun = copy.item("submachine-gun", name .. "-gun", { r = 1 })
+
+            data:extend({ chest, gun, copy.item("iron-chest", name, { r = 1 }, name), copy.recipe("iron-chest", name) })
+            copy.unlock("logistics", name)
+            """);
+
+        Assert.Equal(new[] { "container/my-chest", "gun/my-chest-gun", "item/my-chest", "recipe/my-chest" },
+            result.Prototypes.Select(p => $"{p.Type}/{p.Name}"));
+        Assert.Equal(new[] { "iron-chest", "submachine-gun", "iron-chest", "iron-chest" }, result.Prototypes.Select(p => p.CopyOf));
+        Assert.Equal(new[] { 5, 7, 9, 9 }, result.Prototypes.Select(p => p.Line));
+        var chest = result.Prototypes[0].Table;
+        Assert.Equal(48.0, chest.Number("inventory_size"));
+        Assert.Equal("__my-mod__/graphics/icons/my-chest.png", chest.String("icon"));
+        Assert.Equal("my-chest", result.Prototypes[2].Table.String("place_result"));
+        Assert.Null(result.Prototypes[1].Table.String("icon")); // no icon file of its own: the original's icon, tinted
+        Assert.Equal(0, result.DynamicEntries);
+    }
+
+    [Fact]
+    public void Scanner_FollowsDeepcopiesOfDataRaw_AndStillRecordsWhatTheyRead()
+    {
+        var result = PrototypeScanner.Scan("""
+            local name = "big-biter-2"
+            local biter = table.deepcopy(data.raw.unit["small-biter"])
+            biter.name = name
+            biter.max_health = 75
+            local unused = table.deepcopy(data.raw.item["iron-plate"])
+            data:extend({ biter })
+            """);
+
+        var biter = Assert.Single(result.Prototypes);
+        Assert.Equal(("unit", "big-biter-2", "small-biter", 2), (biter.Type, biter.Name, biter.CopyOf, biter.Line));
+        Assert.Equal(75.0, biter.Table.Number("max_health"));
+        Assert.Equal(new[] { "unit/small-biter", "item/iron-plate" }, result.Touched.Select(t => $"{t.Type}/{t.Name}"));
+    }
+
+    [Fact]
+    public void Scanner_ResolvesLocalStrings_AndListsALocalPrototypeOnce()
+    {
+        var result = PrototypeScanner.Scan("""
+            local name = "machine"
+            local category = name .. "-crafting"
+            local example = { type = "recipe", name = name .. "-gears", ingredients = {} }
+            data:extend({ { type = "recipe-category", name = category }, example })
+            """);
+
+        Assert.Equal(new[] { "machine-gears", "machine-crafting" }, result.Prototypes.Select(p => p.Name));
+        Assert.All(result.Prototypes, p => Assert.Null(p.CopyOf));
+        Assert.Equal(0, result.DynamicEntries);
+    }
+
+    [Fact]
+    public void Scanner_StillLooksInsideExpressionsItCannotRead()
+    {
+        var result = PrototypeScanner.Scan("""
+            local fix = make(function() data.raw.recipe["iron-plate"].enabled = true end)
+            local other = helper.copy("x")
+            other.name = "not-a-prototype"
+            data:extend({ other })
+            """);
+
+        Assert.Equal(new[] { "recipe/iron-plate" }, result.Touched.Select(t => $"{t.Type}/{t.Name}"));
+        Assert.Empty(result.Prototypes);
+        Assert.Equal(1, result.DynamicEntries);
+    }
+
+    [Fact]
+    public void Scanner_KnowsTheHelpersOnlyFromTheirRequire()
+    {
+        var result = PrototypeScanner.Scan("""
+            local copy = require("my-own-helpers")
+            data:extend({ copy.item("iron-chest", "x") })
+            """);
+
+        Assert.Empty(result.Prototypes);
+        Assert.Equal(1, result.DynamicEntries);
+    }
 }

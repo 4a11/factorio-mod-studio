@@ -240,6 +240,8 @@
   "prototypes.missingOnly": "Bez zlokalizowanej nazwy",
   "prototypes.noName": "brak tłumaczenia nazwy",
   "prototypes.noNameTitle": "Prototypy, które walidator zgłasza bez zlokalizowanej nazwy (FMS042): gra pokaże „Unknown key”.",
+  "prototypes.copyOf": "kopia {name}",
+  "prototypes.copyOfTitle": "Utworzono z kopii tego prototypu: wartości oryginału, poza tymi, które zmienia ten plik.",
   "prototypes.viewType": "Według typu",
   "prototypes.viewName": "Według nazwy",
   "prototypes.noMatch": "Żaden prototyp nie pasuje do filtra.",

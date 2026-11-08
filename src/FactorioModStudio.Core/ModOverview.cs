@@ -19,7 +19,12 @@ public sealed record ModFileEntry(string Path, long Size, string Category, strin
 }
 
 /// <param name="Icon">Path of the icon inside the mod, when the prototype's icon points into the same mod.</param>
-public sealed record PrototypeInfo(string Type, string Name, string? DisplayName, string? Icon, string File, int Line);
+public sealed record PrototypeInfo(string Type, string Name, string? DisplayName, string? Icon, string File, int Line)
+{
+    /// <summary>For a copy of an existing prototype (table.deepcopy, the building blocks): the original's name. The copy has the
+    /// original's values except what the file changes, so the recipe of a copied recipe is often not known here.</summary>
+    public string? CopyOf { get; init; }
+}
 
 public sealed record RecipeItem(string Type, string Name, double? Amount);
 

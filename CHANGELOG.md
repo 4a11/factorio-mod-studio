@@ -16,6 +16,12 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 ### Changed
 - Versions X.Y.Z with Z > 0 are published as GitHub pre-releases and not pushed to NuGet.
 
+### Fixed
+- **Building blocks in the Prototypes tab**: what a block adds (the copies made with `copy.item`, `copy.entity`, `copy.recipe`
+  and `table.deepcopy(data.raw...)`) is listed now, with its icon and "copy of gun-turret"; before, only prototypes written
+  out as tables showed up. Names built from `local name = ...` and `name .. "-ammo"` are followed too, and the
+  localised-name check (FMS042) now covers these prototypes as well.
+
 ## [0.2.0] - 2026-11-08
 
 Ready for people: a desktop app in every release archive, and the real game checked in CI.

@@ -240,6 +240,8 @@
   "prototypes.missingOnly": "Без перевода названия",
   "prototypes.noName": "нет перевода",
   "prototypes.noNameTitle": "Прототипы, для которых валидатор не нашёл перевод названия (FMS042): в игре будет «Unknown key».",
+  "prototypes.copyOf": "копия {name}",
+  "prototypes.copyOfTitle": "Сделан из копии этого прототипа: значения оригинала, кроме тех, что меняет этот файл.",
   "prototypes.viewType": "По типу",
   "prototypes.viewName": "По имени",
   "prototypes.noMatch": "Нет прототипов, подходящих под фильтр.",

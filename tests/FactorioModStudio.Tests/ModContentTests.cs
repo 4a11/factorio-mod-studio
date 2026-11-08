@@ -271,4 +271,22 @@ public class ModContentTests
         Assert.Equal(ScaffoldError.UnknownTemplate, unknown.Kind);
         Assert.Empty(Directory.EnumerateFileSystemEntries(parent.Path));
     }
+
+    public static IEnumerable<object[]> BlockIds() => ModContent.Blocks.Select(b => new object[] { b.Id });
+
+    [Theory]
+    [MemberData(nameof(BlockIds))]
+    public void Every_block_shows_up_in_the_prototype_list_with_its_original(string id)
+    {
+        using var mod = Mod();
+        var plan = ModContent.Apply(mod.Path, new ContentRequest(id, "my-" + id, "Mine"));
+
+        var overview = ModInspector.Inspect(mod.Path);
+
+        var listed = overview.Prototypes.Where(p => p.File == $"prototypes/my-{id}.lua").ToList();
+        Assert.All(plan.Prototypes, name => Assert.Contains(listed, p => p.Name == name));
+        Assert.Contains(listed, p => p.CopyOf is not null);
+        Assert.Equal(0, overview.DynamicEntries);
+        Assert.DoesNotContain(overview.Issues, i => i.Code == "FMS042");
+    }
 }

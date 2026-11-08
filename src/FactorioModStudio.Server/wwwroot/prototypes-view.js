@@ -157,7 +157,9 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender }) 
     p.displayName
       ? el('span', { class: 'muted small', text: p.displayName })
       : missing(p) && el('span', { class: 'badge warning proto-noname', 'data-testid': 'proto-noname', title: missing(p), text: t('prototypes.noName') }),
-    recipe && recipeLine(recipe));
+    p.copyOf && el('span', { class: 'muted small', 'data-testid': 'proto-copy-of', title: t('prototypes.copyOfTitle'), text: t('prototypes.copyOf', { name: p.copyOf }) }),
+    // A copied recipe keeps the original's ingredients, which the file does not show: no empty "no ingredients" line for it.
+    recipe && !(p.copyOf && !recipe.ingredients.length && !recipe.results.length) && recipeLine(recipe));
 
   const where = (p) => el('span', { class: 'muted small mono proto-where', text: `${p.file}:${p.line}` });
 
@@ -172,7 +174,7 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender }) 
     return el('div', { class: 'proto-row by-name', role: 'button', tabindex: '0', 'data-testid': 'proto-row',
       onclick: () => openFile(first.file, first.line),
       onkeydown: (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openFile(first.file, first.line); } } },
-    icon(group.items.find((p) => p.icon) ?? first), nameBlock({ ...display, name: group.name }, group.items.map(recipeOf).find(Boolean)),
+    icon(group.items.find((p) => p.icon) ?? first), nameBlock({ ...display, name: group.name, copyOf: group.items.find((p) => p.copyOf)?.copyOf }, group.items.map(recipeOf).find(Boolean)),
     el('span', { class: 'proto-type-chips' }, group.items.map((p) => el('button', {
       type: 'button', class: 'chip proto-type mono', title: `${p.file}:${p.line}`,
       onclick: (e) => { e.stopPropagation(); openFile(p.file, p.line); }, text: p.type }))),

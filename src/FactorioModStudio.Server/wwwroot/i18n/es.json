@@ -237,6 +237,8 @@
   "prototypes.missingOnly": "Sin nombre localizado",
   "prototypes.noName": "sin nombre localizado",
   "prototypes.noNameTitle": "Prototipos que el validador marca sin nombre localizado (FMS042): el juego mostraría «Unknown key».",
+  "prototypes.copyOf": "copia de {name}",
+  "prototypes.copyOfTitle": "Creado a partir de una copia de este prototipo: los valores del original, salvo los que cambia este archivo.",
   "prototypes.viewType": "Por tipo",
   "prototypes.viewName": "Por nombre",
   "prototypes.noMatch": "Ningún prototipo coincide con el filtro.",

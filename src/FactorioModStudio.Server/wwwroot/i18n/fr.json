@@ -237,6 +237,8 @@
   "prototypes.missingOnly": "Sans nom localisé",
   "prototypes.noName": "pas de nom localisé",
   "prototypes.noNameTitle": "Prototypes signalés par le validateur sans nom localisé (FMS042) : le jeu afficherait « Unknown key ».",
+  "prototypes.copyOf": "copie de {name}",
+  "prototypes.copyOfTitle": "Créé à partir d'une copie de ce prototype : les valeurs de l'original, sauf celles que ce fichier modifie.",
   "prototypes.viewType": "Par type",
   "prototypes.viewName": "Par nom",
   "prototypes.noMatch": "Aucun prototype ne correspond au filtre.",

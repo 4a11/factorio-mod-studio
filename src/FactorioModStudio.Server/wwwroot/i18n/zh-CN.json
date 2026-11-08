@@ -231,6 +231,8 @@
   "prototypes.missingOnly": "缺少本地化名称",
   "prototypes.noName": "无本地化名称",
   "prototypes.noNameTitle": "校验器报告缺少本地化名称的原型（FMS042）：游戏中会显示“Unknown key”。",
+  "prototypes.copyOf": "{name} 的副本",
+  "prototypes.copyOfTitle": "由该原型的副本制作：除本文件修改的值外，其余与原型相同。",
   "prototypes.viewType": "按类型",
   "prototypes.viewName": "按名称",
   "prototypes.noMatch": "没有符合筛选条件的原型。",
