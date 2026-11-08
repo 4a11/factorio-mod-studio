@@ -13,7 +13,7 @@ import { createActionBar } from '/action-bar.js';
 import { createUpdateView } from '/update-view.js';
 import { createModMenu } from '/mod-menu.js';
 import { createGameDataView } from '/game-data-view.js';
-import { createBlockProps } from '/block-props.js';
+import { createBlocksView } from '/blocks-view.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
 import { findMods, readInfo, zipIdentity, assess, MAX_IMPORT_FILES } from '/import-logic.js';
@@ -89,7 +89,7 @@ const state = {
   token: 0,
 };
 
-const TABS = ['overview', 'files', 'prototypes', 'resources', 'locale', 'problems', 'build'];
+const TABS = ['overview', 'files', 'prototypes', 'blocks', 'resources', 'locale', 'problems', 'build'];
 
 // The localisation editor keeps its own state and DOM; this page only hosts it and forwards live updates.
 const localeView = createLocaleView({ api, el });
@@ -344,18 +344,20 @@ function renderMod(keepScroll = false) {
       info.dependencies.map((d) => el('span', { class: 'chip' + (/^(\?|\(\?\)|~)/.test(d) ? ' optional' : '') + (d.startsWith('!') ? ' accent' : ''), title: t(dependencyKind(d)), text: d }))));
 
   const tabCount = {
-    files: o.files.length, prototypes: o.prototypes.length,
+    files: o.files.length, prototypes: o.prototypes.length, blocks: (o.blocks || []).length,
     resources: counts.graphics + counts.sound, problems: o.issues.length,
   };
 
-  const tabs = el('div', { class: 'tabs', role: 'tablist' }, TABS.map((key) =>
+  // The Blocks tab is there when the mod has building blocks (or it is the one open).
+  const shownTabs = TABS.filter((key) => key !== 'blocks' || (o.blocks || []).length > 0 || state.tab === 'blocks');
+  const tabs = el('div', { class: 'tabs', role: 'tablist' }, shownTabs.map((key) =>
     el('button', {
       class: 'tab', type: 'button', role: 'tab', 'aria-selected': key === state.tab ? 'true' : 'false',
       'data-testid': key === 'locale' ? 'locale-tab' : key === 'build' ? 'build-tab' : null,
       onclick: () => go(state.currentId, key),
     }, t(`tabs.${key}`), tabCount[key] !== undefined && el('span', { class: 'count', text: tabCount[key] }))));
 
-  const panels = { overview: renderOverview, files: renderFiles, prototypes: renderPrototypes, resources: renderResources, problems: renderProblems, locale: renderLocale, build: renderBuild };
+  const panels = { overview: renderOverview, files: renderFiles, prototypes: renderPrototypes, blocks: renderBlocks, resources: renderResources, problems: renderProblems, locale: renderLocale, build: renderBuild };
   renderContent(header, tabs, panels[state.tab](o, counts));
   $('#content').scrollTop = keepScroll ? scroll : 0;
   // The tab strip is one scrollable row: keep the selected tab in view.
@@ -520,10 +522,18 @@ function renderBuild() {
 
 // The Prototypes tab (families / by name, type chips, missing localised names) lives in prototypes-view.js.
 // Its "In the game" mode (the game's own data, from --dump-data) is game-data-view.js; it keeps its state per mod.
-// The properties of a building block (block-props.js), opened from the Prototypes tab; saving changes the block's file, which
-// the live updates then show everywhere.
-const blockProps = createBlockProps({ api, el });
-const openBlock = (file) => { if (state.currentId) blockProps.open(state.currentId, file); };
+// The Blocks tab (blocks-view.js): the mod's building blocks with their properties, rename, remove and upgrade. Saving changes the
+// block's files, which the live updates then show everywhere. Other tabs open a block in it.
+const blocksView = createBlocksView({ api, el, openFile: (path, line) => openFile(path, line), fileUrl, installation: chosenInstallation });
+const openBlock = (file) => {
+  if (!state.currentId) return;
+  blocksView.select(state.currentId, file);
+  if (state.tab === 'blocks') renderMod(true); else go(state.currentId, 'blocks');
+};
+
+function renderBlocks(o) {
+  return blocksView.show(o, state.currentId, !!currentMod()?.editable);
+}
 const gameDataView = createGameDataView({ api, el, openFile: (path, line) => openFile(path, line), fileUrl, installation: chosenInstallation, openBlock });
 
 function renderPrototypes(o) {

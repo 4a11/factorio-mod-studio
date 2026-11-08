@@ -21,7 +21,11 @@ public sealed record ModFileEntry(string Path, long Size, string Category, strin
 /// <param name="Icon">Path of the icon inside the mod, when the prototype's icon points into the same mod.</param>
 /// <param name="Prototypes">Names of the prototypes the block's file defines.</param>
 /// <param name="Old">The block still uses the first helpers (icons only tinted in the game) and can be upgraded.</param>
-public sealed record BlockSummary(string File, string? Title, IReadOnlyList<string> Prototypes, bool Old = false);
+/// <param name="Id">The block's name from its first line (the name its prototypes are made from).</param>
+/// <param name="Kind">Which building block it was made from ("belt", "armor"...), with its <paramref name="Category"/>; null when unknown.</param>
+/// <param name="CopyOf">The original its main prototype copies.</param>
+public sealed record BlockSummary(string File, string? Title, IReadOnlyList<string> Prototypes, bool Old = false,
+    string? Id = null, string? Kind = null, string? Category = null, string? CopyOf = null);
 
 public sealed record PrototypeInfo(string Type, string Name, string? DisplayName, string? Icon, string File, int Line)
 {

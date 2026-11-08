@@ -127,12 +127,11 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender, ga
 
   if (game) return el('div', { class: 'proto-panel' }, head, gameData());
 
-  // The building blocks of the mod, each opening its properties (block-props.js): health, speed, inventory... of the copy.
-  const blocks = !touched && (o.blocks || []).length > 0 && el('div', { class: 'bp-strip', role: 'group', 'aria-label': t('blockprops.strip'), 'data-testid': 'proto-blocks' },
-    el('span', { class: 'muted small', text: t('blockprops.strip') }),
-    o.blocks.map((b) => el('button', { type: 'button', class: 'chip proto-chip bp-chip', 'data-testid': 'proto-block', title: t('blockprops.open', { file: b.file }),
-      onclick: () => openBlock(b.file) }, el('span', { class: 'bp-gear', 'aria-hidden': 'true', text: '⚙' }), el('span', { text: b.title || b.file }),
-      b.old && el('span', { class: 'badge warning bp-old', title: t('blockops.oldBlock'), text: t('blockops.oldBadge') }))));
+  // Building blocks are edited in their own tab; here one line says how many there are and leads there.
+  const blocks = !touched && (o.blocks || []).length > 0 && el('div', { class: 'bp-strip', 'data-testid': 'proto-blocks' },
+    el('span', { class: 'bp-gear', 'aria-hidden': 'true', text: '⚙' }),
+    el('span', { class: 'muted small', text: t('blocks.inPrototypes', { n: o.blocks.length }) }),
+    el('button', { type: 'button', class: 'linklike small', 'data-testid': 'proto-open-blocks', onclick: () => openBlock(undefined), text: t('blocks.openTab') }));
 
   if (!list.length) {
     return el('div', { class: 'proto-panel' }, head,

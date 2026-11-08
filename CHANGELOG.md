@@ -24,16 +24,18 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   the new recipes, other mods reacting) "before → after". The dump without the mod is kept and reused, so loading again
   takes seconds; a notice says when the mod's files changed since. Dependencies are taken from the workspace folder
   when the project names no `modsSource`.
-- **Properties of a building block**: the Prototypes tab lists the mod's blocks; each opens a dialog with the numbers it sets
-  (health, speed, inventory, crafting speed, power, damage factor...), the value of the original next to each one once the
-  mod was loaded "In the game", and a button back to the original. Saving changes only those numbers in the block's Lua;
-  comments and anything else in the file stay as they are, and a file that changed in between is not overwritten.
-- **Rename, remove and upgrade a block safely**, from its properties: a rename changes its prototypes, file, require,
-  locale keys in every language, icon files and every Lua string of the mod that names them, and adds a migration so
-  existing saves keep their entities and items; a removal takes out the file, require, locale keys and icons (and the
-  shared helpers with the last block), and says which files still name its prototypes. Every change is listed before it
-  is made, and the notice afterwards offers Undo. Blocks added by older versions of the studio are marked "old" and can
-  be upgraded: they get recoloured icon files of their own, like new blocks.
+- **A Blocks tab** for the building blocks of a mod: the list on the left (icon, name, what it is: belt tier, armor...),
+  the chosen block on the right as a table "original / yours / in the game" for each number it sets (health, speed,
+  inventory, crafting speed, power, damage factor...), with a reset to the original per row and a save bar that appears
+  when something changed. Saving changes only those numbers in the block's Lua; comments and anything else in the file
+  stay, and a file that changed in between is not overwritten. The originals come from the game: the first time a block
+  is opened without game data, the studio loads the mod in Factorio by itself.
+- **Rename, remove and upgrade a block safely**: the name is edited in the block's header and checked as it is typed; a
+  rename changes its prototypes, file, require, locale keys in every language, icon files and every Lua string of the mod
+  that names them, and adds a migration so existing saves keep their entities and items. Removing (from the "⋯" menu)
+  takes out the file, require, locale keys and icons (and the shared helpers with the last block) and says which files
+  still name its prototypes. Every change is listed before it is made, and the notice afterwards offers Undo. Blocks
+  added by older versions of the studio can be upgraded, one or all at once: they get recoloured icon files of their own.
 - A clear message when a folder cannot be moved because another program has it open (a file manager, a terminal, an
   editor), instead of "Access to the path ... is denied".
 

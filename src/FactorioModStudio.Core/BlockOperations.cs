@@ -52,8 +52,7 @@ public static class BlockOperations
         var source = ReadText(full);
         if (!BlockProperties.IsBlock(source)) throw new FmsException($"{file} is not a building block.");
 
-        var first = source.Split('\n', 2)[0].TrimEnd('\r');
-        var id = HeaderId.Match(first) is { Success: true } m ? m.Groups["id"].Value : Path.GetFileNameWithoutExtension(file);
+        var id = IdOf(source, file);
         // The names the block defines are the id and names made from it (id .. "-ammo"); anything else it mentions is the game's.
         var names = PrototypeScanner.Scan(source).Prototypes.Select(p => p.Name)
             .Where(n => n == id || n.StartsWith(id + "-", StringComparison.Ordinal) || n.StartsWith(id + "_", StringComparison.Ordinal))
@@ -250,20 +249,31 @@ public static class BlockOperations
         return new BlockPlan("upgrade", file, Order(changes), new Dictionary<string, string>(), warnings.Distinct().ToList());
     }
 
+    /// <summary>The block's name from its first line ("-- Title (id), added by ..."); the file's name when the line is missing.</summary>
+    public static string IdOf(string source, string file)
+    {
+        var first = source.Split('\n', 2)[0].TrimEnd('\r');
+        return HeaderId.Match(first) is { Success: true } m ? m.Groups["id"].Value : Path.GetFileNameWithoutExtension(file);
+    }
+
+    /// <summary>Which building block the file was made from, or null.</summary>
+    public static ContentBlockInfo? KindOf(string source, string id) => IdentifyBlock(source, id)?.Info;
+
     // The block a file was made from: the one whose main prototype copies the same original.
     private static ContentBlock? IdentifyBlock(string source, string id)
     {
         var main = PrototypeScanner.Scan(source).Prototypes.FirstOrDefault(p => p.Name == id && p.CopyOf is not null);
         if (main is null) return null;
-        foreach (var candidate in ContentBlocks.All)
-        {
-            var sample = ContentBlocksSample(candidate);
-            if (PrototypeScanner.Scan(sample).Prototypes.FirstOrDefault(p => p.Name == "fms-sample") is { } p
-                && p.CopyOf == main.CopyOf && p.Type == main.Type)
-                return candidate;
-        }
-        return null;
+        return BlockMains.Value.FirstOrDefault(b => b.CopyOf == main.CopyOf && b.Type == main.Type).Block;
     }
+
+    // The main prototype of every block, read once from its template: what it copies and its type.
+    private static readonly Lazy<List<(ContentBlock Block, string? Type, string? CopyOf)>> BlockMains = new(() =>
+        ContentBlocks.All.Select(b =>
+        {
+            var main = PrototypeScanner.Scan(ContentBlocksSample(b)).Prototypes.FirstOrDefault(p => p.Name == "fms-sample");
+            return (b, main?.Type, main?.CopyOf);
+        }).ToList());
 
     private static string ContentBlocksSample(ContentBlock block) =>
         block.Lua.Replace("@@id@@", "fms-sample").Replace("@@title@@", "Sample").Replace("@@icons@@", "").Replace("@@sprites@@", "");

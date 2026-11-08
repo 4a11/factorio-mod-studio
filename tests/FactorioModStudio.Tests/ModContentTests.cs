@@ -288,5 +288,8 @@ public class ModContentTests
         Assert.Contains(listed, p => p.CopyOf is not null);
         Assert.Equal(0, overview.DynamicEntries);
         Assert.DoesNotContain(overview.Issues, i => i.Code == "FMS042");
+        var block = Assert.Single(overview.Blocks); // the Blocks tab knows what it is
+        Assert.Equal(("my-" + id, id, false), (block.Id, block.Kind, block.Old));
+        Assert.NotNull(block.CopyOf);
     }
 }
