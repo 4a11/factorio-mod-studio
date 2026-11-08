@@ -42,7 +42,7 @@ Où en est le projet et ce qui vient ensuite. Les versions sont des objectifs, p
 - [x] `run` et `smoke` vérifiés avec Factorio 1.1, 2.0 et 2.1, y compris le serveur sans interface ; *`run` avec 2.1 sous Windows, `smoke` sur le serveur sans interface Linux pour 1.1, 2.0 et 2.1 en CI ; macOS pas encore essayé*
 - [x] après un lancement ou un test de fumée, lire aussi `factorio-current.log` et afficher ses erreurs dans Problèmes et Sortie
 - [x] les prototypes générés par les modèles (entité, script d'exécution) chargés dans le jeu, pas seulement écrits d'après la documentation; *les quatre se chargent dans Factorio 2.1*
-- [x] installation en une ligne : l'outil publié sur NuGet (`dotnet tool install -g FactorioModStudio.Cli`), sans clonage; *publié : 0.1.1*
+- [x] installation en une ligne : l'outil publié sur NuGet (`dotnet tool install -g FactorioModStudio.Cli`), sans clonage; *publié : 0.2.0*
 - [x] des versions de Factorio installées par le studio : `fmstudio factorio install 2.0` télécharge le serveur sans interface gratuit (Linux, WSL, CI), où `smoke` le trouve, aussi depuis l'onglet Compilation ; *le vrai téléchargement de 1.1, 2.0 et 2.1 vérifié par des tests de fumée en CI*
 
 **0.3 : voir et modifier le contenu**

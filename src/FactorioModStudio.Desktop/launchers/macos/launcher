@@ -1,3 +1,6 @@
 #!/bin/sh
 # Finder starts apps in /: run the studio from the folder the app is in, so its mods folder is the workspace, as on Windows.
-cd "$(dirname "$0")/../../.." && exec ./FactorioModStudio
+cd "$(dirname "$0")/../../.." && [ -x ./FactorioModStudio ] && exec ./FactorioModStudio
+# Not found: the app runs from a copy macOS made (the download quarantine was not cleared) or was moved out of its folder.
+osascript -e 'display dialog "Factorio Mod Studio could not find FactorioModStudio next to this app. Keep the app in the unpacked folder and clear the download quarantine first: xattr -dr com.apple.quarantine . in that folder." buttons {"OK"} default button 1 with icon stop' >/dev/null 2>&1
+exit 1

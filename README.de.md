@@ -42,7 +42,7 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 - [x] `run` und `smoke` mit Factorio 1.1, 2.0 und 2.1 geprüft, einschließlich Headless-Server; *`run` mit 2.1 unter Windows, `smoke` auf dem Linux-Headless-Server für 1.1, 2.0 und 2.1 in der CI; macOS noch nicht ausprobiert*
 - [x] nach einem Start oder Smoke-Test auch `factorio-current.log` lesen und seine Fehler unter Probleme und Ausgabe zeigen
 - [x] die Prototypen der Vorlagen (Entität, Laufzeit-Skript) im Spiel geladen, nicht nur nach der Dokumentation geschrieben; *alle vier laden in Factorio 2.1*
-- [x] Installation in einer Zeile: das Werkzeug auf NuGet veröffentlicht (`dotnet tool install -g FactorioModStudio.Cli`), kein Klonen nötig; *veröffentlicht: 0.1.1*
+- [x] Installation in einer Zeile: das Werkzeug auf NuGet veröffentlicht (`dotnet tool install -g FactorioModStudio.Cli`), kein Klonen nötig; *veröffentlicht: 0.2.0*
 - [x] Factorio-Versionen installiert das Studio selbst: `fmstudio factorio install 2.0` lädt den kostenlosen Headless-Server (Linux, WSL, CI), wo `smoke` ihn findet, auch aus dem Build-Tab; *der echte Download für 1.1, 2.0 und 2.1 in der CI mit Smoke-Tests geprüft*
 
 **0.3: Inhalte sehen und bearbeiten**

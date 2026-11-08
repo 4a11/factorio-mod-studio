@@ -3,7 +3,7 @@ Type=Application
 Name=Factorio Mod Studio
 Comment=Make Factorio mods
 # Starts the studio from the folder this file is in (%k), so its mods folder is the workspace, as on Windows.
-# The quoting follows the Desktop Entry spec: \ in the file is one backslash, which then escapes " and $ inside the quotes.
-Exec=sh -c "cd \\"\$(dirname \\"\$0\\")\\" && exec ./FactorioModStudio" %k
+# The quoting follows the Desktop Entry spec: string unescaping first turns \\ into \, which then escapes " and $ inside the quotes.
+Exec=sh -c "cd \\"\\$(dirname \\"\\$0\\")\\" && exec ./FactorioModStudio" %k
 Terminal=false
 Categories=Development;
