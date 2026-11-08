@@ -1,0 +1,27 @@
+# Builds the Nix flake. Not on every push: only when the version moves (Directory.Build.props, e.g. 0.1 -> 0.2),
+# when the Nix files change, or by hand (Actions -> Nix -> Run workflow).
+name: Nix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Directory.Build.props
+      - flake.nix
+      - nix/**
+      - .github/workflows/nix.yml
+  workflow_dispatch:
+
+jobs:
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Build the flake
+        run: nix build -L .#fmstudio
+
+      - name: Run it
+        run: ./result/bin/fmstudio --version

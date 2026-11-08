@@ -1,4 +1,4 @@
-# Runs the tests on every push and pull request, on Linux and Windows.
+# Runs the tests on every push and pull request, on Linux and Windows. The Nix build has its own workflow (nix.yml).
 # Failed tests are listed as annotations on the run's summary page.
 name: CI
 
@@ -27,16 +27,3 @@ jobs:
       - name: List failed tests
         if: failure()
         run: python .github/scripts/trx-annotations.py test-results
-
-  nix:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: cachix/install-nix-action@v31
-
-      - name: Build the flake
-        run: nix build -L .#fmstudio
-
-      - name: Run it
-        run: ./result/bin/fmstudio --version
