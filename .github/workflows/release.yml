@@ -4,6 +4,8 @@
 # when the NUGET_USER repository variable is set: NuGet Trusted Publishing, no API key is stored. It needs a
 # Trusted Publishing policy on nuget.org for this repository and the workflow file release.yml.
 # The release notes are the version's section of CHANGELOG.md and the install steps (.github/release-install.md).
+# X.Y.0 is a release; X.Y.Z with Z > 0 is a preview on the way to the next one: a GitHub pre-release (the studio offers it on
+# its preview channel only) that is not pushed to NuGet, where `dotnet tool update` would give it to everyone.
 name: Release
 
 on:
@@ -109,12 +111,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           sh .github/scripts/release-notes.sh "$GITHUB_REF_NAME" > notes.md
-          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes-file notes.md
+          preview=""
+          case "$GITHUB_REF_NAME" in v*.*.0) ;; *) preview="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes-file notes.md $preview
 
       # After the GitHub release, so a NuGet problem never holds the archives back.
       - name: Log in to NuGet
         id: nuget
-        if: vars.NUGET_USER != ''
+        if: vars.NUGET_USER != '' && endsWith(github.ref_name, '.0')
         uses: NuGet/login@v1
         with:
           user: ${{ vars.NUGET_USER }}

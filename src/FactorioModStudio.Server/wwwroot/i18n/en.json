@@ -611,5 +611,20 @@
   "readiness.errors.fail.other": "{n} errors must be fixed",
   "readiness.packed.ok": "Version {version} is packed and up to date",
   "readiness.packed.warn": "Files changed after {version} was packed: bump the version",
-  "readiness.packed.info": "Version {version} is not packed yet"
+  "readiness.packed.info": "Version {version} is not packed yet",
+  "update.current": "Factorio Mod Studio {version}",
+  "update.channel.label": "Update channel",
+  "update.channel.stable": "Releases",
+  "update.channel.preview": "Previews",
+  "update.available": "Version {version} is out",
+  "update.availablePreview": "Preview {version} is out",
+  "update.whatsNew": "What's new",
+  "update.install": "Update",
+  "update.downloading": "Downloading {version}… {progress}",
+  "update.installed": "Version {version} is installed.",
+  "update.restart": "Restart",
+  "update.restartManually": "Start fmstudio again to use it.",
+  "update.toolHint": "Update the .NET tool with:",
+  "update.manualHint": "Update it the way you installed it (git pull and build, or your package manager).",
+  "update.failed": "The update failed: {error}"
 }

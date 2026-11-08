@@ -10,6 +10,7 @@ import { createTheme } from '/theme.js';
 import { createSearchPanel } from '/search-panel.js';
 import { createBottomPanel } from '/bottom-panel.js';
 import { createActionBar } from '/action-bar.js';
+import { createUpdateView } from '/update-view.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
 import { findMods, readInfo, zipIdentity, assess, MAX_IMPORT_FILES } from '/import-logic.js';
@@ -1444,6 +1445,10 @@ $('#nm-cancel').addEventListener('click', () => $('#new-mod-dialog').close());
 
 $('#mod-search').addEventListener('input', (e) => { state.modFilter = e.target.value; renderModList(); });
 
+// ---------------------------------------------------------------- updates
+
+const updateView = createUpdateView({ el, api, notice: $('#update-notice'), version: $('#studio-version'), channel: $('#update-channel') });
+
 // ---------------------------------------------------------------- language
 
 let ready = false;
@@ -1466,6 +1471,7 @@ function rerender() {
   bottom.retranslate();
   searchPanel.retranslate();
   palette.retranslate();
+  updateView.retranslate();
   themeSelect.value = theme.getMode();
 
   if (importBuild) showImportStatus(importBuild);
@@ -1495,6 +1501,7 @@ async function init() {
   themeSelect.value = theme.getMode();
   setupLanguageSelect();
   ready = true;
+  updateView.load(); // in the background: GitHub may be slow or unreachable
   try {
     [state.project, state.mods] = await Promise.all([api('/api/project'), api('/api/mods')]);
   } catch (error) {

@@ -602,5 +602,20 @@
   "readiness.errors.fail.other": "需要修复 {n} 个错误",
   "readiness.packed.ok": "版本 {version} 已打包且是最新的",
   "readiness.packed.warn": "打包 {version} 后文件有改动：请提升版本号",
-  "readiness.packed.info": "版本 {version} 尚未打包"
+  "readiness.packed.info": "版本 {version} 尚未打包",
+  "update.current": "Factorio Mod Studio {version}",
+  "update.channel.label": "更新通道",
+  "update.channel.stable": "正式版",
+  "update.channel.preview": "预览版",
+  "update.available": "{version} 版已发布",
+  "update.availablePreview": "预览版 {version} 已发布",
+  "update.whatsNew": "新内容",
+  "update.install": "更新",
+  "update.downloading": "正在下载 {version}… {progress}",
+  "update.installed": "{version} 版已安装。",
+  "update.restart": "重新启动",
+  "update.restartManually": "请重新启动 fmstudio 以使用新版本。",
+  "update.toolHint": "使用以下命令更新 .NET 工具：",
+  "update.manualHint": "请按安装时的方式更新（git pull 后重新构建，或使用包管理器）。",
+  "update.failed": "更新失败：{error}"
 }

@@ -3,6 +3,19 @@
 What changed between the releases of Factorio Mod Studio. The format follows [Keep a Changelog](https://keepachangelog.com);
 versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet](https://www.nuget.org/packages/FactorioModStudio.Cli).
 
+## [Unreleased]
+
+### Added
+- **Updates from GitHub**: the studio says when a newer version is out, at the bottom of the sidebar, and a copy unpacked from
+  a release archive installs it with one button (the window restarts itself). `fmstudio update` does the same from the command
+  line, `fmstudio update --check` only looks. A .NET tool is shown its `dotnet tool update` command.
+- **Two update channels**: *releases* (X.Y.0: 0.3.0, 0.4.0) and *previews*, which also get the versions between them
+  (0.3.1, 0.3.2 ...). A preview starts on the preview channel, a release on the release channel; the choice is in the sidebar
+  and `fmstudio update --channel stable|preview`.
+
+### Changed
+- Versions X.Y.Z with Z > 0 are published as GitHub pre-releases and not pushed to NuGet.
+
 ## [0.2.0] - 2026-11-08
 
 Ready for people: a desktop app in every release archive, and the real game checked in CI.

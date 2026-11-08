@@ -77,7 +77,8 @@ public sealed class MainWindow : Window
             // the workspace.
             var context = ProjectContext.Load(Directory.GetCurrentDirectory());
             Directory.CreateDirectory(context.WorkspaceDirectory);
-            var options = new UiOptions(Port: 0, FactorioExecutable: NewestFactorio(context), WorkspaceDirectory: context.WorkspaceDirectory);
+            var options = new UiOptions(Port: 0, FactorioExecutable: NewestFactorio(context), WorkspaceDirectory: context.WorkspaceDirectory,
+                Restart: Restart);
             _ui = await Task.Run(() => UiServer.StartAsync(context, options));
             var view = new NativeWebView();
             view.EnvironmentRequested += (_, e) =>
@@ -94,6 +95,17 @@ public sealed class MainWindow : Window
         {
             _status.Text = "Factorio Mod Studio could not start:\n" + ex.Message;
         }
+    }
+
+    /// <summary>After an update: the new program starts in the same folder, then this window closes (and stops its server).</summary>
+    private void Restart()
+    {
+        if (Environment.ProcessPath is { } program)
+        {
+            try { Process.Start(new ProcessStartInfo(program) { WorkingDirectory = Directory.GetCurrentDirectory(), UseShellExecute = false }); }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return; }
+        }
+        Dispatcher.UIThread.Post(Close);
     }
 
     /// <summary>Any installation will do for browsing the game data: the newest one, as for `fmstudio ui`.</summary>

@@ -13,6 +13,9 @@ public static class Program
 
     public static int Main(string[] args)
     {
+        // What the last update left behind (the old program files) can go now that they no longer run.
+        StudioUpdates.CleanUp();
+
         // A double click in Explorer: open the studio instead of printing the help into a window that closes at once.
         if (args.Length > 0 || !ConsoleWindow.IsOwn()) return Run(args, Console.Out, Console.Error);
 
@@ -75,6 +78,7 @@ public static class Program
                 "ui" => Ui(cmd, output),
                 "new" => New(cmd, output, error),
                 "add" => Add(cmd, output, error),
+                "update" => Update(cmd, output, runner, http),
                 _ => UnknownCommand(command, error)
             };
         }
@@ -416,11 +420,7 @@ public static class Program
 
     private static FactorioDownloads Downloads(IProcessRunner runner, HttpClient? http)
     {
-        if (http is null)
-        {
-            http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan }; // downloads can take a while; the updater call has its own limit
-            http.DefaultRequestHeaders.UserAgent.ParseAdd($"FactorioModStudio/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "0"}");
-        }
+        http ??= NewHttpClient();
         return new FactorioDownloads(http, runner, FactorioInstallations.ManagedInstallationsDirectory());
     }
 
@@ -515,6 +515,86 @@ public static class Program
         var result = downloads.InstallHeadlessAsync(version, progress).GetAwaiter().GetResult();
         log?.WriteLine(result.AlreadyInstalled ? " already installed." : " done.");
         return result;
+    }
+
+    /// <summary>
+    /// <c>fmstudio update [--check] [--channel stable|preview] [--json]</c>: the newest release of the channel from GitHub; a copy
+    /// unpacked from a release archive replaces its own files, a .NET tool is told the command. A given channel is remembered.
+    /// </summary>
+    private static int Update(CommandLine cmd, TextWriter output, IProcessRunner runner, HttpClient? http)
+    {
+        UpdateChannel channel;
+        if (cmd.Get("--channel") is { } text)
+        {
+            channel = StudioUpdates.ParseChannel(text) ?? throw new FmsException($"\"{text}\" is not an update channel; use stable (releases: 0.3.0, 0.4.0) or preview (also 0.3.1, 0.3.2 ...).");
+            UpdateSettings.WriteChannel(channel);
+        }
+        else channel = UpdateSettings.Channel(StudioUpdates.CurrentVersion);
+
+        var updates = new StudioUpdates(http ?? NewHttpClient(), runner);
+        UpdateCheck check;
+        using (var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+        {
+            try { check = updates.CheckAsync(channel, timeout.Token).GetAwaiter().GetResult(); }
+            catch (OperationCanceledException) { throw new FmsException("GitHub did not answer within 30 seconds."); }
+        }
+
+        var json = cmd.Has("--json");
+        var checkOnly = cmd.Has("--check");
+        if (json && (checkOnly || check.Newer is null || check.Kind != InstallKind.ReleaseArchive))
+        {
+            output.WriteLine(JsonSerializer.Serialize(new
+            {
+                check.Current, Channel = StudioUpdates.ChannelName(channel), Latest = check.Newer?.Version, check.Newer?.Url,
+                Kind = check.Kind.ToString(), check.Command
+            }, NewJson));
+            return ExitOk;
+        }
+
+        if (!json) output.WriteLine($"Factorio Mod Studio {check.Current}, {StudioUpdates.ChannelName(channel)} channel.");
+        if (check.Newer is not { } newer)
+        {
+            output.WriteLine("Up to date.");
+            return ExitOk;
+        }
+
+        if (!json) output.WriteLine($"Version {newer.Version} is out: {newer.Url}");
+        if (checkOnly || check.Kind != InstallKind.ReleaseArchive)
+        {
+            output.WriteLine(check.Kind switch
+            {
+                InstallKind.ReleaseArchive => "Run `fmstudio update` to install it.",
+                InstallKind.DotnetTool => $"Update the .NET tool with `{check.Command}`.",
+                _ => "This copy was built from source or installed by a package manager; update it the same way."
+            });
+            return ExitOk;
+        }
+
+        var lastStep = -1;
+        var progress = new SyncProgress<(long Received, long? Total)>(p =>
+        {
+            if (json) return;
+            var step = p.Total is > 0 ? (int)(p.Received * 10 / p.Total.Value) : (int)(p.Received / (10L * 1024 * 1024));
+            if (step == lastStep) return;
+            lastStep = step;
+            output.Write(p.Total is > 0 ? $" {step * 10}%" : $" {p.Received / (1024 * 1024)} MB");
+        });
+        if (!json) output.Write($"Downloading {newer.Version}:");
+        updates.ApplyAsync(newer, progress).GetAwaiter().GetResult();
+        if (json) output.WriteLine(JsonSerializer.Serialize(new { check.Current, Updated = newer.Version }, NewJson));
+        else
+        {
+            output.WriteLine(" done.");
+            output.WriteLine($"Updated to {newer.Version}. Start fmstudio (or the window) again to use it.");
+        }
+        return ExitOk;
+    }
+
+    private static HttpClient NewHttpClient()
+    {
+        var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan }; // downloads can take a while; checks have their own limit
+        http.DefaultRequestHeaders.UserAgent.ParseAdd($"FactorioModStudio/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "0"}");
+        return http;
     }
 
     /// <summary>For <c>smoke --install</c>: the newest headless release of <paramref name="branch"/>; returns its executable.</summary>
@@ -709,6 +789,10 @@ public static class Program
           smoke [profile]        Headless test: load the mods, simulate ticks, fail on log errors
                                  [--ticks N] [--seed N] [--timeout MINUTES] [--json]
                                  [--install: no matching Factorio? download the headless server first (Linux)]
+          update                 Install the newest version from GitHub (a copy from a release archive updates itself;
+                                 a .NET tool is told the command)   [--check: only say whether one is out] [--json]
+                                 [--channel stable|preview: releases only (0.3.0, 0.4.0) or also the previews
+                                 between them (0.3.1, 0.3.2 ...); remembered. Default: the running version's]
           ui                     Open the graphical mod browser in your web browser
                                  [--port N] [--workspace <mods folder to edit>] [--mods <installed mods, read-only>]
                                  [--no-browser]

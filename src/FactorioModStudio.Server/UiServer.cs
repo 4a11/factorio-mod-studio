@@ -30,7 +30,9 @@ public sealed record UiOptions(
     string? FactorioExecutable = null,
     string? WorkspaceDirectory = null,
     FileManagerLauncher? FileManager = null,
-    Func<FactorioDownloads>? FactorioDownloads = null);
+    Func<FactorioDownloads>? FactorioDownloads = null,
+    StudioUpdates? Updates = null,
+    Action? Restart = null);
 
 public sealed class RunningUi : IAsyncDisposable
 {
@@ -81,7 +83,7 @@ public static class UiServer
         "lua-highlight.js", "locale-placeholders.js", "locale-view.js", "build-view.js", "i18n.js",
         "theme-init.js", "theme.js", "ui-state.js", "palette-logic.js", "palette.js", "editor-tabs.js",
         "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js", "prototypes-view.js", "resources-view.js",
-        "import-logic.js", "content-dialog.js"
+        "import-logic.js", "content-dialog.js", "update-view.js"
     ];
 
     private const string ContentSecurityPolicy =
@@ -136,6 +138,7 @@ public static class UiServer
         FilesApi.Map(app, catalog, context, options.FileManager);
         FactorioSettingsApi.Map(app, jobs, token);
         FactorioInstallApi.Map(app, new FactorioInstalls(options.FactorioDownloads ?? DefaultDownloads, () => jobs.InvalidateEnvironment()));
+        UpdateApi.Map(app, new StudioUpdater(options.Updates ?? new StudioUpdates(DownloadClient.Value, new ProcessRunner())), options.Restart);
 
         try
         {

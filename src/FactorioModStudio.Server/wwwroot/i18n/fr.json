@@ -620,5 +620,20 @@
   "readiness.errors.fail.other": "{n} erreurs à corriger",
   "readiness.packed.ok": "La version {version} est empaquetée et à jour",
   "readiness.packed.warn": "Des fichiers ont changé après l’empaquetage de {version} : augmentez la version",
-  "readiness.packed.info": "La version {version} n’est pas encore empaquetée"
+  "readiness.packed.info": "La version {version} n’est pas encore empaquetée",
+  "update.current": "Factorio Mod Studio {version}",
+  "update.channel.label": "Canal de mise à jour",
+  "update.channel.stable": "Versions",
+  "update.channel.preview": "Préversions",
+  "update.available": "La version {version} est sortie",
+  "update.availablePreview": "La préversion {version} est sortie",
+  "update.whatsNew": "Nouveautés",
+  "update.install": "Mettre à jour",
+  "update.downloading": "Téléchargement de {version}… {progress}",
+  "update.installed": "La version {version} est installée.",
+  "update.restart": "Redémarrer",
+  "update.restartManually": "Relancez fmstudio pour l'utiliser.",
+  "update.toolHint": "Mettez à jour l'outil .NET avec :",
+  "update.manualHint": "Mettez-le à jour comme vous l'avez installé (git pull et compilation, ou votre gestionnaire de paquets).",
+  "update.failed": "La mise à jour a échoué : {error}"
 }
