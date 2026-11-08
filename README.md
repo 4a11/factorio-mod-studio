@@ -37,11 +37,11 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 
 **0.2: ready for people**
 - [ ] the desktop app everywhere: in the release archives for Windows, Linux and macOS, and one program with the CLI (a double click opens the window); *works on Windows, built from source*
-- [ ] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1 on Windows, Linux and macOS, including the headless server; *2.1 on Windows works*
+- [ ] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1 on Windows, Linux and macOS, including the headless server; *2.1 on Windows works; `smoke` on the Linux headless server for 1.1, 2.0 and 2.1, in CI*
 - [x] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
 - [x] the prototypes the templates generate (entity, runtime script) loaded in the game, not only written from the documentation; *all four load in Factorio 2.1*
 - [x] one-line install: the tool published to NuGet (`dotnet tool install -g FactorioModStudio.Cli`), no clone needed; *published: 0.1.1*
-- [ ] Factorio versions installed by the studio: `fmstudio factorio install 2.0` downloads the free headless server (Linux, WSL, CI), where `smoke` finds it, also from the Build tab; *built, not yet tried against the real download*
+- [x] Factorio versions installed by the studio: `fmstudio factorio install 2.0` downloads the free headless server (Linux, WSL, CI), where `smoke` finds it, also from the Build tab; *the real download for 1.1, 2.0 and 2.1 smoke-tested in CI*
 
 **0.3: see and edit content**
 - [ ] the Prototypes tab from the game's own data (`--dump-data`): what the mod really creates and changes, with every value, also for copies made with `table.deepcopy`; "which mod changed this item, and to what?"

@@ -37,11 +37,11 @@
 
 **0.2：可以交给大家使用**
 - [ ] 桌面应用全面可用：加入 Windows、Linux 和 macOS 的发行压缩包，并与命令行合为一个程序（双击打开窗口）；*已在 Windows 上从源码构建运行*
-- [ ] 在 Windows、Linux 和 macOS 上用 Factorio 1.1、2.0 和 2.1（包括无界面服务器）验证 `run` 和 `smoke`；*Windows 上的 2.1 已可用*
+- [ ] 在 Windows、Linux 和 macOS 上用 Factorio 1.1、2.0 和 2.1（包括无界面服务器）验证 `run` 和 `smoke`；*Windows 上的 2.1 已可用；CI 中已在 Linux 无界面服务器上对 1.1、2.0 和 2.1 运行 `smoke`*
 - [x] 运行或冒烟测试之后同时读取 `factorio-current.log`，并在“问题”和“输出”中显示其中的错误
 - [x] 模板生成的原型（实体、运行时脚本）在游戏中实际加载过，而不只是按文档编写; *四个模板均可在 Factorio 2.1 中加载*
 - [x] 一行命令安装：工具发布到 NuGet（`dotnet tool install -g FactorioModStudio.Cli`），无需克隆仓库; *已发布：0.1.1*
-- [ ] 由工作室安装 Factorio 版本：`fmstudio factorio install 2.0` 下载免费的无界面服务器（Linux、WSL、CI），`smoke` 会自动找到它，“构建”标签页中也可以安装；*已实现，尚未用真实下载验证*
+- [x] 由工作室安装 Factorio 版本：`fmstudio factorio install 2.0` 下载免费的无界面服务器（Linux、WSL、CI），`smoke` 会自动找到它，“构建”标签页中也可以安装；*CI 中已用 1.1、2.0 和 2.1 的真实下载完成冒烟测试*
 
 **0.3：查看和编辑内容**
 - [ ] 基于游戏自身数据（`--dump-data`）的“原型”标签页：模组真正创建和修改了什么，包含所有数值，也包括用 `table.deepcopy` 复制的原型；“哪个模组修改了这个物品，改成了什么？”

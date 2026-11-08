@@ -39,11 +39,11 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 
 **0.2: gotowe dla ludzi**
 - [ ] aplikacja okienkowa wszędzie: w archiwach wydania dla Windows, Linux i macOS oraz jeden program razem z wierszem poleceń (podwójne kliknięcie otwiera okno); *działa na Windows po zbudowaniu ze źródeł*
-- [ ] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1 na Windows, Linux i macOS, łącznie z serwerem bez interfejsu; *2.1 na Windows działa*
+- [ ] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1 na Windows, Linux i macOS, łącznie z serwerem bez interfejsu; *2.1 na Windows działa; `smoke` na linuksowym serwerze bez interfejsu dla 1.1, 2.0 i 2.1, w CI*
 - [x] po uruchomieniu lub teście dymnym odczytywany jest także `factorio-current.log`, a jego błędy widać w zakładkach Problemy i Wyjście
 - [x] prototypy tworzone przez szablony (obiekt, skrypt czasu działania) wczytane w grze, a nie tylko napisane według dokumentacji; *wszystkie cztery wczytują się w Factorio 2.1*
 - [x] instalacja jednym poleceniem: narzędzie opublikowane w NuGet (`dotnet tool install -g FactorioModStudio.Cli`), bez klonowania; *opublikowano: 0.1.1*
-- [ ] wersje Factorio instalowane przez studio: `fmstudio factorio install 2.0` pobiera darmowy serwer bez interfejsu (Linux, WSL, CI), gdzie znajdzie go `smoke`, także z zakładki Budowanie; *zrobione, jeszcze niesprawdzone z prawdziwym pobieraniem*
+- [x] wersje Factorio instalowane przez studio: `fmstudio factorio install 2.0` pobiera darmowy serwer bez interfejsu (Linux, WSL, CI), gdzie znajdzie go `smoke`, także z zakładki Budowanie; *prawdziwe pobieranie 1.1, 2.0 i 2.1 sprawdzone testami dymnymi w CI*
 
 **0.3: widzieć i edytować zawartość**
 - [ ] zakładka Prototypy na podstawie danych samej gry (`--dump-data`): co mod naprawdę tworzy i zmienia, ze wszystkimi wartościami, także dla kopii przez `table.deepcopy`; „który mod zmienił ten przedmiot i na co?”

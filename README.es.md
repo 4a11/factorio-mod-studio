@@ -39,11 +39,11 @@ Dónde está el proyecto y qué viene después. Las versiones son objetivos, no 
 
 **0.2: listo para la gente**
 - [ ] la aplicación de escritorio en todas partes: en los archivos de la versión para Windows, Linux y macOS, y un solo programa junto con la línea de comandos (un doble clic abre la ventana); *funciona en Windows, compilada desde el código fuente*
-- [ ] `run` y `smoke` verificados con Factorio 1.1, 2.0 y 2.1 en Windows, Linux y macOS, incluido el servidor sin interfaz; *2.1 en Windows funciona*
+- [ ] `run` y `smoke` verificados con Factorio 1.1, 2.0 y 2.1 en Windows, Linux y macOS, incluido el servidor sin interfaz; *2.1 en Windows funciona; `smoke` en el servidor sin interfaz de Linux para 1.1, 2.0 y 2.1, en la CI*
 - [x] tras un lanzamiento o una prueba de humo, leer también `factorio-current.log` y mostrar sus errores en Problemas y Salida
 - [x] los prototipos que generan las plantillas (entidad, script en tiempo de ejecución) cargados en el juego, no solo escritos según la documentación; *los cuatro cargan en Factorio 2.1*
 - [x] instalación en una línea: la herramienta publicada en NuGet (`dotnet tool install -g FactorioModStudio.Cli`), sin clonar; *publicado: 0.1.1*
-- [ ] versiones de Factorio instaladas por el estudio: `fmstudio factorio install 2.0` descarga el servidor sin interfaz gratuito (Linux, WSL, CI), donde `smoke` lo encuentra, también desde la pestaña Compilación; *hecho, aún sin probar con la descarga real*
+- [x] versiones de Factorio instaladas por el estudio: `fmstudio factorio install 2.0` descarga el servidor sin interfaz gratuito (Linux, WSL, CI), donde `smoke` lo encuentra, también desde la pestaña Compilación; *la descarga real de 1.1, 2.0 y 2.1 probada con pruebas de humo en la CI*
 
 **0.3: ver y editar el contenido**
 - [ ] la pestaña Prototipos con los datos del propio juego (`--dump-data`): lo que el mod crea y cambia de verdad, con todos los valores, también en copias hechas con `table.deepcopy`; «¿qué mod cambió este objeto, y cómo?»
