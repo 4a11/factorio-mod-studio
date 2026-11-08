@@ -5,8 +5,8 @@
 **为 [Factorio](https://factorio.com) 模组作者打造的本地工作台。** 创建模组、在游戏之前发现它的错误、翻译它、打包干净的发行版，
 并用隔离的模组组合试运行——可以在独立的应用窗口中、命令行中或浏览器中操作。一切都在你自己的电脑上运行，与你常用的代码编辑器并行使用。
 
-> **早期版本（0.1）。** 逻辑已有测试覆盖；启动真实游戏（`run`、`smoke`）在 Windows 上的 Factorio 2.1 中可以正常工作，其他版本和系统尚未验证。非常欢迎反馈和错误报告。
-> 桌面应用是新功能：已在 Windows 上可用，Linux 和 macOS 尚未验证。
+> **早期版本（0.2）。** 逻辑已有测试覆盖；`smoke` 已在 Linux（CI）上用 Factorio 1.1、2.0 和 2.1 验证，`run` 已在 Windows 上用 2.1 验证；macOS 尚未验证。非常欢迎反馈和错误报告。
+> 桌面应用已在 Windows 上可用；Linux 和 macOS 版本已构建，但尚未验证。
 > 非官方社区项目，与 Wube Software 无关。“Factorio”是 Wube Software Ltd. 的商标。
 >
 > 这是简介部分的翻译。完整文档为[英文版](README.md#documentation)；如有出入，以英文 README 为准。
@@ -33,11 +33,11 @@
 项目现状与下一步计划。版本号是目标而不是日期；顺序取决于反馈，所以如果某一项对你很重要（或这里缺少了什么），
 请[提交 issue](https://github.com/4a11/factorio-mod-studio/issues)。
 
-**0.1：现在。** 命令行（`new`、`add`、`validate`、`pack`、`prepare` / `run`、`smoke`、`log`、`factorio`）和工作室——独立窗口或浏览器中均可使用，界面支持 8 种语言：概览、文件、原型、资源、本地化、问题和构建标签页；20 个构件（护甲、敌人、传送带等级、机器、载具……）均为原版的换色副本，已在 Factorio 2.1 中验证；整个模组文件夹添加前会先检查。
+**0.1。** 命令行（`new`、`add`、`validate`、`pack`、`prepare` / `run`、`smoke`、`log`、`factorio`）和工作室——独立窗口或浏览器中均可使用，界面支持 8 种语言：概览、文件、原型、资源、本地化、问题和构建标签页；20 个构件（护甲、敌人、传送带等级、机器、载具……）均为原版的换色副本，已在 Factorio 2.1 中验证；整个模组文件夹添加前会先检查。
 
-**0.2：可以交给大家使用**
-- [ ] 桌面应用全面可用：加入 Windows、Linux 和 macOS 的发行压缩包，并与命令行合为一个程序（双击打开窗口）；*已在 Windows 上从源码构建运行*
-- [ ] 在 Windows、Linux 和 macOS 上用 Factorio 1.1、2.0 和 2.1（包括无界面服务器）验证 `run` 和 `smoke`；*Windows 上的 2.1 已可用；CI 中已在 Linux 无界面服务器上对 1.1、2.0 和 2.1 运行 `smoke`*
+**0.2：现在，可以交给大家使用**
+- [x] 桌面应用全面可用：加入 Windows、Linux 和 macOS 的发行压缩包，每个系统都有可双击启动的文件，并与命令行合为一个程序（双击打开窗口）；*已在 Windows 上验证；Linux 和 macOS 版本已构建，欢迎反馈*
+- [x] 用 Factorio 1.1、2.0 和 2.1（包括无界面服务器）验证 `run` 和 `smoke`；*`run` 已在 Windows 上用 2.1 验证，`smoke` 已在 CI 的 Linux 无界面服务器上用 1.1、2.0 和 2.1 验证；macOS 尚未验证*
 - [x] 运行或冒烟测试之后同时读取 `factorio-current.log`，并在“问题”和“输出”中显示其中的错误
 - [x] 模板生成的原型（实体、运行时脚本）在游戏中实际加载过，而不只是按文档编写; *四个模板均可在 Factorio 2.1 中加载*
 - [x] 一行命令安装：工具发布到 NuGet（`dotnet tool install -g FactorioModStudio.Cli`），无需克隆仓库; *已发布：0.1.1*
@@ -82,16 +82,15 @@ Factorio Mod Studio 负责的正是这些胶水工作。
 
 ## 快速开始
 
-**桌面应用：** 独立窗口中的工作室。目前需从源码构建（需要 [.NET 10 SDK](https://dotnet.microsoft.com/download)）；下一个版本将加入发行压缩包。
+**桌面应用：** 从 [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) 下载适合你系统的压缩包并解压，无需安装 .NET。双击 `FactorioModStudio.exe`（Windows）、`Factorio Mod Studio.app`（macOS）或 `Factorio Mod Studio.desktop`（Linux）：工作室会在独立窗口中打开，旁边会生成一个存放模组的 `mods` 文件夹。Linux 和 macOS 首次运行前需要做什么，请见发行说明。
+
+**从源码构建**（需要 [.NET 10 SDK](https://dotnet.microsoft.com/download)）：
 
 ```sh
 git clone https://github.com/4a11/factorio-mod-studio
 cd factorio-mod-studio
 dotnet run --project src/FactorioModStudio.Desktop -c Release   # 模组放在 ./mods
 ```
-
-**无需 .NET：** 从 [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) 下载适合你系统的压缩包并解压，无需安装 .NET。在 Windows 上双击 `fmstudio.exe`，
-工作室会在浏览器中打开；在其他系统上运行 `./fmstudio ui`。
 
 **作为 .NET 工具安装**（需要 [.NET 10 SDK](https://dotnet.microsoft.com/download)）：
 

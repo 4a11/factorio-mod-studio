@@ -6,9 +6,9 @@
 przetłumacz go, spakuj czyste wydanie i uruchom z odizolowanym zestawem modów: we własnym oknie aplikacji, z wiersza poleceń albo w przeglądarce.
 Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 
-> **Wczesna wersja (0.1).** Logika jest pokryta testami; uruchamianie prawdziwej gry (`run`, `smoke`) działa z Factorio 2.1 na Windows.
-> Inne wersje i systemy nie zostały jeszcze sprawdzone. Opinie i zgłoszenia błędów są bardzo mile widziane.
-> Aplikacja okienkowa jest nowa: działa na Windows; Linux i macOS nie zostały jeszcze sprawdzone.
+> **Wczesna wersja (0.2).** Logika jest pokryta testami; `smoke` sprawdzono z Factorio 1.1, 2.0 i 2.1 na Linuksie (CI), a `run` z 2.1 na Windows.
+> macOS nie został jeszcze sprawdzony. Opinie i zgłoszenia błędów są bardzo mile widziane.
+> Aplikacja okienkowa działa na Windows; dla Linuksa i macOS jest zbudowana, ale jeszcze niesprawdzona.
 > Nieoficjalny projekt społeczności, niezwiązany z Wube Software. „Factorio” jest znakiem towarowym Wube Software Ltd.
 >
 > To tłumaczenie części wprowadzającej. Pełna dokumentacja jest [po angielsku](README.md#documentation); w razie rozbieżności obowiązuje angielskie README.
@@ -35,11 +35,11 @@ Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność wyznaczają opinie, więc
 [otwórz zgłoszenie](https://github.com/4a11/factorio-mod-studio/issues), jeśli jakiś punkt jest dla Ciebie ważny (albo go tu brakuje).
 
-**0.1: teraz.** Wiersz poleceń (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) i studio — we własnym oknie lub w przeglądarce, w 8 językach interfejsu: zakładki Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy i Budowanie; 20 bloków (pancerz, wrogowie, poziomy taśmociągów, maszyny, pojazdy…) jako przemalowane kopie oryginałów, sprawdzone w Factorio 2.1; całe foldery modów dodawane po wcześniejszym sprawdzeniu.
+**0.1.** Wiersz poleceń (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) i studio — we własnym oknie lub w przeglądarce, w 8 językach interfejsu: zakładki Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy i Budowanie; 20 bloków (pancerz, wrogowie, poziomy taśmociągów, maszyny, pojazdy…) jako przemalowane kopie oryginałów, sprawdzone w Factorio 2.1; całe foldery modów dodawane po wcześniejszym sprawdzeniu.
 
-**0.2: gotowe dla ludzi**
-- [ ] aplikacja okienkowa wszędzie: w archiwach wydania dla Windows, Linux i macOS oraz jeden program razem z wierszem poleceń (podwójne kliknięcie otwiera okno); *działa na Windows po zbudowaniu ze źródeł*
-- [ ] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1 na Windows, Linux i macOS, łącznie z serwerem bez interfejsu; *2.1 na Windows działa; `smoke` na linuksowym serwerze bez interfejsu dla 1.1, 2.0 i 2.1, w CI*
+**0.2: teraz, gotowe dla ludzi**
+- [x] aplikacja okienkowa wszędzie: w archiwach wydania dla Windows, Linux i macOS, w każdym z czymś do podwójnego kliknięcia, oraz jeden program razem z wierszem poleceń (podwójne kliknięcie otwiera okno); *sprawdzona na Windows; zbudowana dla Linuksa i macOS, opinie mile widziane*
+- [x] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1, łącznie z serwerem bez interfejsu; *`run` z 2.1 na Windows, `smoke` na linuksowym serwerze bez interfejsu dla 1.1, 2.0 i 2.1 w CI; macOS jeszcze niesprawdzony*
 - [x] po uruchomieniu lub teście dymnym odczytywany jest także `factorio-current.log`, a jego błędy widać w zakładkach Problemy i Wyjście
 - [x] prototypy tworzone przez szablony (obiekt, skrypt czasu działania) wczytane w grze, a nie tylko napisane według dokumentacji; *wszystkie cztery wczytują się w Factorio 2.1*
 - [x] instalacja jednym poleceniem: narzędzie opublikowane w NuGet (`dotnet tool install -g FactorioModStudio.Cli`), bez klonowania; *opublikowano: 0.1.1*
@@ -84,16 +84,15 @@ prawdziwy błąd w ścianie logów, tłumaczenia, które się rozjeżdżają. Fa
 
 ## Szybki start
 
-**Aplikacja okienkowa:** studio we własnym oknie. Na razie buduje się ją ze źródeł (wymaga [.NET 10 SDK](https://dotnet.microsoft.com/download)); do archiwów wydania trafi z następną wersją.
+**Aplikacja okienkowa:** pobierz archiwum dla swojego systemu ze strony [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) i rozpakuj je; .NET nie jest potrzebny. Kliknij dwukrotnie `FactorioModStudio.exe` (Windows), `Factorio Mod Studio.app` (macOS) lub `Factorio Mod Studio.desktop` (Linux): studio otworzy się we własnym oknie, z folderem `mods` obok na twoje mody. Czego Linux i macOS potrzebują wcześniej, opisują informacje o wydaniu.
+
+**Ze źródeł** (wymaga [.NET 10 SDK](https://dotnet.microsoft.com/download)):
 
 ```sh
 git clone https://github.com/4a11/factorio-mod-studio
 cd factorio-mod-studio
 dotnet run --project src/FactorioModStudio.Desktop -c Release   # Twoje mody trafiają do ./mods
 ```
-
-**Bez .NET:** pobierz archiwum dla swojego systemu ze strony [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) i rozpakuj je; .NET nie jest potrzebny.
-W Windows kliknij dwukrotnie `fmstudio.exe`, a studio otworzy się w przeglądarce; w innych systemach uruchom `./fmstudio ui`.
 
 **Jako narzędzie .NET** (wymaga [.NET 10 SDK](https://dotnet.microsoft.com/download)):
 

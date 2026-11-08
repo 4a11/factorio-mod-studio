@@ -6,9 +6,9 @@
 bevor das Spiel es tut, sie übersetzen, ein sauberes Release packen und sie mit einem isolierten Mod-Satz testen: in einem eigenen
 Programmfenster, auf der Kommandozeile oder im Browser. Alles läuft auf Ihrem Rechner, neben Ihrem gewohnten Code-Editor.
 
-> **Frühe Version (0.1).** Die Logik ist durch Tests abgedeckt; der Start des echten Spiels (`run`, `smoke`) funktioniert mit Factorio 2.1
-> unter Windows. Andere Versionen und Systeme wurden noch nicht ausprobiert. Rückmeldungen und Fehlerberichte sind sehr willkommen.
-> Die Desktop-App ist neu: Sie läuft unter Windows; Linux und macOS wurden noch nicht ausprobiert.
+> **Frühe Version (0.2).** Die Logik ist durch Tests abgedeckt; `smoke` ist mit Factorio 1.1, 2.0 und 2.1 unter Linux (CI) geprüft, `run` mit 2.1
+> unter Windows. macOS wurde noch nicht ausprobiert. Rückmeldungen und Fehlerberichte sind sehr willkommen.
+> Die Desktop-App läuft unter Windows; für Linux und macOS ist sie gebaut, aber noch nicht ausprobiert.
 > Inoffizielles Community-Projekt, nicht mit Wube Software verbunden. „Factorio“ ist eine Marke der Wube Software Ltd.
 >
 > Dies ist eine Übersetzung des einleitenden Teils. Die ausführliche Dokumentation gibt es [auf Englisch](README.md#documentation); bei Abweichungen gilt das englische README.
@@ -35,11 +35,11 @@ Programmfenster, auf der Kommandozeile oder im Browser. Alles läuft auf Ihrem R
 Wo das Projekt steht und was als Nächstes kommt. Versionen sind Ziele, keine Termine; die Reihenfolge richtet sich nach Rückmeldungen,
 also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issues), wenn Ihnen ein Punkt wichtig ist (oder hier fehlt).
 
-**0.1: jetzt.** Die Kommandozeile (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) und das Studio, im eigenen Fenster oder im Browser, in 8 Oberflächensprachen: die Tabs Übersicht, Dateien, Prototypen, Ressourcen, Lokalisierung, Probleme und Build; 20 Bausteine (Rüstung, Gegner, Förderband-Stufen, Maschinen, Fahrzeuge…) als umgefärbte Kopien der Originale, in Factorio 2.1 geprüft; ganze Mod-Ordner werden vor dem Hinzufügen geprüft.
+**0.1.** Die Kommandozeile (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) und das Studio, im eigenen Fenster oder im Browser, in 8 Oberflächensprachen: die Tabs Übersicht, Dateien, Prototypen, Ressourcen, Lokalisierung, Probleme und Build; 20 Bausteine (Rüstung, Gegner, Förderband-Stufen, Maschinen, Fahrzeuge…) als umgefärbte Kopien der Originale, in Factorio 2.1 geprüft; ganze Mod-Ordner werden vor dem Hinzufügen geprüft.
 
-**0.2: bereit für alle**
-- [ ] die Desktop-App überall: in den Release-Archiven für Windows, Linux und macOS, und ein Programm zusammen mit der Kommandozeile (ein Doppelklick öffnet das Fenster); *läuft unter Windows, aus dem Quellcode gebaut*
-- [ ] `run` und `smoke` mit Factorio 1.1, 2.0 und 2.1 unter Windows, Linux und macOS geprüft, einschließlich Headless-Server; *2.1 unter Windows funktioniert; `smoke` auf dem Linux-Headless-Server für 1.1, 2.0 und 2.1, in der CI*
+**0.2: jetzt, bereit für alle**
+- [x] die Desktop-App überall: in den Release-Archiven für Windows, Linux und macOS, jeweils mit etwas zum Doppelklicken, und ein Programm zusammen mit der Kommandozeile (ein Doppelklick öffnet das Fenster); *unter Windows ausprobiert; für Linux und macOS gebaut, Rückmeldungen willkommen*
+- [x] `run` und `smoke` mit Factorio 1.1, 2.0 und 2.1 geprüft, einschließlich Headless-Server; *`run` mit 2.1 unter Windows, `smoke` auf dem Linux-Headless-Server für 1.1, 2.0 und 2.1 in der CI; macOS noch nicht ausprobiert*
 - [x] nach einem Start oder Smoke-Test auch `factorio-current.log` lesen und seine Fehler unter Probleme und Ausgabe zeigen
 - [x] die Prototypen der Vorlagen (Entität, Laufzeit-Skript) im Spiel geladen, nicht nur nach der Dokumentation geschrieben; *alle vier laden in Factorio 2.1*
 - [x] Installation in einer Zeile: das Werkzeug auf NuGet veröffentlicht (`dotnet tool install -g FactorioModStudio.Cli`), kein Klonen nötig; *veröffentlicht: 0.1.1*
@@ -84,16 +84,15 @@ nach dem einen echten Fehler in einer Wand aus Log-Ausgaben, Übersetzungen, die
 
 ## Schnellstart
 
-**Desktop-App:** das Studio in einem eigenen Fenster. Vorerst wird sie aus dem Quellcode gebaut (braucht das [.NET 10 SDK](https://dotnet.microsoft.com/download)); in die Release-Archive kommt sie mit der nächsten Version.
+**Desktop-App:** das Archiv für Ihr System von [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) herunterladen und entpacken; .NET wird nicht gebraucht. Doppelklick auf `FactorioModStudio.exe` (Windows), `Factorio Mod Studio.app` (macOS) oder `Factorio Mod Studio.desktop` (Linux): Das Studio öffnet sich im eigenen Fenster, mit einem Ordner `mods` daneben für Ihre Mods. Was Linux und macOS vorher brauchen, steht in den Release-Hinweisen.
+
+**Aus dem Quellcode** (braucht das [.NET 10 SDK](https://dotnet.microsoft.com/download)):
 
 ```sh
 git clone https://github.com/4a11/factorio-mod-studio
 cd factorio-mod-studio
 dotnet run --project src/FactorioModStudio.Desktop -c Release   # Ihre Mods liegen in ./mods
 ```
-
-**Ohne .NET:** das Archiv für Ihr System von [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) herunterladen und entpacken; .NET wird nicht gebraucht.
-Unter Windows `fmstudio.exe` doppelt anklicken, und das Studio öffnet sich im Browser; sonst `./fmstudio ui` starten.
 
 **Als .NET-Werkzeug** (braucht das [.NET 10 SDK](https://dotnet.microsoft.com/download)):
 

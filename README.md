@@ -6,9 +6,9 @@
 translate it, pack a clean release and test-run it with an isolated set of mods: in a desktop window of its own, from the
 command line or in your browser. It runs entirely on your machine and works next to your usual code editor.
 
-> **Early version (0.1).** The logic is covered by tests; launching the real game (`run`, `smoke`) works with Factorio 2.1 on
-> Windows. Other versions and systems have not been tried yet. Feedback and bug reports are very welcome.
-> The desktop app is new: it works on Windows; Linux and macOS have not been tried yet.
+> **Early version (0.2).** The logic is covered by tests; `smoke` is checked against Factorio 1.1, 2.0 and 2.1 on Linux (CI), `run` with 2.1
+> on Windows. macOS has not been tried yet. Feedback and bug reports are very welcome.
+> The desktop app works on Windows; for Linux and macOS it is built but not tried yet.
 > Unofficial community project, not affiliated with Wube Software. "Factorio" is a trademark of Wube Software Ltd.
 
 ![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
@@ -33,11 +33,11 @@ command line or in your browser. It runs entirely on your machine and works next
 Where the project stands and what comes next. Versions are goals, not dates; the order follows feedback, so
 [open an issue](https://github.com/4a11/factorio-mod-studio/issues) if something here (or missing here) matters to you.
 
-**0.1: now.** The CLI (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) and the studio, in a desktop window or in the browser, in 8 interface languages: Overview, Files, Prototypes, Resources, Localization, Problems and Build tabs; 20 building blocks (armor, enemies, belt tiers, machines, vehicles...) as recoloured copies of the originals, checked in Factorio 2.1; whole folders of mods added with a check first.
+**0.1.** The CLI (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) and the studio, in a desktop window or in the browser, in 8 interface languages: Overview, Files, Prototypes, Resources, Localization, Problems and Build tabs; 20 building blocks (armor, enemies, belt tiers, machines, vehicles...) as recoloured copies of the originals, checked in Factorio 2.1; whole folders of mods added with a check first.
 
-**0.2: ready for people**
-- [ ] the desktop app everywhere: in the release archives for Windows, Linux and macOS, and one program with the CLI (a double click opens the window); *works on Windows, built from source*
-- [ ] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1 on Windows, Linux and macOS, including the headless server; *2.1 on Windows works; `smoke` on the Linux headless server for 1.1, 2.0 and 2.1, in CI*
+**0.2: now, ready for people**
+- [x] the desktop app everywhere: in the release archives for Windows, Linux and macOS, each with something to double-click, and one program with the CLI (a double click opens the window); *tried on Windows; built for Linux and macOS, reports welcome*
+- [x] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1, including the headless server; *`run` with 2.1 on Windows, `smoke` on the Linux headless server for 1.1, 2.0 and 2.1 in CI; macOS not tried yet*
 - [x] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
 - [x] the prototypes the templates generate (entity, runtime script) loaded in the game, not only written from the documentation; *all four load in Factorio 2.1*
 - [x] one-line install: the tool published to NuGet (`dotnet tool install -g FactorioModStudio.Cli`), no clone needed; *published: 0.1.1*
@@ -82,16 +82,15 @@ real error in a wall of log output, translations that drift apart. Factorio Mod 
 
 ## Quick start
 
-**Desktop app:** the studio in a window of its own. For now it is built from source (needs the [.NET 10 SDK](https://dotnet.microsoft.com/download)); the release archives get it with the next version.
+**Desktop app:** download the archive for your system from [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) and unpack it; no .NET needed. Double-click `FactorioModStudio.exe` (Windows), `Factorio Mod Studio.app` (macOS) or `Factorio Mod Studio.desktop` (Linux): the studio opens in a window of its own, with a `mods` folder next to it for your mods. The release notes say what Linux and macOS need first.
+
+**From source** (needs the [.NET 10 SDK](https://dotnet.microsoft.com/download)):
 
 ```sh
 git clone https://github.com/4a11/factorio-mod-studio
 cd factorio-mod-studio
 dotnet run --project src/FactorioModStudio.Desktop -c Release   # your mods go into ./mods
 ```
-
-**Without .NET:** download the archive for your system from [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) and unpack it; no .NET needed. On Windows,
-double-click `fmstudio.exe` and the studio opens in your browser; elsewhere run `./fmstudio ui`.
 
 **As a .NET tool** (needs the [.NET 10 SDK](https://dotnet.microsoft.com/download)):
 
@@ -127,8 +126,8 @@ matches the mod's `factorio_version` is used.
 ## Install
 
 Ready-to-run builds for Windows, Linux and macOS (no .NET needed) are on the [Releases](https://github.com/4a11/factorio-mod-studio/releases/latest) page: unpack the
-archive and put the folder on your `PATH`. They hold the `fmstudio` command, whose studio opens in the browser; the desktop app
-joins them with the next release. Building from source requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+archive and double-click the desktop app (see [Quick start](#quick-start)); put the folder on your `PATH` to use the
+`fmstudio` command anywhere. Building from source requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 The desktop app: `dotnet run --project src/FactorioModStudio.Desktop -c Release`, or `dotnet build` it and start
 `src/FactorioModStudio.Desktop/bin/Release/net10.0/FactorioModStudio` (`.exe` on Windows). The command-line tool:
