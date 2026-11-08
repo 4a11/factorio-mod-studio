@@ -13,6 +13,7 @@ import { createActionBar } from '/action-bar.js';
 import { createUpdateView } from '/update-view.js';
 import { createModMenu } from '/mod-menu.js';
 import { createGameDataView } from '/game-data-view.js';
+import { createBlockProps } from '/block-props.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
 import { findMods, readInfo, zipIdentity, assess, MAX_IMPORT_FILES } from '/import-logic.js';
@@ -519,10 +520,14 @@ function renderBuild() {
 
 // The Prototypes tab (families / by name, type chips, missing localised names) lives in prototypes-view.js.
 // Its "In the game" mode (the game's own data, from --dump-data) is game-data-view.js; it keeps its state per mod.
-const gameDataView = createGameDataView({ api, el, openFile: (path, line) => openFile(path, line), fileUrl, installation: chosenInstallation });
+// The properties of a building block (block-props.js), opened from the Prototypes tab; saving changes the block's file, which
+// the live updates then show everywhere.
+const blockProps = createBlockProps({ api, el });
+const openBlock = (file) => { if (state.currentId) blockProps.open(state.currentId, file); };
+const gameDataView = createGameDataView({ api, el, openFile: (path, line) => openFile(path, line), fileUrl, installation: chosenInstallation, openBlock });
 
 function renderPrototypes(o) {
-  return renderPrototypesView(o, { el, state, openFile, fileUrl, rerender: () => renderMod(true),
+  return renderPrototypesView(o, { el, state, openFile, fileUrl, openBlock, rerender: () => renderMod(true),
     gameData: () => gameDataView.show(o, state.currentId, !!currentMod()?.editable) });
 }
 

@@ -1197,4 +1197,40 @@ public class FilesApiTests
         Assert.Equal(HttpStatusCode.NotFound, (await RestoreMod(e.Http, "not-an-id")).Status);
         Assert.Equal(HttpStatusCode.NotFound, (await RestoreMod(e.Http, "20260101000000000-0123abcd")).Status);
     }
+
+    // ------------------------------------------------------------ block properties (Prototypes tab)
+
+    [Fact]
+    public async Task Blocks_ReadAndWriteTheNumbersOfABlock_OnlyFromTheVersionRead()
+    {
+        using var e = await Env.Create(env => ModContent.Apply(env.ModDir, new ContentRequest("wall", "wmod-wall", "Wall")));
+        var id = await e.Id(Mod);
+        const string file = "prototypes/wmod-wall.lua";
+
+        var read = await Send(e.Http, HttpMethod.Get, $"/api/mods/{id}/blocks?file={Q(file)}");
+        Is(HttpStatusCode.OK, read);
+        var block = read.Json.GetProperty("block");
+        var health = block.GetProperty("properties").EnumerateArray().Single();
+        Assert.Equal(("max_health", "700"), (health.GetProperty("path").GetString(), health.GetProperty("value").GetString()));
+        Assert.False(read.Json.GetProperty("gameData").GetBoolean());
+        var version = block.GetProperty("version").GetString();
+        var key = health.GetProperty("key").GetString()!;
+
+        Task<Resp> Post(object body) => Send(e.Http, HttpMethod.Post, $"/api/mods/{id}/blocks", JsonBody(body));
+        Is(HttpStatusCode.BadRequest, await Post(new { file, version, values = new Dictionary<string, string> { [key] = "lots" } }));
+        Is(HttpStatusCode.OK, await Post(new { file, version, values = new Dictionary<string, string> { [key] = "900" } }));
+        Assert.Contains("wall.max_health = 900", File.ReadAllText(e.ModFile(file)));
+        Is(HttpStatusCode.Conflict, await Post(new { file, version, values = new Dictionary<string, string> { [key] = "1" } }));
+        Is(HttpStatusCode.BadRequest, await Post(new { file = "data.lua", version, values = new Dictionary<string, string>() }));
+        Is(HttpStatusCode.BadRequest, await Post(new { file = "../other/data.lua", version, values = new Dictionary<string, string>() }));
+        Is(HttpStatusCode.NotFound, await Send(e.Http, HttpMethod.Get, $"/api/mods/{id}/blocks?file={Q("nope.lua")}"));
+
+        using var anonymous = Client(e.Ui, token: false);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(anonymous, HttpMethod.Post, $"/api/mods/{id}/blocks", JsonBody(new { file, version, values = new { } }))).Status);
+        Assert.Contains("wall.max_health = 900", File.ReadAllText(e.ModFile(file)));
+
+        var overview = JsonDocument.Parse(await e.Http.GetStringAsync($"/api/mods/{id}")).RootElement;
+        overview = overview.TryGetProperty("overview", out var inner) ? inner : overview;
+        Assert.Equal(file, overview.GetProperty("blocks").EnumerateArray().Single().GetProperty("file").GetString());
+    }
 }

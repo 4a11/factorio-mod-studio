@@ -86,7 +86,7 @@ export function typeCounts(list) {
  * the row limit) across redraws.
  * @param {{ el: Function, state: object, openFile: Function, fileUrl: Function, rerender: () => void }} host
  */
-export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender, gameData }) {
+export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender, gameData, openBlock }) {
   const game = state.protoMode === 'game';
   const touched = state.protoMode === 'touched';
   const list = touched ? o.touched : o.prototypes;
@@ -126,6 +126,12 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender, ga
     el('span', { class: 'muted small', text: t(game ? 'prototypes.explainGame' : touched ? 'prototypes.explainTouched' : 'prototypes.explainDefined') }));
 
   if (game) return el('div', { class: 'proto-panel' }, head, gameData());
+
+  // The building blocks of the mod, each opening its properties (block-props.js): health, speed, inventory... of the copy.
+  const blocks = !touched && (o.blocks || []).length > 0 && el('div', { class: 'bp-strip', role: 'group', 'aria-label': t('blockprops.strip'), 'data-testid': 'proto-blocks' },
+    el('span', { class: 'muted small', text: t('blockprops.strip') }),
+    o.blocks.map((b) => el('button', { type: 'button', class: 'chip proto-chip bp-chip', 'data-testid': 'proto-block', title: t('blockprops.open', { file: b.file }),
+      onclick: () => openBlock(b.file) }, el('span', { class: 'bp-gear', 'aria-hidden': 'true', text: '⚙' }), el('span', { text: b.title || b.file }))));
 
   if (!list.length) {
     return el('div', { class: 'proto-panel' }, head,
@@ -281,7 +287,7 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender, ga
   }
 
   refresh();
-  return el('div', { class: 'proto-panel' }, head,
+  return el('div', { class: 'proto-panel' }, head, blocks,
     el('div', { class: 'files-viewbar proto-bar' }, search, missingBtn, el('div', { class: 'files-switch', role: 'group', 'aria-label': t('files.viewLabel') }, viewButtons), count),
     chips, typeChips, content);
 }

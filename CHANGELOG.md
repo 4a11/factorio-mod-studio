@@ -24,6 +24,10 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   the new recipes, other mods reacting) "before → after". The dump without the mod is kept and reused, so loading again
   takes seconds; a notice says when the mod's files changed since. Dependencies are taken from the workspace folder
   when the project names no `modsSource`.
+- **Properties of a building block**: the Prototypes tab lists the mod's blocks; each opens a dialog with the numbers it sets
+  (health, speed, inventory, crafting speed, power, damage factor...), the value of the original next to each one once the
+  mod was loaded "In the game", and a button back to the original. Saving changes only those numbers in the block's Lua;
+  comments and anything else in the file stay as they are, and a file that changed in between is not overwritten.
 
 ### Changed
 - Versions X.Y.Z with Z > 0 are published as GitHub pre-releases and not pushed to NuGet.

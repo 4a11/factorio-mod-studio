@@ -11,9 +11,9 @@ const CHANGES = ['added', 'changed', 'removed'];
 
 /**
  * @param {{ api: Function, el: Function, openFile: (path: string, line?: number) => void, fileUrl: (path: string) => string,
- *   installation: (modId: string) => string | null }} host
+ *   installation: (modId: string) => string | null, openBlock: (file: string) => void }} host
  */
-export function createGameDataView({ api, el, openFile, fileUrl, installation }) {
+export function createGameDataView({ api, el, openFile, fileUrl, installation, openBlock }) {
   const enc = encodeURIComponent;
   const root = el('div', { class: 'gd-panel', 'data-testid': 'gamedata' });
   /** Per mod: { data, loaded, overview, job: { id, lastN, line } | null, error, busy, filter, search, open: Set, items: Map, showAll } */
@@ -157,8 +157,11 @@ export function createGameDataView({ api, el, openFile, fileUrl, installation })
       loaded.value && el('details', { class: 'gd-values' },
         el('summary', { text: t('gamedata.allValues') }),
         el('pre', { class: 'mono gd-json', text: JSON.stringify(loaded.value, null, 2) })),
-      definition && el('button', { type: 'button', class: 'linklike small', 'data-testid': 'gamedata-open-code',
-        onclick: () => openFile(definition.file, definition.line), text: t('gamedata.openCode', { file: `${definition.file}:${definition.line}` }) }));
+      definition && el('span', { class: 'gd-links' },
+        el('button', { type: 'button', class: 'linklike small', 'data-testid': 'gamedata-open-code',
+          onclick: () => openFile(definition.file, definition.line), text: t('gamedata.openCode', { file: `${definition.file}:${definition.line}` }) }),
+        (current.overview.blocks || []).some((b) => b.file === definition.file) && el('button', { type: 'button', class: 'linklike small', 'data-testid': 'gamedata-open-block',
+          onclick: () => openBlock(definition.file), text: t('blockprops.edit') })));
   }
 
   function row(item, s) {
