@@ -184,11 +184,15 @@ input:focus-visible, button:focus-visible, select:focus-visible, a:focus-visible
 .mod-group-body[hidden] { display: none; }
 /* A row: the mod button plus a pin button that shows on hover or focus (and stays on a pinned mod's row). */
 .mod-row { position: relative; }
-.mod-row .pin { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; padding: 0; display: none; align-items: center; justify-content: center; color: var(--muted); background: var(--surface); border: 0; border-radius: 4px; }
+.mod-row .pin { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; padding: 0; display: none; align-items: center; justify-content: center; color: var(--muted); background: var(--surface); border: 0; border-radius: 4px; }
 .mod-row:hover .pin, .mod-row:focus-within .pin { display: inline-flex; }
-.mod-row:hover .ver, .mod-row:focus-within .ver { visibility: hidden; }
+.mod-row:hover .ver, .mod-row:focus-within .ver { display: none; }
+.mod-row:hover .mod-item, .mod-row:focus-within .mod-item { padding-right: 54px; } /* room for the pin and "⋯" */
 .mod-row .pin:hover, .mod-row .pin:focus-visible { color: var(--accent); background: var(--surface-2); }
 .mod-row .pin[aria-pressed="true"] { color: var(--accent); }
+.mod-row .mod-more { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; padding: 0; display: none; align-items: center; justify-content: center; color: var(--muted); background: var(--surface); border: 0; border-radius: 4px; font-size: 14px; line-height: 1; }
+.mod-row:hover .mod-more, .mod-row:focus-within .mod-more { display: inline-flex; }
+.mod-row .mod-more:hover, .mod-row .mod-more:focus-visible { color: var(--accent); background: var(--surface-2); }
 .pin-icon { width: 12px; height: 12px; flex: none; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10.5 1.5 14.5 5.5 13.4 6.6 12.6 6.2 9.9 8.9 10.3 11.9 9.2 13 6.6 10.4 3 14 2 14 2 13 5.6 9.4 3 6.8 4.1 5.7 7.1 6.1 9.8 3.4 9.4 2.6z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10.5 1.5 14.5 5.5 13.4 6.6 12.6 6.2 9.9 8.9 10.3 11.9 9.2 13 6.6 10.4 3 14 2 14 2 13 5.6 9.4 3 6.8 4.1 5.7 7.1 6.1 9.8 3.4 9.4 2.6z'/%3E%3C/svg%3E") center / contain no-repeat; }
 .mod-group .pin-icon { width: 11px; height: 11px; }
 .mod-item { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 28px; padding: 3px 8px 3px 8px; font-size: 13px; text-align: left; background: none; border: 0; border-radius: 6px; cursor: pointer; }
@@ -858,6 +862,7 @@ details .files-tree { border: 0; border-top: 1px solid var(--border); border-rad
 .files-menu[hidden] { display: none; }
 .files-menu button { text-align: left; border: 0; background: none; padding: 6px 10px; border-radius: 4px; }
 .files-menu button:hover, .files-menu button:focus-visible { background: var(--accent-soft); outline: none; }
+.files-menu button.danger { color: var(--error); }
 .files-dialog { width: min(420px, calc(100vw - 32px)); padding: 20px 22px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); }
 .files-dialog::backdrop { background: rgba(0, 0, 0, .5); }
 .files-dialog h2 { margin-bottom: 10px; overflow-wrap: anywhere; }

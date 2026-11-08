@@ -336,6 +336,86 @@ internal static class FilesApi
             }
             return Results.NoContent();
         });
+
+        // ------------------------------------------------------------ delete a whole mod of the workspace, with undo
+
+        // Deleted mods wait in a trash of their own next to the per-mod ones ("~" never appears in a sanitized mod id), with the
+        // same limits: the newest 20, for 7 days. Only mods in the workspace folder: the project mod is the project itself, and
+        // mods of the game or of the Factorio mods folder are not the studio's to remove.
+        var modsTrash = Path.Combine(trashRoot, "~mods");
+
+        string? WorkspaceRoot() =>
+            catalog.WorkspaceDirectory is { } workspace ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(workspace)) : null;
+
+        app.MapDelete("/api/mods/{id}", (string id) =>
+        {
+            var entry = catalog.Find(id);
+            if (entry is null) return Error(StatusCodes.Status404NotFound, "Unknown mod.");
+            var workspace = WorkspaceRoot();
+            var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(entry.Path));
+            if (entry.Source != "workspace" || workspace is null
+                || !string.Equals(Path.GetDirectoryName(full), workspace, PathComparison))
+                return Error(StatusCodes.Status403Forbidden, "Only mods in the workspace folder can be deleted.");
+
+            var isFile = entry.Kind == "zip";
+            if (isFile ? !File.Exists(full) : !Directory.Exists(full)) return Error(StatusCodes.Status404NotFound, "The mod is no longer there.");
+            if (!IsPlainTrashPath(trashRoot, modsTrash))
+                return Error(StatusCodes.Status500InternalServerError, "The trash folder is a link; refusing to delete.");
+
+            var trashId = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString("N")[..8]}";
+            var entryDir = Path.Combine(modsTrash, trashId);
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(entryDir, ContentFolder));
+                var manifest = new TrashManifest(trashId, Path.GetFileName(full), isFile ? "file" : "folder", DateTime.UtcNow);
+                File.WriteAllText(Path.Combine(entryDir, ManifestName), JsonSerializer.Serialize(manifest, ManifestJson));
+                MoveEntry(full, Path.Combine(entryDir, ContentFolder, Path.GetFileName(full)), isFile);
+            }
+            catch (FolderLinkException ex)
+            {
+                TryDeleteDirectory(entryDir);
+                return Error(StatusCodes.Status400BadRequest, ex.Message);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                TryDeleteDirectory(entryDir);
+                return Error(StatusCodes.Status500InternalServerError, $"Could not delete: {ex.Message}");
+            }
+
+            PurgeTrash(modsTrash);
+            return Results.Json(new { trashId });
+        });
+
+        app.MapPost("/api/workspace/trash/{trashId}/restore", (string trashId) =>
+        {
+            var workspace = WorkspaceRoot();
+            if (workspace is null) return Error(StatusCodes.Status404NotFound, "There is no workspace folder.");
+            if (!TrashIdPattern.IsMatch(trashId)) return Error(StatusCodes.Status404NotFound, "Unknown trash entry.");
+
+            var entryDir = Path.Combine(modsTrash, trashId);
+            var manifest = ReadManifest(entryDir);
+            // The manifest names one entry of the workspace folder, nothing deeper.
+            if (manifest is null || manifest.TrashId != trashId || manifest.Path is "" or "." or ".."
+                || manifest.Path != Path.GetFileName(manifest.Path) || manifest.Path.IndexOfAny(['/', '\\']) >= 0)
+                return Error(StatusCodes.Status404NotFound, "Unknown trash entry.");
+
+            var full = Path.Combine(workspace, manifest.Path);
+            if (File.Exists(full) || Directory.Exists(full)) return Error(StatusCodes.Status409Conflict, "Something already exists at the original location.");
+
+            var isFile = manifest.Kind == "file";
+            var stored = Path.Combine(entryDir, ContentFolder, manifest.Path);
+            if (isFile ? !File.Exists(stored) : !Directory.Exists(stored)) return Error(StatusCodes.Status404NotFound, "The trash entry is incomplete.");
+
+            try { MoveEntry(stored, full, isFile); }
+            catch (FolderLinkException ex) { return Error(StatusCodes.Status400BadRequest, ex.Message); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return Error(StatusCodes.Status500InternalServerError, $"Could not restore: {ex.Message}");
+            }
+
+            TryDeleteDirectory(entryDir);
+            return Results.Json(new { name = manifest.Path });
+        });
     }
 
     /// <summary>False when .fmstudio, trash or the mod's trash folder (whichever exist) is a symbolic link or junction.</summary>

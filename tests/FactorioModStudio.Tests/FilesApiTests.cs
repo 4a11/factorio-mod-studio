@@ -1119,4 +1119,82 @@ public class FilesApiTests
         Assert.Contains("FMS030", codes);
         Assert.Contains("FMS032", codes);
     }
+
+    // ------------------------------------------------------------ deleting a whole workspace mod (sidebar menu)
+
+    private static Task<Resp> DeleteMod(HttpClient http, string id) => Send(http, HttpMethod.Delete, $"/api/mods/{id}");
+
+    private static Task<Resp> RestoreMod(HttpClient http, string trashId) =>
+        Send(http, HttpMethod.Post, $"/api/workspace/trash/{trashId}/restore", JsonBody(new { }));
+
+    private static async Task<List<string>> ModNames(Env e) =>
+        JsonDocument.Parse(await e.Http.GetStringAsync("/api/mods")).RootElement.EnumerateArray().Select(m => m.GetProperty("name").GetString()!).ToList();
+
+    [Fact]
+    public async Task DeleteMod_MovesTheFolderIntoTheTrash_AndRestoreBringsItBackWithItsId()
+    {
+        using var e = await Env.Create();
+        var id = await e.Id(Mod);
+        var before = ModSnapshot(e);
+
+        var del = await DeleteMod(e.Http, id);
+        Is(HttpStatusCode.OK, del);
+        Assert.False(Directory.Exists(e.ModDir));
+        Assert.DoesNotContain(Mod, await ModNames(e));
+        Assert.Contains(Other, await ModNames(e));
+        var stored = Path.Combine(e.TrashRoot, "~mods", del.Str("trashId")!, "content", Mod);
+        Assert.Equal(before, Snapshot(stored));
+
+        var res = await RestoreMod(e.Http, del.Str("trashId")!);
+        Is(HttpStatusCode.OK, res);
+        Assert.Equal(Mod, res.Str("name"));
+        Assert.Equal(before, ModSnapshot(e));
+        Assert.Equal(id, await e.Id(Mod));
+        Assert.False(Directory.Exists(Path.GetDirectoryName(Path.GetDirectoryName(stored))));
+        Assert.Equal(HttpStatusCode.NotFound, (await RestoreMod(e.Http, del.Str("trashId")!)).Status);
+    }
+
+    [Fact]
+    public async Task DeleteMod_IsOnlyForWorkspaceMods_AndNeedsTheToken()
+    {
+        using var e = await Env.Create();
+        var before = ModSnapshot(e);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await DeleteMod(e.Http, await e.Id(Ro))).Status);
+        Assert.Equal(HttpStatusCode.Forbidden, (await DeleteMod(e.Http, await e.Id(Zipped))).Status);
+        Assert.Equal(HttpStatusCode.NotFound, (await DeleteMod(e.Http, "nope")).Status);
+        using var anonymous = Client(e.Ui, token: false);
+        Assert.Equal(HttpStatusCode.Forbidden, (await DeleteMod(anonymous, await e.Id(Mod))).Status);
+
+        Assert.Equal(before, ModSnapshot(e));
+        Assert.True(Directory.Exists(e.Installed.Combine($"{Ro}_1.0.0")));
+        Assert.False(Directory.Exists(Path.Combine(e.TrashRoot, "~mods")));
+    }
+
+    [Fact]
+    public async Task DeleteMod_WorksForAZipInTheWorkspace()
+    {
+        using var e = await Env.Create(env => Fixtures.WriteModZip(env.Workspace.Path, "packed", "1.0.0", "base"));
+        var zip = Directory.EnumerateFiles(e.Workspace.Path, "packed*.zip").Single();
+
+        var del = await DeleteMod(e.Http, await e.Id("packed"));
+        Is(HttpStatusCode.OK, del);
+        Assert.False(File.Exists(zip));
+
+        Is(HttpStatusCode.OK, await RestoreMod(e.Http, del.Str("trashId")!));
+        Assert.True(File.Exists(zip));
+    }
+
+    [Fact]
+    public async Task RestoreMod_ConflictsWhenTheFolderIsTakenAgain_AndRejectsUnknownIds()
+    {
+        using var e = await Env.Create();
+        var del = await DeleteMod(e.Http, await e.Id(Mod));
+        e.Workspace.Write($"{Mod}/info.json", InfoFor(Mod));
+
+        Assert.Equal(HttpStatusCode.Conflict, (await RestoreMod(e.Http, del.Str("trashId")!)).Status);
+        Assert.True(Directory.Exists(Path.Combine(e.TrashRoot, "~mods", del.Str("trashId")!)));
+        Assert.Equal(HttpStatusCode.NotFound, (await RestoreMod(e.Http, "not-an-id")).Status);
+        Assert.Equal(HttpStatusCode.NotFound, (await RestoreMod(e.Http, "20260101000000000-0123abcd")).Status);
+    }
 }

@@ -13,6 +13,10 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   (0.3.1, 0.3.2 ...). A preview starts on the preview channel, a release on the release channel; the choice is in the sidebar
   and `fmstudio update --channel stable|preview`.
 
+- **A menu for each mod in the sidebar** (right click, the context-menu key, or "⋯" on hover): open, pin, show in the file
+  manager and, for mods in the workspace folder, delete. A deleted mod goes to the studio's trash
+  (`.fmstudio/trash` in the workspace, kept 7 days) and the notice offers Undo.
+
 ### Changed
 - Versions X.Y.Z with Z > 0 are published as GitHub pre-releases and not pushed to NuGet.
 

@@ -11,6 +11,7 @@ import { createSearchPanel } from '/search-panel.js';
 import { createBottomPanel } from '/bottom-panel.js';
 import { createActionBar } from '/action-bar.js';
 import { createUpdateView } from '/update-view.js';
+import { createModMenu } from '/mod-menu.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
 import { findMods, readInfo, zipIdentity, assess, MAX_IMPORT_FILES } from '/import-logic.js';
@@ -187,6 +188,24 @@ function togglePin(id) {
   renderModList();
 }
 
+// Right click (or "⋯") on a mod in the sidebar: open, pin, show in the file manager, delete a workspace mod with undo.
+const modMenu = createModMenu({
+  el, api, isPinned, togglePin,
+  open: (mod) => go(mod.id, state.tab),
+  hasUnsaved: (mod) => mod.id === state.currentId && (editorTabs.hasDirty() || localeView.hasUnsaved()),
+  refresh: () => refreshMods(),
+});
+
+/** The menu of a mod row: at the pointer, or under the row when opened from the keyboard (the context-menu key). */
+function openModMenu(e, mod) {
+  e.preventDefault();
+  const row = e.currentTarget.closest('.mod-row');
+  const item = row.querySelector('.mod-item');
+  const fromPointer = e.type === 'contextmenu' && (e.clientX || e.clientY);
+  const box = (e.type === 'click' ? e.currentTarget : row).getBoundingClientRect();
+  modMenu.show(mod, fromPointer ? e.clientX : box.left, fromPointer ? e.clientY : box.bottom + 2, e.type === 'click' ? e.currentTarget : item);
+}
+
 /** A stable hue per mod name, so a mod without a thumbnail keeps the same coloured letter. */
 function hueOf(name) {
   let h = 0;
@@ -243,7 +262,7 @@ function renderModList() {
       const tip = [mod.title && mod.title !== mod.name ? mod.title : null, `${mod.name} ${mod.version}`.trim(), mod.editable ? null : t('sidebar.readOnly')]
         .filter(Boolean).join('\n');
       const pinnedNow = pinned.includes(mod.id);
-      body.append(el('div', { class: 'mod-row' + (pinnedNow ? ' pinned' : ''), 'data-mod': mod.id },
+      body.append(el('div', { class: 'mod-row' + (pinnedNow ? ' pinned' : ''), 'data-mod': mod.id, oncontextmenu: (e) => openModMenu(e, mod) },
         el('button', {
           class: 'mod-item', type: 'button', title: tip, 'aria-current': mod.id === state.currentId ? 'true' : null,
           onclick: () => go(mod.id, state.tab),
@@ -252,7 +271,12 @@ function renderModList() {
           class: 'pin', type: 'button', 'aria-pressed': pinnedNow ? 'true' : 'false', 'data-testid': 'pin-mod',
           title: t(pinnedNow ? 'sidebar.unpin' : 'sidebar.pin'), 'aria-label': t(pinnedNow ? 'sidebar.unpin' : 'sidebar.pin') + ': ' + mod.name,
           onclick: () => togglePin(mod.id),
-        }, el('span', { class: 'pin-icon', 'aria-hidden': 'true' }))));
+        }, el('span', { class: 'pin-icon', 'aria-hidden': 'true' })),
+        el('button', {
+          class: 'mod-more', type: 'button', 'aria-haspopup': 'menu', 'data-testid': 'mod-more',
+          title: t('sidebar.menu.more'), 'aria-label': t('sidebar.menu.more') + ': ' + mod.name,
+          onclick: (e) => openModMenu(e, mod),
+        }, '⋯')));
     }
     list.append(body);
   }
