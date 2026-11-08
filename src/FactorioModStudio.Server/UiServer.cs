@@ -135,6 +135,7 @@ public static class UiServer
         MapStaticAssets(app, token);
         MapApi(app, context, catalog, feed, watcher, jobs);
         BuildApi.Map(app, catalog, jobs);
+        BlocksApi.Map(app, catalog, jobs);
         FilesApi.Map(app, catalog, context, options.FileManager);
         FactorioSettingsApi.Map(app, jobs, token);
         FactorioInstallApi.Map(app, new FactorioInstalls(options.FactorioDownloads ?? DefaultDownloads, () => jobs.InvalidateEnvironment()));
@@ -939,7 +940,7 @@ public static class UiServer
 
     /// <summary>Writes to a temp file next to the target and renames it over, so readers never see a half-written file.
     /// An existing file keeps its line-ending style (CRLF) and UTF-8 BOM, which avoids noisy diffs.</summary>
-    private static void WriteAtomically(string full, string text, bool exists)
+    internal static void WriteAtomically(string full, string text, bool exists)
     {
         var bom = false;
         if (exists)

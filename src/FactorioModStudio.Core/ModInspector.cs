@@ -52,6 +52,7 @@ public static class ModInspector
         var touched = new Dictionary<string, TouchedPrototype>(StringComparer.Ordinal);
         var dynamic = 0;
         var skipped = 0;
+        var blocks = new List<BlockSummary>();
 
         foreach (var file in files.Where(f => f.Category == "script"))
         {
@@ -64,6 +65,8 @@ public static class ModInspector
 
             var scan = PrototypeScanner.Scan(source);
             dynamic += scan.DynamicEntries;
+            if (BlockProperties.IsBlock(source))
+                blocks.Add(new BlockSummary(file.Path, BlockProperties.TitleOf(source), scan.Prototypes.Select(p => p.Name).Distinct(StringComparer.Ordinal).ToList()));
 
             foreach (var raw in scan.Prototypes)
             {
@@ -94,7 +97,8 @@ public static class ModInspector
             issues,
             notes)
         {
-            LocaleCoverage = LocaleChecker.Coverage(root)
+            LocaleCoverage = LocaleChecker.Coverage(root),
+            Blocks = blocks.OrderBy(b => b.File, StringComparer.Ordinal).ToList()
         };
     }
 

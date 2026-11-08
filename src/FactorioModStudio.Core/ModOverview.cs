@@ -19,6 +19,9 @@ public sealed record ModFileEntry(string Path, long Size, string Category, strin
 }
 
 /// <param name="Icon">Path of the icon inside the mod, when the prototype's icon points into the same mod.</param>
+/// <param name="Prototypes">Names of the prototypes the block's file defines.</param>
+public sealed record BlockSummary(string File, string? Title, IReadOnlyList<string> Prototypes);
+
 public sealed record PrototypeInfo(string Type, string Name, string? DisplayName, string? Icon, string File, int Line)
 {
     /// <summary>For a copy of an existing prototype (table.deepcopy, the building blocks): the original's name. The copy has the
@@ -55,6 +58,9 @@ public sealed record ModOverview(
 {
     /// <summary>Per-language key counts, "en" first, then alphabetical. Missing/extra are relative to the default language.</summary>
     public IReadOnlyList<LocaleCoverage> LocaleCoverage { get; init; } = Array.Empty<LocaleCoverage>();
+
+    /// <summary>The building blocks in the mod (Lua files written by <see cref="ModContent"/>), whose properties can be edited.</summary>
+    public IReadOnlyList<BlockSummary> Blocks { get; init; } = Array.Empty<BlockSummary>();
 
     /// <summary>Release checklist (see <see cref="ReleaseReadiness"/>). Filled per request by the UI server, never cached.</summary>
     public IReadOnlyList<ReadinessCheck> Readiness { get; init; } = Array.Empty<ReadinessCheck>();

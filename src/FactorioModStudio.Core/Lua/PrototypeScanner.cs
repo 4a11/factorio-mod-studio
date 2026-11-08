@@ -15,6 +15,9 @@ internal sealed class ScanResult
 
     /// <summary>Entries passed to <c>data:extend</c> that could not be resolved statically (variables, function calls).</summary>
     public int DynamicEntries { get; set; }
+
+    /// <summary>The prototype each local variable holds at the end of the file (<c>local chest = copy.entity(...)</c>), by name.</summary>
+    public Dictionary<string, RawPrototype> LocalPrototypes { get; } = new(StringComparer.Ordinal);
 }
 
 /// <summary>
@@ -143,6 +146,9 @@ internal static class PrototypeScanner
                 }
             }
 
+            foreach (var (local, value) in _scope.Locals)
+                if (value is LuaTable table && TryPrototype(table, out var proto))
+                    _result.LocalPrototypes[local] = _copies.TryGetValue(table, out var original) ? proto with { CopyOf = original } : proto;
             return _result;
         }
 
