@@ -38,7 +38,7 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 **0.2: ready for people**
 - [ ] the desktop app everywhere: in the release archives for Windows, Linux and macOS, and one program with the CLI (a double click opens the window); *works on Windows, built from source*
 - [ ] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1 on Windows, Linux and macOS, including the headless server; *2.1 on Windows works*
-- [ ] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
+- [x] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
 - [x] the prototypes the templates generate (entity, runtime script) loaded in the game, not only written from the documentation; *all four load in Factorio 2.1*
 - [x] one-line install: the tool published to NuGet (`dotnet tool install -g FactorioModStudio.Cli`), no clone needed; *published: 0.1.1*
 - [ ] Factorio versions installed by the studio: `fmstudio factorio install 2.0` downloads the free headless server (Linux, WSL, CI), where `smoke` finds it, also from the Build tab; *built, not yet tried against the real download*
@@ -66,6 +66,9 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 
 **0.6: graphics**
 - [ ] a sprite editor in the studio: create and edit icons and sprites, and build animations (frames, sprite sheet, live preview) without leaving the studio
+
+**0.7: worlds**
+- [ ] a map editor: new planets and surfaces, biomes (which tiles, decoratives, resources and enemies appear where, through autoplace and noise expressions) and map generation settings, with a preview of the generated terrain
 
 **Later**
 - running tests written for [FactorioTest](https://mods.factorio.com/mod/factorio-test) from the studio

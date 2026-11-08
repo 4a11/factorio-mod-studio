@@ -40,7 +40,7 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 **0.2: gotowe dla ludzi**
 - [ ] aplikacja okienkowa wszędzie: w archiwach wydania dla Windows, Linux i macOS oraz jeden program razem z wierszem poleceń (podwójne kliknięcie otwiera okno); *działa na Windows po zbudowaniu ze źródeł*
 - [ ] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1 na Windows, Linux i macOS, łącznie z serwerem bez interfejsu; *2.1 na Windows działa*
-- [ ] po uruchomieniu lub teście dymnym odczytywany jest także `factorio-current.log`, a jego błędy widać w zakładkach Problemy i Wyjście
+- [x] po uruchomieniu lub teście dymnym odczytywany jest także `factorio-current.log`, a jego błędy widać w zakładkach Problemy i Wyjście
 - [x] prototypy tworzone przez szablony (obiekt, skrypt czasu działania) wczytane w grze, a nie tylko napisane według dokumentacji; *wszystkie cztery wczytują się w Factorio 2.1*
 - [x] instalacja jednym poleceniem: narzędzie opublikowane w NuGet (`dotnet tool install -g FactorioModStudio.Cli`), bez klonowania; *opublikowano: 0.1.1*
 - [ ] wersje Factorio instalowane przez studio: `fmstudio factorio install 2.0` pobiera darmowy serwer bez interfejsu (Linux, WSL, CI), gdzie znajdzie go `smoke`, także z zakładki Budowanie; *zrobione, jeszcze niesprawdzone z prawdziwym pobieraniem*
@@ -68,6 +68,9 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 
 **0.6: grafika**
 - [ ] edytor sprite'ów w studiu: tworzenie i edycja ikon i sprite'ów oraz animacje (klatki, arkusz sprite'ów, podgląd na żywo) bez wychodzenia ze studia
+
+**0.7: światy**
+- [ ] edytor map: nowe planety i powierzchnie, biomy (jakie kafelki, dekoracje, surowce i wrogowie pojawiają się gdzie, przez autoplace i wyrażenia szumu) oraz ustawienia generowania mapy, z podglądem wygenerowanego terenu
 
 **Później**
 - uruchamianie testów napisanych dla [FactorioTest](https://mods.factorio.com/mod/factorio-test) bezpośrednio ze studia

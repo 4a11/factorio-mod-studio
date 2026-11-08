@@ -40,7 +40,7 @@ Dónde está el proyecto y qué viene después. Las versiones son objetivos, no 
 **0.2: listo para la gente**
 - [ ] la aplicación de escritorio en todas partes: en los archivos de la versión para Windows, Linux y macOS, y un solo programa junto con la línea de comandos (un doble clic abre la ventana); *funciona en Windows, compilada desde el código fuente*
 - [ ] `run` y `smoke` verificados con Factorio 1.1, 2.0 y 2.1 en Windows, Linux y macOS, incluido el servidor sin interfaz; *2.1 en Windows funciona*
-- [ ] tras un lanzamiento o una prueba de humo, leer también `factorio-current.log` y mostrar sus errores en Problemas y Salida
+- [x] tras un lanzamiento o una prueba de humo, leer también `factorio-current.log` y mostrar sus errores en Problemas y Salida
 - [x] los prototipos que generan las plantillas (entidad, script en tiempo de ejecución) cargados en el juego, no solo escritos según la documentación; *los cuatro cargan en Factorio 2.1*
 - [x] instalación en una línea: la herramienta publicada en NuGet (`dotnet tool install -g FactorioModStudio.Cli`), sin clonar; *publicado: 0.1.1*
 - [ ] versiones de Factorio instaladas por el estudio: `fmstudio factorio install 2.0` descarga el servidor sin interfaz gratuito (Linux, WSL, CI), donde `smoke` lo encuentra, también desde la pestaña Compilación; *hecho, aún sin probar con la descarga real*
@@ -68,6 +68,9 @@ Dónde está el proyecto y qué viene después. Las versiones son objetivos, no 
 
 **0.6: gráficos**
 - [ ] un editor de sprites en el estudio: crear y editar iconos y sprites, y montar animaciones (fotogramas, hoja de sprites, vista previa en vivo) sin salir del estudio
+
+**0.7: mundos**
+- [ ] un editor de mapas: nuevos planetas y superficies, biomas (qué casillas, decoraciones, recursos y enemigos aparecen y dónde, mediante autoplace y expresiones de ruido) y ajustes de generación del mapa, con una vista previa del terreno generado
 
 **Más adelante**
 - ejecutar desde el estudio las pruebas escritas para [FactorioTest](https://mods.factorio.com/mod/factorio-test)

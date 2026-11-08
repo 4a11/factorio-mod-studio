@@ -38,7 +38,7 @@
 **0.2：可以交给大家使用**
 - [ ] 桌面应用全面可用：加入 Windows、Linux 和 macOS 的发行压缩包，并与命令行合为一个程序（双击打开窗口）；*已在 Windows 上从源码构建运行*
 - [ ] 在 Windows、Linux 和 macOS 上用 Factorio 1.1、2.0 和 2.1（包括无界面服务器）验证 `run` 和 `smoke`；*Windows 上的 2.1 已可用*
-- [ ] 运行或冒烟测试之后同时读取 `factorio-current.log`，并在“问题”和“输出”中显示其中的错误
+- [x] 运行或冒烟测试之后同时读取 `factorio-current.log`，并在“问题”和“输出”中显示其中的错误
 - [x] 模板生成的原型（实体、运行时脚本）在游戏中实际加载过，而不只是按文档编写; *四个模板均可在 Factorio 2.1 中加载*
 - [x] 一行命令安装：工具发布到 NuGet（`dotnet tool install -g FactorioModStudio.Cli`），无需克隆仓库; *已发布：0.1.1*
 - [ ] 由工作室安装 Factorio 版本：`fmstudio factorio install 2.0` 下载免费的无界面服务器（Linux、WSL、CI），`smoke` 会自动找到它，“构建”标签页中也可以安装；*已实现，尚未用真实下载验证*
@@ -66,6 +66,9 @@
 
 **0.6：图形**
 - [ ] 工作室内的精灵图编辑器：创建和编辑图标与精灵图，并直接在工作室中制作动画（帧、精灵表、实时预览）
+
+**0.7：世界**
+- [ ] 地图编辑器：新的星球与地表、生物群系（通过 autoplace 和噪声表达式决定哪些地块、装饰物、资源和敌人出现在哪里）以及地图生成设置，并可预览生成的地形
 
 **以后**
 - 在工作室中运行为 [FactorioTest](https://mods.factorio.com/mod/factorio-test) 编写的测试

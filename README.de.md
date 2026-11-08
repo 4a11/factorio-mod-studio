@@ -40,7 +40,7 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 **0.2: bereit für alle**
 - [ ] die Desktop-App überall: in den Release-Archiven für Windows, Linux und macOS, und ein Programm zusammen mit der Kommandozeile (ein Doppelklick öffnet das Fenster); *läuft unter Windows, aus dem Quellcode gebaut*
 - [ ] `run` und `smoke` mit Factorio 1.1, 2.0 und 2.1 unter Windows, Linux und macOS geprüft, einschließlich Headless-Server; *2.1 unter Windows funktioniert*
-- [ ] nach einem Start oder Smoke-Test auch `factorio-current.log` lesen und seine Fehler unter Probleme und Ausgabe zeigen
+- [x] nach einem Start oder Smoke-Test auch `factorio-current.log` lesen und seine Fehler unter Probleme und Ausgabe zeigen
 - [x] die Prototypen der Vorlagen (Entität, Laufzeit-Skript) im Spiel geladen, nicht nur nach der Dokumentation geschrieben; *alle vier laden in Factorio 2.1*
 - [x] Installation in einer Zeile: das Werkzeug auf NuGet veröffentlicht (`dotnet tool install -g FactorioModStudio.Cli`), kein Klonen nötig; *veröffentlicht: 0.1.1*
 - [ ] Factorio-Versionen installiert das Studio selbst: `fmstudio factorio install 2.0` lädt den kostenlosen Headless-Server (Linux, WSL, CI), wo `smoke` ihn findet, auch aus dem Build-Tab; *gebaut, mit dem echten Download noch nicht erprobt*
@@ -68,6 +68,9 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 
 **0.6: Grafik**
 - [ ] ein Sprite-Editor im Studio: Icons und Sprites erstellen und bearbeiten, Animationen bauen (Frames, Spritesheet, Live-Vorschau), ohne das Studio zu verlassen
+
+**0.7: Welten**
+- [ ] ein Karteneditor: neue Planeten und Oberflächen, Biome (welche Kacheln, Dekorationen, Ressourcen und Gegner wo erscheinen, über Autoplace und Noise-Ausdrücke) und Einstellungen der Kartengenerierung, mit einer Vorschau des erzeugten Geländes
 
 **Später**
 - Tests, die für [FactorioTest](https://mods.factorio.com/mod/factorio-test) geschrieben sind, aus dem Studio starten
