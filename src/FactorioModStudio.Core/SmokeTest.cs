@@ -23,6 +23,8 @@ public static class SmokeTest
     {
         var timeout = options.StepTimeout ?? TimeSpan.FromMinutes(5);
         var allLines = new List<string>();
+        // The headless server has no sound and rejects --disable-audio (it prints its help and exits with 1).
+        var audio = FactorioDownloads.IsHeadlessInstall(factorioExecutable) ? Array.Empty<string>() : new[] { "--disable-audio" };
 
         string save;
         if (profileConfig.Save is { Length: > 0 } configured)
@@ -38,10 +40,10 @@ public static class SmokeTest
             if (cancellationToken.IsCancellationRequested) return Finish(false, CancelledReason, allLines, cancelled: true);
 
             var create = Run(runner, factorioExecutable, timeout, onLine, allLines, cancellationToken,
-                "--create", save,
-                "--map-gen-seed", options.Seed.ToString(),
-                "--mod-directory", profile.ModsDirectory,
-                "--disable-audio");
+                ["--create", save,
+                 "--map-gen-seed", options.Seed.ToString(),
+                 "--mod-directory", profile.ModsDirectory,
+                 ..audio]);
 
             if (create.Cancelled) return Finish(false, CancelledReason, allLines, cancelled: true);
             var failure = Failure("Map generation", create);
@@ -52,9 +54,9 @@ public static class SmokeTest
         {
             "--benchmark", save,
             "--benchmark-ticks", options.Ticks.ToString(),
-            "--mod-directory", profile.ModsDirectory,
-            "--disable-audio"
+            "--mod-directory", profile.ModsDirectory
         };
+        args.AddRange(audio);
         args.AddRange(profileConfig.Args);
 
         if (cancellationToken.IsCancellationRequested) return Finish(false, CancelledReason, allLines, cancelled: true);

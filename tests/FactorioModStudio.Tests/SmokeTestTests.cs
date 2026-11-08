@@ -30,6 +30,7 @@ public class SmokeTestTests
         Assert.Equal("--create", create[0]);
         Assert.Contains("--mod-directory", create);
         Assert.Equal("7", create[create.ToList().IndexOf("--map-gen-seed") + 1]);
+        Assert.Contains("--disable-audio", create); // the full game; the studio's headless servers get it left out
 
         var benchmark = runner.Calls[1];
         Assert.Equal("--benchmark", benchmark[0]);
