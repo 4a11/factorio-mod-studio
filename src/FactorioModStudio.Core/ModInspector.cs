@@ -66,7 +66,7 @@ public static class ModInspector
             var scan = PrototypeScanner.Scan(source);
             dynamic += scan.DynamicEntries;
             if (BlockProperties.IsBlock(source))
-                blocks.Add(new BlockSummary(file.Path, BlockProperties.TitleOf(source), scan.Prototypes.Select(p => p.Name).Distinct(StringComparer.Ordinal).ToList()));
+                blocks.Add(new BlockSummary(file.Path, BlockProperties.TitleOf(source), scan.Prototypes.Select(p => p.Name).Distinct(StringComparer.Ordinal).ToList(), BlockOperations.NeedsUpgrade(source)));
 
             foreach (var raw in scan.Prototypes)
             {

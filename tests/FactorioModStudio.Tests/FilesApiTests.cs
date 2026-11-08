@@ -1251,4 +1251,34 @@ public class FilesApiTests
         Assert.True(File.Exists(e.ModFile("dir/inner.txt")));
         Assert.Empty(Entries(await Trash(e.Http, id)));
     }
+
+    [Fact]
+    public async Task BlockOperations_ShowTheirPlan_Apply_AndUndo()
+    {
+        using var e = await Env.Create(env => ModContent.Apply(env.ModDir, new ContentRequest("wall", "wmod-wall", "Wall")));
+        var id = await e.Id(Mod);
+        var before = ModSnapshot(e);
+        Task<Resp> Op(string op, object body) => Send(e.Http, HttpMethod.Post, $"/api/mods/{id}/blocks/{op}", JsonBody(body));
+
+        var plan = await Op("rename", new { file = "prototypes/wmod-wall.lua", name = "fence", dryRun = true });
+        Is(HttpStatusCode.OK, plan);
+        Assert.Contains(plan.Json.GetProperty("changes").EnumerateArray(), c => c.GetProperty("path").GetString() == "prototypes/fence.lua");
+        Assert.Equal(before, ModSnapshot(e)); // a plan changes nothing
+
+        var done = await Op("rename", new { file = "prototypes/wmod-wall.lua", name = "fence" });
+        Is(HttpStatusCode.OK, done);
+        Assert.True(File.Exists(e.ModFile("prototypes/fence.lua")));
+        Assert.Contains("prototypes.fence", File.ReadAllText(e.ModFile("data.lua")));
+
+        Is(HttpStatusCode.NoContent, await Send(e.Http, HttpMethod.Post, $"/api/mods/{id}/blocks/undo/{done.Str("undoId")}", JsonBody(new { })));
+        Assert.Equal(before, ModSnapshot(e));
+        Is(HttpStatusCode.NotFound, await Send(e.Http, HttpMethod.Post, $"/api/mods/{id}/blocks/undo/{done.Str("undoId")}", JsonBody(new { })));
+
+        Is(HttpStatusCode.BadRequest, await Op("rename", new { file = "prototypes/wmod-wall.lua", name = "bad name", dryRun = true }));
+        Is(HttpStatusCode.BadRequest, await Op("remove", new { file = "data.lua", dryRun = true }));
+        Is(HttpStatusCode.NotFound, await Op("explode", new { file = "prototypes/wmod-wall.lua" }));
+        using var anonymous = Client(e.Ui, token: false);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(anonymous, HttpMethod.Post, $"/api/mods/{id}/blocks/remove", JsonBody(new { file = "prototypes/wmod-wall.lua" }))).Status);
+        Assert.Equal(before, ModSnapshot(e));
+    }
 }

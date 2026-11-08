@@ -131,7 +131,8 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender, ga
   const blocks = !touched && (o.blocks || []).length > 0 && el('div', { class: 'bp-strip', role: 'group', 'aria-label': t('blockprops.strip'), 'data-testid': 'proto-blocks' },
     el('span', { class: 'muted small', text: t('blockprops.strip') }),
     o.blocks.map((b) => el('button', { type: 'button', class: 'chip proto-chip bp-chip', 'data-testid': 'proto-block', title: t('blockprops.open', { file: b.file }),
-      onclick: () => openBlock(b.file) }, el('span', { class: 'bp-gear', 'aria-hidden': 'true', text: '⚙' }), el('span', { text: b.title || b.file }))));
+      onclick: () => openBlock(b.file) }, el('span', { class: 'bp-gear', 'aria-hidden': 'true', text: '⚙' }), el('span', { text: b.title || b.file }),
+      b.old && el('span', { class: 'badge warning bp-old', title: t('blockops.oldBlock'), text: t('blockops.oldBadge') }))));
 
   if (!list.length) {
     return el('div', { class: 'proto-panel' }, head,

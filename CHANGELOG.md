@@ -28,6 +28,14 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   (health, speed, inventory, crafting speed, power, damage factor...), the value of the original next to each one once the
   mod was loaded "In the game", and a button back to the original. Saving changes only those numbers in the block's Lua;
   comments and anything else in the file stay as they are, and a file that changed in between is not overwritten.
+- **Rename, remove and upgrade a block safely**, from its properties: a rename changes its prototypes, file, require,
+  locale keys in every language, icon files and every Lua string of the mod that names them, and adds a migration so
+  existing saves keep their entities and items; a removal takes out the file, require, locale keys and icons (and the
+  shared helpers with the last block), and says which files still name its prototypes. Every change is listed before it
+  is made, and the notice afterwards offers Undo. Blocks added by older versions of the studio are marked "old" and can
+  be upgraded: they get recoloured icon files of their own, like new blocks.
+- A clear message when a folder cannot be moved because another program has it open (a file manager, a terminal, an
+  editor), instead of "Access to the path ... is denied".
 
 ### Changed
 - Versions X.Y.Z with Z > 0 are published as GitHub pre-releases and not pushed to NuGet.

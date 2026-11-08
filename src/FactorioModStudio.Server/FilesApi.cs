@@ -49,7 +49,7 @@ internal static class FilesApi
     /// file manager window, a terminal, an editor. That is said plainly with <c>code = "in-use"</c>, so the studio can tell what to do;
     /// other failures keep the system's message.
     /// </summary>
-    private static IResult CannotChange(Exception ex, string what)
+    internal static IResult CannotChange(Exception ex, string what)
     {
         // Directory.Move reports a folder in use as an IOException with ERROR_ACCESS_DENIED, File.Move as a sharing violation.
         const int AccessDenied = 5, SharingViolation = 32, LockViolation = 33;

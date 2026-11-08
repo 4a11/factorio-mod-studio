@@ -135,7 +135,7 @@ public static class UiServer
         MapStaticAssets(app, token);
         MapApi(app, context, catalog, feed, watcher, jobs);
         BuildApi.Map(app, catalog, jobs);
-        BlocksApi.Map(app, catalog, jobs);
+        BlocksApi.Map(app, catalog, jobs, context);
         FilesApi.Map(app, catalog, context, options.FileManager);
         FactorioSettingsApi.Map(app, jobs, token);
         FactorioInstallApi.Map(app, new FactorioInstalls(options.FactorioDownloads ?? DefaultDownloads, () => jobs.InvalidateEnvironment()));

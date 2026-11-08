@@ -35,6 +35,111 @@ export function resetText(property) {
  */
 export function createBlockProps({ api, el, onSaved = () => {} }) {
   const enc = encodeURIComponent;
+  const toast = el('div', { class: 'files-toast', role: 'status', 'aria-live': 'polite', 'data-testid': 'blockprops-toast', hidden: true });
+  document.body.append(toast);
+  let toastTimer = 0;
+  const hideToast = () => { clearTimeout(toastTimer); toast.hidden = true; toast.replaceChildren(); };
+  function showToast(text, actions = [], bad = false) {
+    clearTimeout(toastTimer);
+    toast.classList.toggle('bad', bad);
+    toast.replaceChildren(el('span', { text }), ...actions,
+      el('button', { type: 'button', class: 'linklike', 'aria-label': t('files.toast.dismiss'), text: '×', onclick: hideToast }));
+    toast.hidden = false;
+    toastTimer = setTimeout(hideToast, 10000);
+  }
+  const failText = (error) => (error.body?.code === 'in-use' ? t('files.inUse') : error.message);
+
+  // ------------------------------------------------------------ rename / remove / upgrade, each shown before it is done
+
+  const post = (modId, operation, body) => api(`/api/mods/${enc(modId)}/blocks/${operation}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  /** The files a planned operation writes and deletes, and what it cannot fix itself. */
+  function planList(plan) {
+    return el('div', { class: 'bp-plan', 'data-testid': 'blockops-plan' },
+      el('ul', { class: 'bp-plan-files' }, plan.changes.map((c) => el('li', { class: 'mono small', 'data-delete': c.delete ? 'true' : 'false' },
+        el('span', { class: 'bp-plan-kind', text: t(c.delete ? 'blockops.deletes' : 'blockops.writes') }), el('span', { text: c.path })))),
+      plan.warnings.length > 0 && el('ul', { class: 'bp-plan-warnings' }, plan.warnings.map((w) => el('li', { class: 'small', text: w }))));
+  }
+
+  /**
+   * A dialog for one operation: an optional form (the new name), the plan of the operation (asked from the server without
+   * changing anything, again whenever the form changes) and a button that does it. Afterwards a notice offers Undo.
+   */
+  function operation(modId, block, kind, opened) {
+    const nameInput = kind === 'rename' && el('input', { type: 'text', class: 'mono', value: opened.id, 'aria-label': t('blockops.newName'),
+      'data-testid': 'blockops-name', spellcheck: 'false', autocomplete: 'off' });
+    const migration = kind === 'rename' && el('input', { type: 'checkbox', checked: true, 'data-testid': 'blockops-migration' });
+    const plan = el('div', { class: 'bp-plan-box' }, el('p', { class: 'muted small', text: t('gamedata.loadingItem') }));
+    const error = el('p', { class: 'files-dialog-error', role: 'alert' });
+    const go = el('button', { type: 'submit', class: kind === 'remove' ? 'primary danger' : 'primary', disabled: true, 'data-testid': 'blockops-ok',
+      text: t(`blockops.${kind}Ok`) });
+    const cancel = el('button', { type: 'button', text: t('files.dialog.cancel') });
+    const body = () => ({ file: block.file, ...(kind === 'rename' ? { name: nameInput.value.trim(), migration: migration.checked } : {}) });
+
+    let seq = 0;
+    async function preview() {
+      const mine = ++seq;
+      go.disabled = true;
+      error.textContent = '';
+      try {
+        const result = await post(modId, kind, { ...body(), dryRun: true });
+        if (mine !== seq) return;
+        plan.replaceChildren(planList(result));
+        go.disabled = false;
+      } catch (err) {
+        if (mine !== seq) return;
+        plan.replaceChildren();
+        error.textContent = failText(err);
+      }
+    }
+
+    const dialog = el('dialog', { class: 'files-dialog bp-dialog', 'data-testid': 'blockops', 'aria-label': t(`blockops.${kind}Title`, { name: block.title || block.file }) },
+      el('form', {},
+        el('h2', { text: t(`blockops.${kind}Title`, { name: block.title || block.file }) }),
+        el('p', { class: 'muted small', text: t(`blockops.${kind}Explain`) }),
+        nameInput && el('label', { class: 'bp-field' }, el('span', { text: t('blockops.newName') }), nameInput),
+        migration && el('label', { class: 'bp-check' }, migration, el('span', { text: t('blockops.migration') })),
+        plan, error,
+        el('div', { class: 'nm-actions' }, cancel, go)));
+
+    let timer = 0;
+    nameInput?.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(preview, 250); });
+    migration?.addEventListener('change', preview);
+    cancel.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => dialog.remove());
+    dialog.querySelector('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      go.disabled = true;
+      try {
+        const result = await post(modId, kind, body());
+        dialog.close();
+        const text = kind === 'rename'
+          ? t('blockops.renamed', { from: opened.id, to: body().name })
+          : t(kind === 'remove' ? 'blockops.removed' : 'blockops.upgraded', { name: block.title || block.file });
+        showToast(text, [el('button', { type: 'button', 'data-testid': 'blockops-undo', text: t('files.undo'), onclick: () => undo(modId, result.undoId) })]);
+        onSaved(block.file);
+      } catch (err) {
+        error.textContent = failText(err);
+        go.disabled = false;
+      }
+    });
+    document.body.append(dialog);
+    dialog.showModal();
+    (nameInput || cancel).focus();
+    if (nameInput) nameInput.select();
+    preview();
+  }
+
+  async function undo(modId, undoId) {
+    hideToast();
+    try {
+      await api(`/api/mods/${enc(modId)}/blocks/undo/${enc(undoId)}`, { method: 'POST' });
+      showToast(t('blockops.undone'));
+    } catch (err) {
+      showToast(t('blockops.undoFailed', { message: failText(err) }), [], true);
+    }
+  }
 
   async function open(modId, file) {
     let data;
@@ -43,7 +148,18 @@ export function createBlockProps({ api, el, onSaved = () => {} }) {
     show(modId, data);
   }
 
-  function show(modId, { block, gameData, editable }) {
+  function show(modId, { block, gameData, editable, needsUpgrade }) {
+    const opened = { id: block.file.split('/').pop().replace(/\.lua$/i, '') };
+    // The other things to do with the block; unsaved numbers would be lost, so that is asked first.
+    const act = (kind) => () => {
+      if (changed().length && !confirm(t('blockops.discard'))) return;
+      dialog.close();
+      operation(modId, block, kind, opened);
+    };
+    const actions = editable && el('div', { class: 'bp-actions' },
+      el('button', { type: 'button', class: 'linklike small', 'data-testid': 'blockops-rename', onclick: act('rename'), text: t('blockops.rename') }),
+      needsUpgrade && el('button', { type: 'button', class: 'linklike small', 'data-testid': 'blockops-upgrade', title: t('blockops.upgradeHint'), onclick: act('upgrade'), text: t('blockops.upgrade') }),
+      el('button', { type: 'button', class: 'linklike small bp-danger', 'data-testid': 'blockops-remove', onclick: act('remove'), text: t('blockops.remove') }));
     const inputs = new Map(); // key -> { input, property }
     const error = el('p', { class: 'files-dialog-error', role: 'alert', 'data-testid': 'blockprops-error' });
     const save = el('button', { type: 'submit', class: 'primary', disabled: true, 'data-testid': 'blockprops-save', text: t('blockprops.save') });
@@ -106,6 +222,8 @@ export function createBlockProps({ api, el, onSaved = () => {} }) {
       el('form', {},
         el('h2', { text: t('blockprops.title', { name: block.title || block.file }) }),
         el('p', { class: 'muted small mono', text: block.file }),
+        actions,
+        needsUpgrade && el('p', { class: 'bp-note small', text: t('blockops.oldBlock') }),
         !gameData && el('p', { class: 'bp-note small', text: t('blockprops.noGameData') }),
         !editable && el('p', { class: 'bp-note small', text: t('blockprops.readOnly') }),
         el('div', { class: 'bp-body' }, body),

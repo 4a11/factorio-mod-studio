@@ -20,7 +20,8 @@ public sealed record ModFileEntry(string Path, long Size, string Category, strin
 
 /// <param name="Icon">Path of the icon inside the mod, when the prototype's icon points into the same mod.</param>
 /// <param name="Prototypes">Names of the prototypes the block's file defines.</param>
-public sealed record BlockSummary(string File, string? Title, IReadOnlyList<string> Prototypes);
+/// <param name="Old">The block still uses the first helpers (icons only tinted in the game) and can be upgraded.</param>
+public sealed record BlockSummary(string File, string? Title, IReadOnlyList<string> Prototypes, bool Old = false);
 
 public sealed record PrototypeInfo(string Type, string Name, string? DisplayName, string? Icon, string File, int Line)
 {

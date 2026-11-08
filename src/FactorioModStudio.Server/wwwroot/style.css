@@ -968,6 +968,18 @@ button.proto-type { cursor: pointer; }
 .bp-value { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
 .files-dialog .bp-input { width: 120px; flex: none; }
 .files-dialog .bp-row[data-kind="value"] .bp-input { width: 140px; }
+.bp-old { text-transform: none; letter-spacing: 0; font-size: 10.5px; padding: 0 5px; }
+.bp-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 2px 0 6px; }
+button.bp-danger { color: var(--error); }
+.bp-field { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.bp-check { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0; font-size: 12.5px; }
+.bp-check input { margin-top: 2px; }
+.bp-plan-box { margin: 8px 0; max-height: 40vh; overflow: auto; }
+.bp-plan-files, .bp-plan-warnings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.bp-plan-files li { display: flex; gap: 8px; overflow-wrap: anywhere; }
+.bp-plan-kind { flex: none; min-width: 70px; color: var(--ok); }
+.bp-plan-files li[data-delete="true"] .bp-plan-kind { color: var(--error); }
+.bp-plan-warnings { margin-top: 8px; padding: 6px 10px; border-left: 3px solid var(--warning); background: var(--bg); border-radius: 4px; }
 @media (max-width: 700px) { .bp-row { grid-template-columns: minmax(0, 1fr); } .files-dialog .bp-input { font-size: 16px; } }
 
 button.proto-type:hover { color: var(--accent); border-color: var(--accent); }

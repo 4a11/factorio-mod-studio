@@ -194,6 +194,10 @@ public static class ModContent
 
     private static byte[] Utf8(string text) => new UTF8Encoding(false).GetBytes(text);
 
+    /// <summary>The same recolouring for <see cref="BlockOperations.PlanUpgrade"/>: an old block gets the icon files a new one has.</summary>
+    internal static byte[]? RecoloredIcon(string? gameDataDirectory, string relative, (double R, double G, double B) tint) =>
+        Recolored(gameDataDirectory, relative, tint);
+
     /// <summary>data/base/&lt;relative&gt; recoloured to <paramref name="tint"/>, or null when it cannot be read.</summary>
     private static byte[]? Recolored(string? gameDataDirectory, string relative, (double R, double G, double B) tint)
     {
