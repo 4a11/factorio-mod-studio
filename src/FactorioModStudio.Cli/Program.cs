@@ -628,6 +628,12 @@ public static class Program
         else
         {
             Reporting.PrintLog(output, result.Report, verbose: !result.Passed);
+            // Factorio can stop with an exit code and nothing the log parser calls an error (a rejected option, say): show what it said.
+            if (!result.Passed && !result.Cancelled && result.Report.ErrorCount == 0 && result.Lines.Count > 0)
+            {
+                output.WriteLine("Last lines from Factorio:");
+                foreach (var line in result.Lines.TakeLast(20)) output.WriteLine($"  | {line.TrimEnd()}");
+            }
             output.WriteLine(result.Passed ? "SMOKE TEST PASSED" : $"SMOKE TEST FAILED: {result.FailureReason}");
         }
 
