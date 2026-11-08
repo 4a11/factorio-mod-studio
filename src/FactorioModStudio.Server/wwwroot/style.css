@@ -370,6 +370,7 @@ details .file-row:hover { background: var(--surface-2); }
 .footer-version { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .footer-version .muted { flex: 0 0 auto; }
 .update-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 8px; border: 1px solid var(--accent); border-radius: 6px; font-size: 12px; min-width: 0; }
+.update-notice[hidden] { display: none; }
 .update-notice .update-text { flex: 1 1 100%; font-weight: 600; }
 .update-notice button { font-size: 12px; padding: 3px 10px; }
 .update-notice .update-command { flex: 1 1 100%; font-size: 11px; overflow-wrap: anywhere; user-select: all; }
