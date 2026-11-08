@@ -1,0 +1,72 @@
+# Changelog
+
+What changed between the releases of Factorio Mod Studio. The format follows [Keep a Changelog](https://keepachangelog.com);
+versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet](https://www.nuget.org/packages/FactorioModStudio.Cli).
+
+## [0.2.0] - 2026-11-08
+
+Ready for people: a desktop app in every release archive, and the real game checked in CI.
+
+### Added
+- **Desktop app**: the studio in a window of its own (Avalonia 12 with the system's web view), in the release archives
+  for Windows, Linux and macOS. Something to double-click on each system: `FactorioModStudio.exe`,
+  `Factorio Mod Studio.app`, `Factorio Mod Studio.desktop`; the `mods` folder next to it is the workspace.
+  A double click on `fmstudio` opens the window too. Without the system web engine (Linux without WebKitGTK) the
+  window says so and offers the browser.
+- **Building blocks**: `fmstudio add` and the studio's Add menu put armor, enemies, belt tiers, machines, vehicles and
+  more (20 blocks) into a mod, as recoloured copies of the original pictures, checked in Factorio 2.1.
+- **Errors from the game in Problems**: after Run in Factorio, `factorio-current.log` is read, and the Problems panel
+  lists what the newest smoke test or run reported next to the mod's own checks, with `file:line` for the mod's files.
+- **Import**: a folder is checked before it is added; a folder of mods opens a list to choose from; hidden files in
+  zips are skipped; a short summary after importing many mods.
+- **Sidebar**: compact mod rows with icons, collapsible groups, pinned mods, an Add menu; connection status and
+  Go to... in the footer.
+- `fmstudio smoke` prints Factorio's last lines when the game stops with an exit code but logs no error.
+- CI: the *Game* workflow smoke-tests a mod from every template and one with every building block against the real
+  headless server of Factorio 1.1, 2.0 and 2.1, downloaded with `fmstudio factorio install`.
+
+### Changed
+- The item and chest templates are copies of the originals, like the blocks.
+- The Files tab editor can be resized.
+- The Nix flake is built only when the version or the Nix files change.
+
+### Fixed
+- Smoke tests on the headless server: it rejects `--disable-audio`, so map generation failed on every version; the
+  option now goes to the full game only.
+- The Files tab and the Problems tab label could show the text "null".
+- Building block names may start like mod names.
+
+## [0.1.1] - 2026-11-07
+
+### Changed
+- Moved to .NET 10 (LTS).
+- Releases publish to NuGet with Trusted Publishing (no stored API key), after the GitHub release, so a NuGet problem
+  never holds the archives back.
+
+### Added
+- Nix flake: `nix run github:4a11/factorio-mod-studio`, using the prebuilt .NET 10 packages.
+
+## [0.1.0] - 2026-11-06
+
+The first release.
+
+### Added
+- **Command line**: `init`, `new` (templates: empty, item + recipe, entity, runtime script), `validate`, `pack`, `prepare` /
+  `run`, `smoke`, `log`, `factorio` (`available`, `install`, `remove`: Factorio's headless server on Linux).
+- **Studio** in the browser (`fmstudio ui`), in 8 interface languages:
+  - *Overview*: release readiness with a button for every open item, cards per kind of content, entry points,
+    the existing prototypes the mod touches.
+  - *Files*: folder tree, create, rename, move and delete with a trash and undo, upload, unused-file detection.
+  - *Prototypes*: what the mod defines or changes in `data.raw`, by family or by name; recipes with ingredients and
+    results.
+  - *Resources*: graphics and sounds by folder, previews, the prototypes that use each picture.
+  - *Localization*: languages with their progress, side-by-side editor, placeholders, translation memory.
+  - *Problems* and *Build*: validate, pack, smoke test and run from the studio, managing Factorio installations,
+    installing a missing version.
+- Ready-to-run release archives for Windows, Linux and macOS (no .NET needed) and the `FactorioModStudio.Cli` .NET
+  tool on NuGet.
+- README translations of the introduction in the 7 other interface languages.
+
+[0.2.0]: https://github.com/4a11/factorio-mod-studio/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/4a11/factorio-mod-studio/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/4a11/factorio-mod-studio/releases/tag/v0.1.0
