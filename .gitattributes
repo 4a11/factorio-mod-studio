@@ -4,3 +4,4 @@
 
 # Shell scripts must keep LF line endings even on Windows checkouts
 *.sh text eol=lf
+src/FactorioModStudio.Desktop/launchers/** text eol=lf
