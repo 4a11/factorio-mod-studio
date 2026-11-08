@@ -33,13 +33,22 @@ jobs:
         run: |
           set -e
           fms="$RUNNER_TEMP/fms/fmstudio"
+          # Job logs need a login to read; on a failure the end of the output also becomes an annotation, which anyone can read.
+          check() {
+            if ! (cd "$1" && "$fms" validate && "$fms" smoke --ticks 300) > "$RUNNER_TEMP/out.txt" 2>&1; then
+              cat "$RUNNER_TEMP/out.txt"
+              tail -n 40 "$RUNNER_TEMP/out.txt" | python3 -c "import sys; print('::error title=$1::' + sys.stdin.read().replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))"
+              return 1
+            fi
+            cat "$RUNNER_TEMP/out.txt"
+          }
           mkdir -p work && cd work
           templates="empty item-recipe runtime-script"
           if [ "${{ matrix.factorio }}" != "1.1" ]; then templates="$templates entity"; fi
           for t in $templates; do
             echo "::group::template $t"
             "$fms" new "t-$t" --template "$t" --factorio-version ${{ matrix.factorio }}
-            (cd "mods/t-$t" && "$fms" validate && "$fms" smoke --ticks 300)
+            check "mods/t-$t"
             echo "::endgroup::"
           done
 
@@ -48,8 +57,17 @@ jobs:
         run: |
           set -e
           fms="$RUNNER_TEMP/fms/fmstudio"
+          # Job logs need a login to read; on a failure the end of the output also becomes an annotation, which anyone can read.
+          check() {
+            if ! (cd "$1" && "$fms" validate && "$fms" smoke --ticks 300) > "$RUNNER_TEMP/out.txt" 2>&1; then
+              cat "$RUNNER_TEMP/out.txt"
+              tail -n 40 "$RUNNER_TEMP/out.txt" | python3 -c "import sys; print('::error title=$1::' + sys.stdin.read().replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))"
+              return 1
+            fi
+            cat "$RUNNER_TEMP/out.txt"
+          }
           cd work
           blocks=$("$fms" add --list --json | python3 -c "import json, sys; print(','.join(b['id'] for b in json.load(sys.stdin)))")
           echo "blocks: $blocks"
           "$fms" new all-blocks --factorio-version ${{ matrix.factorio }} --content "$blocks"
-          (cd mods/all-blocks && "$fms" validate && "$fms" smoke --ticks 300)
+          check mods/all-blocks
