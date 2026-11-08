@@ -197,18 +197,5 @@ internal sealed class ModCatalog
         Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(path)))).ToLowerInvariant()[..12];
 
     /// <summary>Finds Factorio's "data" folder relative to the executable (…/bin/x64/factorio → …/data).</summary>
-    public static string? GameDataFor(string? factorioExecutable)
-    {
-        if (factorioExecutable is null) return null;
-        var dir = Path.GetDirectoryName(Path.GetFullPath(factorioExecutable));
-        if (dir is null) return null;
-
-        foreach (var relative in new[] { Path.Combine("..", "..", "data"), Path.Combine("..", "data"), Path.Combine("..", "..", "..", "data") })
-        {
-            var candidate = Path.GetFullPath(Path.Combine(dir, relative));
-            if (Directory.Exists(Path.Combine(candidate, "base"))) return candidate;
-        }
-
-        return null;
-    }
+    public static string? GameDataFor(string? factorioExecutable) => GameDataDump.DataDirectoryFor(factorioExecutable);
 }

@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.Http.Features;
 namespace FactorioModStudio.Server;
 
 /// <summary>
-/// HTTP endpoints of the "Build" tab: environment check, background jobs (validate / pack / smoke / run) and downloads of packed archives.
+/// HTTP endpoints of the "Build" tab: environment check, background jobs (validate / pack / smoke / run / dump) and downloads of packed
+/// archives, and the game data a dump job saved (read by the Prototypes tab).
 /// All POSTs pass the session-token and same-origin check in <c>UiServer.MapSecurity</c> before they get here.
 /// </summary>
 internal static class BuildApi
@@ -104,6 +105,55 @@ internal static class BuildApi
             return Json(jobs.Snapshot(job, 0));
         });
 
+        // ------------------------------------------------------------ the game's own data (a "dump" job writes it)
+
+        // The list without values: what the mod adds, changes and removes, and whether its files changed since.
+        app.MapGet("/api/mods/{id}/gamedata", (HttpContext http, string id) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            var entry = catalog.Find(id);
+            if (entry is null) return Error(StatusCodes.Status404NotFound, "Unknown mod.");
+            var report = jobs.LoadReport(entry);
+            if (report is null) return Json(new { exists = false });
+
+            bool stale;
+            try { stale = report.Fingerprint != GameDataDump.Fingerprint(Path.GetFullPath(entry.Path)); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { stale = true; }
+
+            return Json(new
+            {
+                exists = true,
+                createdUtc = report.CreatedUtc,
+                gameVersion = report.GameVersion,
+                modVersion = report.ModVersion,
+                mods = report.Mods,
+                stale,
+                counts = new
+                {
+                    added = report.Items.Count(i => i.Change == "added"),
+                    changed = report.Items.Count(i => i.Change == "changed"),
+                    removed = report.Items.Count(i => i.Change == "removed")
+                },
+                items = report.Items.Select(i => new { type = i.Type, name = i.Name, change = i.Change, copyOf = i.CopyOf, fields = i.Fields.Count, truncated = i.FieldsTruncated })
+            });
+        });
+
+        // One prototype with every value the game has, and the fields that differ (from the original, or what the mod changed).
+        app.MapGet("/api/mods/{id}/gamedata/item", (HttpContext http, string id, string? type, string? name) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            var entry = catalog.Find(id);
+            if (entry is null) return Error(StatusCodes.Status404NotFound, "Unknown mod.");
+            if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(name)) return Error(StatusCodes.Status400BadRequest, "\"type\" and \"name\" are required.");
+            var item = jobs.LoadReport(entry)?.Items.FirstOrDefault(i => i.Type == type && i.Name == name);
+            if (item is null) return Error(StatusCodes.Status404NotFound, "Not in the game data of this mod.");
+            return Json(new
+            {
+                type = item.Type, name = item.Name, change = item.Change, copyOf = item.CopyOf, value = item.Value, truncated = item.FieldsTruncated,
+                fields = item.Fields.Select(f => new { path = f.Path, before = f.Before, after = f.After })
+            });
+        });
+
         // Only archives directly inside <project>/dist with a plain file name. The raw request target is judged, because routing
         // decodes escapes: anything with a separator, a dot segment or an escape never reaches the file system.
         app.MapGet("/api/downloads/{file}", (HttpContext http, string file) =>
@@ -139,7 +189,7 @@ internal static class BuildApi
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object) return "The body must be a JSON object.";
 
-            if (!root.TryGetProperty("kind", out var kindValue) || kindValue.ValueKind != JsonValueKind.String) return "\"kind\" must be one of validate, pack, smoke, run.";
+            if (!root.TryGetProperty("kind", out var kindValue) || kindValue.ValueKind != JsonValueKind.String) return "\"kind\" must be one of validate, pack, smoke, run, dump.";
             JobKind kind;
             switch (kindValue.GetString())
             {
@@ -147,7 +197,8 @@ internal static class BuildApi
                 case "pack": kind = JobKind.Pack; break;
                 case "smoke": kind = JobKind.Smoke; break;
                 case "run": kind = JobKind.Run; break;
-                default: return "\"kind\" must be one of validate, pack, smoke, run.";
+                case "dump": kind = JobKind.Dump; break;
+                default: return "\"kind\" must be one of validate, pack, smoke, run, dump.";
             }
 
             string? Integer(string name, int min, int max, int fallback, out int value)

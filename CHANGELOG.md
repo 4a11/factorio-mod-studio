@@ -17,6 +17,14 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   manager and, for mods in the workspace folder, delete. A deleted mod goes to the studio's trash
   (`.fmstudio/trash` in the workspace, kept 7 days) and the notice offers Undo.
 
+- **The mod as the game loads it**: the Prototypes tab has an "In the game" mode. Factorio starts twice without a window
+  (`--dump-data`, with its own config so the player's settings and saves are not touched), without and with the mod, and
+  the studio lists every prototype the mod adds, changes or removes with all its values: copies made with
+  `table.deepcopy` and the building blocks show "original → this mod", changes made by code (technologies that unlock
+  the new recipes, other mods reacting) "before → after". The dump without the mod is kept and reused, so loading again
+  takes seconds; a notice says when the mod's files changed since. Dependencies are taken from the workspace folder
+  when the project names no `modsSource`.
+
 ### Changed
 - Versions X.Y.Z with Z > 0 are published as GitHub pre-releases and not pushed to NuGet.
 

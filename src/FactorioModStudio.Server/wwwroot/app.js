@@ -3,7 +3,7 @@
 // it is only ever inserted with textContent / attributes, never as HTML.
 
 import { createLocaleView } from '/locale-view.js';
-import { createBuildView } from '/build-view.js';
+import { createBuildView, chosenInstallation } from '/build-view.js';
 import { createEditorTabs } from '/editor-tabs.js';
 import { createUiState, SIDEBAR_DEFAULT, SIDEBAR_MIN, SIDEBAR_MAX, VIEWER_DEFAULT, VIEWER_MIN, VIEWER_MAX } from '/ui-state.js';
 import { createTheme } from '/theme.js';
@@ -12,6 +12,7 @@ import { createBottomPanel } from '/bottom-panel.js';
 import { createActionBar } from '/action-bar.js';
 import { createUpdateView } from '/update-view.js';
 import { createModMenu } from '/mod-menu.js';
+import { createGameDataView } from '/game-data-view.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
 import { findMods, readInfo, zipIdentity, assess, MAX_IMPORT_FILES } from '/import-logic.js';
@@ -71,7 +72,7 @@ const state = {
   tab: 'overview',
   protoFilter: '',
   protoType: '',
-  protoMode: 'defined', // 'defined' (prototypes of this mod) or 'touched' (existing prototypes referenced via data.raw)
+  protoMode: 'defined', // 'defined' (prototypes of this mod), 'touched' (existing prototypes referenced via data.raw) or 'game' (--dump-data)
   protoFamily: '', // family chip ('items', 'recipes', ...); protoType narrows it to one type
   protoTypesExpanded: false, // the family's type chips beyond the first ten are shown
   protoView: 'type', // 'type' (sections per family) or 'name' (one row per object name)
@@ -517,8 +518,12 @@ function renderBuild() {
 }
 
 // The Prototypes tab (families / by name, type chips, missing localised names) lives in prototypes-view.js.
+// Its "In the game" mode (the game's own data, from --dump-data) is game-data-view.js; it keeps its state per mod.
+const gameDataView = createGameDataView({ api, el, openFile: (path, line) => openFile(path, line), fileUrl, installation: chosenInstallation });
+
 function renderPrototypes(o) {
-  return renderPrototypesView(o, { el, state, openFile, fileUrl, rerender: () => renderMod(true) });
+  return renderPrototypesView(o, { el, state, openFile, fileUrl, rerender: () => renderMod(true),
+    gameData: () => gameDataView.show(o, state.currentId, !!currentMod()?.editable) });
 }
 
 // The Resources tab (graphics and sounds by folder, unused filter, icon users, copy Lua path) lives in resources-view.js.

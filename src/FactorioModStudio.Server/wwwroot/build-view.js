@@ -26,6 +26,8 @@ const STORE_PREFIX = 'fms.install.';
 
 // The manual choice is a per-viewer convenience: storage may be missing or blocked, everything works without it.
 const rememberedChoice = (modId) => { try { return localStorage.getItem(STORE_PREFIX + modId) || null; } catch { return null; } };
+/** The installation chosen by hand in the Build tab for a mod, or null (automatic); other tabs that start the game use it too. */
+export const chosenInstallation = (modId) => rememberedChoice(modId);
 const rememberChoice = (modId, id) => {
   try { if (id) localStorage.setItem(STORE_PREFIX + modId, id); else localStorage.removeItem(STORE_PREFIX + modId); } catch { /* not essential */ }
 };
@@ -82,7 +84,8 @@ export function createBuildView({ api, el, openFile, modName }) {
   const labels = []; // [node, key]
   const refs = {};
   const label = (node, key) => { labels.push([node, key]); node.textContent = t(key); return node; };
-  const kindLabel = (kind) => (KINDS.includes(kind) ? t(`build.${kind}`) : String(kind));
+  // A dump (the Prototypes tab's 'In the game' mode) has no button here but shows up in the history like the others.
+const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.${kind}`) : String(kind));
   const shown = () => (s.shownId ? s.entries.get(s.shownId) ?? null : null);
   const activeNow = () => !!s.runningId && isActive(s.entries.get(s.runningId));
 
@@ -365,6 +368,10 @@ export function createBuildView({ api, el, openFile, modName }) {
     } else if (result && snap.kind === 'run') {
       nodes.push(el('p', { class: 'build-verdict', 'data-ok': result.exitCode === 0 ? 'true' : 'false', 'data-testid': 'build-exit-code', text: t('build.result.runExit', { code: result.exitCode }) }));
       if (Array.isArray(result.diagnostics)) nodes.push(...gameLog(result));
+    } else if (result && snap.kind === 'dump') {
+      nodes.push(el('p', { class: 'build-verdict', 'data-ok': snap.state === 'succeeded' ? 'true' : 'false', 'data-testid': 'build-dump',
+        text: snap.state === 'succeeded' ? t('build.result.dump', { added: result.added, changed: result.changed, removed: result.removed }) : snap.error || '' }));
+      if (Array.isArray(result.diagnostics) && result.diagnostics.length) nodes.push(...gameLog({ ...result, warningCount: 0 }));
     }
 
     refs.result.replaceChildren(...nodes);

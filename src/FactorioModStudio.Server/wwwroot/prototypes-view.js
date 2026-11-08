@@ -86,7 +86,8 @@ export function typeCounts(list) {
  * the row limit) across redraws.
  * @param {{ el: Function, state: object, openFile: Function, fileUrl: Function, rerender: () => void }} host
  */
-export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender }) {
+export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender, gameData }) {
+  const game = state.protoMode === 'game';
   const touched = state.protoMode === 'touched';
   const list = touched ? o.touched : o.prototypes;
   state.protoView ||= 'type';
@@ -115,12 +116,16 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender }) 
   // ------------------------------------------------------------ toolbar
 
   const setMode = (mode) => { if (state.protoMode !== mode) { state.protoMode = mode; state.protoType = ''; state.protoFamily = ''; rerender(); } };
-  const modeSwitch = (o.touched.length > 0 || touched) && el('div', { class: 'segmented', role: 'group', 'aria-label': t('prototypes.modeAria'), 'data-testid': 'proto-mode' },
-    [['defined', 'prototypes.modeDefined'], ['touched', 'prototypes.modeTouched']].map(([mode, key]) =>
-      el('button', { type: 'button', class: 'toggle', 'data-mode': mode, 'aria-pressed': (touched ? mode === 'touched' : mode === 'defined') ? 'true' : 'false',
+  // From the files (read without running anything), the existing prototypes they touch, or the game's own data (game-data-view.js).
+  const modes = [['defined', 'prototypes.modeDefined'], ...(o.touched.length > 0 || touched ? [['touched', 'prototypes.modeTouched']] : []), ['game', 'prototypes.modeGame']];
+  const modeSwitch = el('div', { class: 'segmented', role: 'group', 'aria-label': t('prototypes.modeAria'), 'data-testid': 'proto-mode' },
+    modes.map(([mode, key]) =>
+      el('button', { type: 'button', class: 'toggle', 'data-mode': mode, 'aria-pressed': (state.protoMode || 'defined') === mode ? 'true' : 'false',
         onclick: () => setMode(mode), text: t(key) })));
   const head = el('div', { class: 'proto-head' }, modeSwitch,
-    el('span', { class: 'muted small', text: t(touched ? 'prototypes.explainTouched' : 'prototypes.explainDefined') }));
+    el('span', { class: 'muted small', text: t(game ? 'prototypes.explainGame' : touched ? 'prototypes.explainTouched' : 'prototypes.explainDefined') }));
+
+  if (game) return el('div', { class: 'proto-panel' }, head, gameData());
 
   if (!list.length) {
     return el('div', { class: 'proto-panel' }, head,

@@ -7,7 +7,7 @@ using FactorioModStudio.Core;
 
 namespace FactorioModStudio.Server;
 
-internal enum JobKind { Validate, Pack, Smoke, Run }
+internal enum JobKind { Validate, Pack, Smoke, Run, Dump }
 
 internal enum JobState { Queued, Running, Succeeded, Failed, Cancelled }
 
@@ -21,6 +21,9 @@ internal sealed record ValidateJobResult(int Errors, int Warnings, int Infos, IR
 internal sealed record PackJobResult(bool Success, string? Archive, string? DownloadUrl, int FileCount, long Bytes, IReadOnlyList<ValidationIssue> Issues);
 
 internal sealed record SmokeJobResult(bool Passed, string? FailureReason, int ErrorCount, int WarningCount, IReadOnlyList<LogDiagnostic> Diagnostics);
+
+/// <param name="Added">Prototypes the mod adds; <paramref name="Changed"/> and <paramref name="Removed"/> likewise.</param>
+internal sealed record DumpJobResult(int Added, int Changed, int Removed, int ErrorCount = 0, IReadOnlyList<LogDiagnostic>? Diagnostics = null);
 
 /// <param name="LogFile">The factorio-current.log that was read; null when the game's own output was used instead.</param>
 internal sealed record RunJobResult(int ExitCode, int ErrorCount = 0, int WarningCount = 0, IReadOnlyList<LogDiagnostic>? Diagnostics = null, string? LogFile = null);
@@ -236,9 +239,9 @@ internal sealed class BuildJobs : IDisposable
             var sameMod = _jobs.FirstOrDefault(j => j.IsActive && j.ModId == entry.Id);
             if (sameMod is not null) return (null, sameMod);
 
-            if (request.Kind is JobKind.Smoke or JobKind.Run)
+            if (request.Kind is JobKind.Smoke or JobKind.Run or JobKind.Dump)
             {
-                var game = _jobs.FirstOrDefault(j => j.IsActive && j.Kind is JobKind.Smoke or JobKind.Run);
+                var game = _jobs.FirstOrDefault(j => j.IsActive && j.Kind is JobKind.Smoke or JobKind.Run or JobKind.Dump);
                 if (game is not null) return (null, game);
             }
 
@@ -247,7 +250,7 @@ internal sealed class BuildJobs : IDisposable
             Evict();
         }
 
-        if (request.Kind is JobKind.Smoke or JobKind.Run)
+        if (request.Kind is JobKind.Smoke or JobKind.Run or JobKind.Dump)
         {
             // Decided now (not in the worker) so that the first snapshot already says which Factorio is used.
             try
@@ -340,6 +343,7 @@ internal sealed class BuildJobs : IDisposable
                 case JobKind.Pack: ExecutePack(job, entry, request); break;
                 case JobKind.Smoke: ExecuteSmoke(job, entry, request, token); break;
                 case JobKind.Run: ExecuteRun(job, entry, token); break;
+                case JobKind.Dump: ExecuteDump(job, entry, request, token); break;
             }
         }
         catch (OperationCanceledException)
@@ -433,7 +437,8 @@ internal sealed class BuildJobs : IDisposable
     /// A project view whose mod directory is the selected mod, with one profile "ui-&lt;mod&gt;" (own directory, never the CLI's
     /// profiles). Mods, args and save are taken from the project's "default" profile.
     /// </summary>
-    private (ProjectContext Context, string Profile, ProfileConfig Config) ContextFor(CatalogEntry entry, string? modVersion)
+    /// <param name="workspaceAsSource">Without a "modsSource" in the project, dependencies are looked up in the workspace folder.</param>
+    private (ProjectContext Context, string Profile, ProfileConfig Config) ContextFor(CatalogEntry entry, string? modVersion, bool workspaceAsSource = false)
     {
         var source = _project.Config;
         var profile = SanitizeProfileName(entry, modVersion);
@@ -442,7 +447,7 @@ internal sealed class BuildJobs : IDisposable
         {
             ModPath = Path.GetFullPath(entry.Path),
             FactorioPath = source.FactorioPath,
-            ModsSource = source.ModsSource,
+            ModsSource = source.ModsSource ?? (workspaceAsSource ? _catalog.WorkspaceDirectory : null),
             Workspace = source.Workspace,
             Profiles = { [profile] = new ProfileConfig { Mods = new List<string>(defaults.Mods), Args = new List<string>(defaults.Args), Save = defaults.Save } }
         };
@@ -518,6 +523,167 @@ internal sealed class BuildJobs : IDisposable
             Log(job, $"SMOKE TEST FAILED: {smoke.FailureReason}");
             Complete(job, JobState.Failed, smoke.FailureReason ?? "Smoke test failed.", result);
         }
+    }
+
+    // ------------------------------------------------------------ the game's own data (--dump-data)
+
+    private const int BaselinesKept = 4;
+    private static readonly JsonDocumentOptions DumpJson = new() { MaxDepth = 512 };
+    private readonly Dictionary<string, (DateTime Written, GameDataReport Report)> _reports = new(StringComparer.Ordinal);
+
+    /// <summary>Saved dumps and comparisons: <c>.fmstudio/gamedata</c> of the project.</summary>
+    public string GameDataDirectory => Path.Combine(_project.StateDirectory, "gamedata");
+
+    private string ReportPath(CatalogEntry entry) =>
+        Path.Combine(GameDataDirectory, Regex.Replace(entry.Id, @"[^A-Za-z0-9_-]", "_") + ".json");
+
+    /// <summary>The last comparison saved for the mod, read once per change of the file.</summary>
+    public GameDataReport? LoadReport(CatalogEntry entry)
+    {
+        var path = ReportPath(entry);
+        DateTime written;
+        try { written = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+        if (written == default) return null;
+
+        lock (_gate)
+            if (_reports.TryGetValue(path, out var cached) && cached.Written == written) return cached.Report;
+        var report = GameDataDump.Load(path);
+        if (report is not null) lock (_gate) _reports[path] = (written, report);
+        return report;
+    }
+
+    /// <summary>
+    /// Two dumps: the game with the mod's dependencies but without the mod (saved and reused while the game, the dependencies and
+    /// the startup settings stay the same), then with the mod. Their difference is saved as the mod's <see cref="GameDataReport"/>.
+    /// </summary>
+    private void ExecuteDump(BuildJob job, CatalogEntry entry, JobRequest request, CancellationToken token)
+    {
+        FactorioInstallation install;
+        try { install = RequireFactorio(job); }
+        catch (FmsException ex)
+        {
+            Log(job, "error: " + ex.Message);
+            Complete(job, JobState.Failed, ex.Message, null);
+            return;
+        }
+
+        var modDirectory = Path.GetFullPath(entry.Path);
+        var info = ModInfo.Load(Path.Combine(modDirectory, "info.json"));
+        var modName = info.Name ?? throw new FmsException("info.json has no \"name\".");
+        var fingerprint = GameDataDump.Fingerprint(modDirectory); // before the game starts: a later edit makes the result outdated
+
+        LogUsing(job);
+        var (context, profileName, _) = ContextFor(entry, job.Factorio!.ModVersion, workspaceAsSource: true);
+        var prepared = ProfileBuilder.Prepare(context, profileName);
+        LogPrepared(job, prepared);
+
+        var work = Path.Combine(prepared.Directory, "dump");
+        var modList = Path.Combine(prepared.ModsDirectory, "mod-list.json");
+        var timeout = TimeSpan.FromMinutes(request.TimeoutMinutes);
+        Directory.CreateDirectory(GameDataDirectory);
+
+        var baseline = Path.Combine(GameDataDirectory, $"baseline-{BaselineKey(install, prepared, modName)}.json");
+        if (File.Exists(baseline))
+        {
+            Log(job, "Using the saved dump of the game without this mod.");
+            File.SetLastWriteTimeUtc(baseline, DateTime.UtcNow); // kept as recently used
+        }
+        else
+        {
+            GameDataDump.SetEnabled(modList, modName, false);
+            Log(job, "Dumping the game's data without this mod...");
+            var (process, dump) = GameDataDump.Dump(install.Path, prepared.ModsDirectory, work, _runner, timeout, line => Log(job, line), token);
+            if (DumpFailed(job, process, dump, "The dump without the mod")) return;
+            File.Move(dump!, baseline, overwrite: true);
+            PruneBaselines(baseline);
+        }
+
+        token.ThrowIfCancellationRequested();
+        GameDataDump.SetEnabled(modList, modName, true);
+        Log(job, "Dumping the game's data with this mod...");
+        var (withProcess, withDump) = GameDataDump.Dump(install.Path, prepared.ModsDirectory, work, _runner, timeout, line => Log(job, line), token);
+        if (DumpFailed(job, withProcess, withDump, "The dump with the mod")) return;
+
+        // The mod's files say which added prototypes are copies of which originals (table.deepcopy, building blocks).
+        var copies = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var p in ModInspector.Inspect(modDirectory, validate: false).Prototypes)
+            if (p.CopyOf is { } original) copies.TryAdd($"{p.Type}/{p.Name}", original);
+
+        List<GameDataItem> items;
+        using (var before = JsonDocument.Parse(File.ReadAllBytes(baseline), DumpJson))
+        using (var after = JsonDocument.Parse(File.ReadAllBytes(withDump!), DumpJson))
+            items = GameDataDump.Compare(before, after, copies);
+        TryDelete(withDump!);
+
+        var report = new GameDataReport
+        {
+            ModName = modName,
+            ModVersion = info.Version,
+            GameVersion = install.Version,
+            GamePath = install.Path,
+            CreatedUtc = DateTime.UtcNow,
+            Fingerprint = fingerprint,
+            Mods = prepared.EnabledMods,
+            Items = items
+        };
+        GameDataDump.Save(report, ReportPath(entry));
+
+        var result = new DumpJobResult(items.Count(i => i.Change == "added"), items.Count(i => i.Change == "changed"), items.Count(i => i.Change == "removed"));
+        Log(job, $"The mod adds {result.Added} prototype(s), changes {result.Changed} and removes {result.Removed}.");
+        Complete(job, JobState.Succeeded, null, result);
+    }
+
+    /// <returns>True when the dump did not work; the job is then completed.</returns>
+    private bool DumpFailed(BuildJob job, ProcessResult process, string? dump, string step)
+    {
+        if (process.Cancelled)
+        {
+            Complete(job, JobState.Cancelled, null, null);
+            return true;
+        }
+        if (process.ExitCode == 0 && !process.TimedOut && dump is not null) return false;
+
+        var report = LogParser.Parse(process.Lines);
+        foreach (var d in report.Diagnostics)
+            Log(job, $"{(d.Severity == DiagnosticSeverity.Error ? "error" : "warning")}: {d.Message}{(d.File is null ? "" : $" ({d.File}:{d.Line})")}");
+        var reason = process.TimedOut ? $"{step} timed out."
+            : process.ExitCode != 0 ? $"{step} failed (Factorio exit code {process.ExitCode})."
+            : $"{step} wrote no {GameDataDump.DumpFileName}.";
+        Log(job, "error: " + reason);
+        Complete(job, JobState.Failed, reason, new DumpJobResult(0, 0, 0, report.ErrorCount, report.Diagnostics));
+        return true;
+    }
+
+    // Everything the dump without the mod depends on: the game build, the other mods and their versions, the startup settings.
+    private static string BaselineKey(FactorioInstallation install, PreparedProfile prepared, string modName)
+    {
+        var text = new StringBuilder();
+        text.Append(Path.GetFullPath(install.Path)).Append('|').Append(install.Version).Append('|');
+        try { text.Append(File.GetLastWriteTimeUtc(install.Path).Ticks); } catch (IOException) { }
+        foreach (var name in prepared.EnabledMods.Where(m => m != modName).Order(StringComparer.Ordinal)) text.Append("|on:").Append(name);
+        foreach (var mod in ModSource.Scan(prepared.ModsDirectory).Where(m => m.Name != modName).OrderBy(m => m.Name, StringComparer.Ordinal))
+            text.Append("|mod:").Append(mod.Name).Append('@').Append(mod.Version);
+        var settings = Path.Combine(prepared.ModsDirectory, "mod-settings.dat");
+        if (File.Exists(settings)) text.Append("|settings:").Append(Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(settings))));
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())))[..16].ToLowerInvariant();
+    }
+
+    // A dump of the vanilla game alone is about 15 MB; only the most recently used few are kept.
+    private void PruneBaselines(string keep)
+    {
+        try
+        {
+            foreach (var old in new DirectoryInfo(GameDataDirectory).EnumerateFiles("baseline-*.json")
+                         .OrderByDescending(f => f.LastWriteTimeUtc).Skip(BaselinesKept))
+                if (!string.Equals(old.FullName, Path.GetFullPath(keep), StringComparison.OrdinalIgnoreCase)) TryDelete(old.FullName);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best effort */ }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { File.Delete(path); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     private void ExecuteRun(BuildJob job, CatalogEntry entry, CancellationToken token)

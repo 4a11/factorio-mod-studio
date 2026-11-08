@@ -58,6 +58,22 @@ public class BuildJobsApiTests
             i=1
             while [ $i -le 6000 ]; do echo "flood $i"; i=$((i+1)); done
             exit 0 ;;
+          dump)
+            cfg=""; mods=""; prev=""
+            for a in "$@"; do
+              if [ "$prev" = "--config" ]; then cfg="$a"; fi
+              if [ "$prev" = "--mod-directory" ]; then mods="$a"; fi
+              prev="$a"
+            done
+            W="$(sed -n 's/^write-data=//p' "$cfg")"
+            mkdir -p "$W/script-output"
+            if tr -d ' \n\r\t' < "$mods/mod-list.json" | grep -q '"name":"alpha","enabled":true'; then
+              echo '{"item":{"iron-plate":{"type":"item","name":"iron-plate","stack_size":200},"alpha-gear":{"type":"item","name":"alpha-gear","stack_size":50}}}' > "$W/script-output/data-raw-dump.json"
+            else
+              echo '{"item":{"iron-plate":{"type":"item","name":"iron-plate","stack_size":100},"old-thing":{"type":"item","name":"old-thing","stack_size":1}}}' > "$W/script-output/data-raw-dump.json"
+            fi
+            echo "   9.998 Goodbye"
+            exit 0 ;;
         esac
         exit 0
         """;
@@ -1125,5 +1141,58 @@ public class BuildJobsApiTests
             Assert.True(job.TryGetProperty(p, out _), "missing property " + p);
         Assert.Equal("validate", job.GetProperty("kind").GetString());
         Assert.Equal("failed", job.GetProperty("state").GetString());
+    }
+
+    // ------------------------------------------------------------ dump: the game's own data (Prototypes tab, "In the game")
+
+    [Fact]
+    public async Task Dump_ComparesTheGameWithAndWithoutTheMod_AndReusesTheDumpWithout()
+    {
+        if (Unsupported) return;
+        using var env = await Env.Create();
+        env.Mode("dump");
+        var alpha = await ModId(env.Http, "alpha");
+        Assert.False((await Get(env.Http, $"/api/mods/{alpha}/gamedata")).Json.GetProperty("exists").GetBoolean());
+
+        var job = await Start202(env, "alpha", new { kind = "dump" });
+        var done = await WaitFor(env.Http, job.Id, r => IsTerminal(r.State));
+        Assert.True(done.State == "succeeded", done.Raw);
+        Assert.Equal((1, 1, 1), (done.Result.GetProperty("added").GetInt32(), done.Result.GetProperty("changed").GetInt32(), done.Result.GetProperty("removed").GetInt32()));
+        Assert.Equal(2, env.Calls.Split('\n', StringSplitOptions.RemoveEmptyEntries).Count(l => l.Contains("--dump-data")));
+
+        var data = (await Get(env.Http, $"/api/mods/{alpha}/gamedata")).Json;
+        Assert.True(data.GetProperty("exists").GetBoolean());
+        Assert.False(data.GetProperty("stale").GetBoolean());
+        Assert.Equal("2.0.76", data.GetProperty("gameVersion").GetString());
+        Assert.Equal(new[] { "added item/alpha-gear", "changed item/iron-plate", "removed item/old-thing" },
+            data.GetProperty("items").EnumerateArray().Select(i => $"{i.GetProperty("change").GetString()} {i.GetProperty("type").GetString()}/{i.GetProperty("name").GetString()}"));
+
+        var item = (await Get(env.Http, $"/api/mods/{alpha}/gamedata/item?type=item&name=iron-plate")).Json;
+        var field = Assert.Single(item.GetProperty("fields").EnumerateArray());
+        Assert.Equal(("stack_size", 100, 200), (field.GetProperty("path").GetString(), field.GetProperty("before").GetInt32(), field.GetProperty("after").GetInt32()));
+        Assert.Equal(HttpStatusCode.NotFound, (await Get(env.Http, $"/api/mods/{alpha}/gamedata/item?type=item&name=nope")).Status);
+
+        // The second dump only runs the game with the mod; an edit of the mod makes the saved data outdated.
+        var again = await WaitFor(env.Http, (await Start202(env, "alpha", new { kind = "dump" })).Id, r => IsTerminal(r.State));
+        Assert.True(again.State == "succeeded", again.Raw);
+        Assert.Equal(3, env.Calls.Split('\n', StringSplitOptions.RemoveEmptyEntries).Count(l => l.Contains("--dump-data")));
+        env.Workspace.Write("alpha/data.lua", "data:extend({})\n-- edited\n");
+        Assert.True((await Get(env.Http, $"/api/mods/{alpha}/gamedata")).Json.GetProperty("stale").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Dump_ThatFails_SavesNothing_AndReadOnlyModsAreRefused()
+    {
+        if (Unsupported) return;
+        using var env = await Env.Create();
+        env.Mode("exit3");
+        var alpha = await ModId(env.Http, "alpha");
+
+        var done = await WaitFor(env.Http, (await Start202(env, "alpha", new { kind = "dump" })).Id, r => IsTerminal(r.State));
+        Assert.Equal("failed", done.State);
+        Assert.Contains("exit code 3", done.Str("error"));
+        Assert.False((await Get(env.Http, $"/api/mods/{alpha}/gamedata")).Json.GetProperty("exists").GetBoolean());
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await Start(env.Http, await ModId(env.Http, "ro-mod"), new { kind = "dump" })).Status);
     }
 }
