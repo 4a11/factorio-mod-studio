@@ -17,6 +17,10 @@ command line or in your browser. It runs entirely on your machine and works next
 | --- | --- |
 | ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
 
+| Prototypes | Resources |
+| --- | --- |
+| ![The Prototypes tab: everything the mod defines, by type, with icons and where it is defined](docs/images/prototypes.png) | ![The Resources tab: graphics and sounds by folder, with previews and the prototypes that use them](docs/images/resources.png) |
+
 ## What it does
 
 - **Start a mod in seconds.** Templates (empty, item + recipe, entity, runtime script) for Factorio 2.0 and 2.1 (all but the entity one also for 1.1) that pass every check out of the box.
@@ -410,6 +414,8 @@ limits files to 2 MB, and goes through a temp file and rename so a half-written 
 UTF-8 BOM of an existing file are kept. The command needs the ASP.NET Core runtime, which is included with the .NET SDK.
 
 ### Build tab: validate, pack, smoke test and run
+
+![The Build tab: the Factorio to use, smoke-test settings, the output of a run and recent jobs](docs/images/build.png)
 
 The *Build* tab of a mod runs the same operations as the CLI and streams the output while they work:
 

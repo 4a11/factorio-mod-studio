@@ -19,6 +19,10 @@ Programmfenster, auf der Kommandozeile oder im Browser. Alles läuft auf Ihrem R
 | --- | --- |
 | ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
 
+| Prototypes | Resources |
+| --- | --- |
+| ![The Prototypes tab: everything the mod defines, by type, with icons and where it is defined](docs/images/prototypes.png) | ![The Resources tab: graphics and sounds by folder, with previews and the prototypes that use them](docs/images/resources.png) |
+
 ## Was es kann
 
 - **Eine Mod in Sekunden.** Vorlagen (leer, Gegenstand + Rezept, Entität, Laufzeit-Skript) für Factorio 2.0 und 2.1 (alle außer der Entität auch für 1.1), die sofort jede Prüfung bestehen.

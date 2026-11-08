@@ -19,6 +19,10 @@
 | --- | --- |
 | ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
 
+| Prototypes | Resources |
+| --- | --- |
+| ![The Prototypes tab: everything the mod defines, by type, with icons and where it is defined](docs/images/prototypes.png) | ![The Resources tab: graphics and sounds by folder, with previews and the prototypes that use them](docs/images/resources.png) |
+
 ## Что умеет
 
 - **Мод за секунды.** Шаблоны (пустой, предмет + рецепт, сущность, скрипт времени выполнения) для Factorio 2.0 и 2.1 (все, кроме сущности, — и для 1.1), которые сразу проходят все проверки.

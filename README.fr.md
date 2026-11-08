@@ -19,6 +19,10 @@ ou dans votre navigateur. Tout tourne sur votre machine, à côté de votre édi
 | --- | --- |
 | ![The Files tab: the file tree with entry points and unused files](docs/images/files.png) | ![The Localization tab: progress per language and the side-by-side editor](docs/images/localization.png) |
 
+| Prototypes | Resources |
+| --- | --- |
+| ![The Prototypes tab: everything the mod defines, by type, with icons and where it is defined](docs/images/prototypes.png) | ![The Resources tab: graphics and sounds by folder, with previews and the prototypes that use them](docs/images/resources.png) |
+
 ## Ce qu'il fait
 
 - **Un mod en quelques secondes.** Des modèles (vide, objet + recette, entité, script d'exécution) pour Factorio 2.0 et 2.1 (tous sauf l'entité aussi pour 1.1), qui passent toutes les vérifications d'emblée.
