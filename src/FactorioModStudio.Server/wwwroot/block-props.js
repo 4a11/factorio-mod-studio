@@ -6,7 +6,7 @@ import { t, formatNumber } from '/i18n.js';
 /** "attack_parameters.range" -> its translated label, or "Range" made from the last part of the path. */
 export function fieldLabel(path) {
   const last = String(path).split('.').pop();
-  const key = `blockprop.${last}`;
+  const key = `blockprop.${last.replace(/_/g, '-')}`; // keys have no "_": max_health -> blockprop.max-health
   const label = t(key);
   if (label !== key) return label;
   const words = last.replace(/_/g, ' ');
