@@ -1,0 +1,23 @@
+name: Feature request
+description: An idea for something the studio could do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The task in your modding work this would help with, and how you do it today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like
+      description: How you imagine it working. Rough is fine.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Mods it would help with, Factorio versions, screenshots, similar tools.

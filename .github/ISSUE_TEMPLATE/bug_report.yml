@@ -1,0 +1,63 @@
+name: Bug report
+description: Something does not work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! A security problem should **not** go here: see [SECURITY.md](https://github.com/4a11/factorio-mod-studio/blob/main/SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The command you ran or the tab and buttons you used. A small mod (or a link to one) that shows the problem helps a lot.
+      placeholder: |
+        1. fmstudio new my-mod --template item-recipe
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Factorio Mod Studio version
+      description: The output of `fmstudio --version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Where
+      options:
+        - Desktop app
+        - Browser UI (fmstudio ui)
+        - Command line
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+    validations:
+      required: true
+  - type: input
+    id: factorio
+    attributes:
+      label: Factorio version
+      placeholder: e.g. 2.0.72, or "not relevant"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output or logs
+      description: Error messages, `--json` output or the relevant part of factorio-current.log.
+      render: text
