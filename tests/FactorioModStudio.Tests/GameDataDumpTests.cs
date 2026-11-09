@@ -101,7 +101,7 @@ public class GameDataDumpTests
         GameDataDump.SetEnabled(list, "other", true);
 
         var mods = JsonNode.Parse(File.ReadAllText(list))!["mods"]!.AsArray();
-        Assert.Equal(new[] { "base:True", "my-mod:False", "other:True" }, mods.Select(m => $"{m!["name"]}:{m["enabled"]}"));
+        Assert.Equal(new[] { "base:True", "my-mod:False", "other:True" }, mods.Select(m => $"{m!["name"]}:{m["enabled"]!.GetValue<bool>()}"));
     }
 
     [Fact]

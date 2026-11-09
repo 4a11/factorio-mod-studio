@@ -439,9 +439,21 @@ public class LocaleCheckTests
     [Fact]
     public void Fms042_Negative_DynamicNameIsNotGuessed()
     {
-        var lua = "local prefix = \"p-\"\ndata:extend({\n  { type = \"item\", name = prefix .. \"x\", stack_size = 1 },\n})\n";
+        var lua = "data:extend({\n  { type = \"item\", name = make_name(\"x\"), stack_size = 1 },\n})\n";
         using var mod = Mod(("data.lua", lua), ("locale/en/a.cfg", "[mod-name]\nx=X\n"));
         AssertNone(Validate(mod), "FMS042");
+    }
+
+    [Fact]
+    public void Fms042_NameBuiltFromLocalStrings_IsChecked()
+    {
+        // "p-" .. "x" is known without running anything (the scanner follows local strings), so the missing key is reported.
+        var lua = "local prefix = \"p-\"\ndata:extend({\n  { type = \"item\", name = prefix .. \"x\", stack_size = 1 },\n})\n";
+        using var mod = Mod(("data.lua", lua), ("locale/en/a.cfg", "[mod-name]\nx=X\n"));
+        Assert.Contains(Validate(mod).Issues, i => i.Code == "FMS042" && i.Message.Contains("\"p-x\""));
+
+        using var named = Mod(("data.lua", lua), ("locale/en/a.cfg", "[item-name]\np-x=X\n"));
+        AssertNone(Validate(named), "FMS042");
     }
 
     [Fact]

@@ -271,7 +271,8 @@ public static class BlockOperations
     private static readonly Lazy<List<(ContentBlock Block, string? Type, string? CopyOf)>> BlockMains = new(() =>
         ContentBlocks.All.Select(b =>
         {
-            var main = PrototypeScanner.Scan(ContentBlocksSample(b)).Prototypes.FirstOrDefault(p => p.Name == "fms-sample");
+            // The first copy named like the block: the ore block lists its autoplace-control (no copy) before the ore.
+            var main = PrototypeScanner.Scan(ContentBlocksSample(b)).Prototypes.FirstOrDefault(p => p.Name == "fms-sample" && p.CopyOf is not null);
             return (b, main?.Type, main?.CopyOf);
         }).ToList());
 
