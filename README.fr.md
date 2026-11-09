@@ -50,10 +50,10 @@ Où en est le projet et ce qui vient ensuite. Les versions sont des objectifs, p
 - [x] des versions de Factorio installées par le studio : `fmstudio factorio install 2.0` télécharge le serveur sans interface gratuit (Linux, WSL, CI), où `smoke` le trouve, aussi depuis l'onglet Compilation ; *le vrai téléchargement de 1.1, 2.0 et 2.1 vérifié par des tests de fumée en CI*
 
 **0.3 : voir et modifier le contenu**
-- [ ] l'onglet Prototypes d'après les données du jeu lui-même (`--dump-data`) : ce que le mod crée et modifie vraiment, avec toutes les valeurs, y compris les copies faites avec `table.deepcopy` ; « quel mod a modifié cet objet, et en quoi ? »
-- [ ] un panneau de propriétés pour les blocs : vie, vitesse, inventaire, dégâts… en champs « original → votre valeur », réécrits dans le Lua du bloc
+- [x] l'onglet Prototypes d'après les données du jeu lui-même (`--dump-data`) : ce que le mod crée et modifie vraiment, avec toutes les valeurs, y compris les copies faites avec `table.deepcopy` ; « quel mod a modifié cet objet, et en quoi ? »; *dans 0.2.1 (préversion)*
+- [x] un panneau de propriétés pour les blocs : vie, vitesse, inventaire, dégâts… en champs « original → votre valeur », réécrits dans le Lua du bloc; *dans 0.2.1 (préversion)*
 - [ ] un essai rapide en jeu : un bouton lance Factorio sur une carte de test avec les nouveautés déjà dans l'inventaire
-- [ ] renommer ou retirer un bloc en toute sécurité : le fichier, le require, les clés de traduction, les icônes et toutes les références changent ensemble
+- [x] renommer ou retirer un bloc en toute sécurité : le fichier, le require, les clés de traduction, les icônes et toutes les références changent ensemble; *dans 0.2.1 (préversion)*
 - [ ] la couleur d'un bloc choisie avec un curseur, avec l'aperçu de l'icône recolorée avant l'ajout
 - [ ] traductions des nouveaux blocs : leurs clés ajoutées à toutes les langues du mod, marquées non traduites dans l'onglet Localisation
 

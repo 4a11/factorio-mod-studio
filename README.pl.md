@@ -50,10 +50,10 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 - [x] wersje Factorio instalowane przez studio: `fmstudio factorio install 2.0` pobiera darmowy serwer bez interfejsu (Linux, WSL, CI), gdzie znajdzie go `smoke`, także z zakładki Budowanie; *prawdziwe pobieranie 1.1, 2.0 i 2.1 sprawdzone testami dymnymi w CI*
 
 **0.3: widzieć i edytować zawartość**
-- [ ] zakładka Prototypy na podstawie danych samej gry (`--dump-data`): co mod naprawdę tworzy i zmienia, ze wszystkimi wartościami, także dla kopii przez `table.deepcopy`; „który mod zmienił ten przedmiot i na co?”
-- [ ] panel właściwości bloku: zdrowie, prędkość, ekwipunek, obrażenia… jako pola „oryginał → twoja wartość”, zapisywane z powrotem w Lua bloku
+- [x] zakładka Prototypy na podstawie danych samej gry (`--dump-data`): co mod naprawdę tworzy i zmienia, ze wszystkimi wartościami, także dla kopii przez `table.deepcopy`; „który mod zmienił ten przedmiot i na co?”; *w 0.2.1 (wersja zapoznawcza)*
+- [x] panel właściwości bloku: zdrowie, prędkość, ekwipunek, obrażenia… jako pola „oryginał → twoja wartość”, zapisywane z powrotem w Lua bloku; *w 0.2.1 (wersja zapoznawcza)*
 - [ ] szybka próba w grze: jeden przycisk uruchamia Factorio na mapie testowej, a nowości są już w ekwipunku
-- [ ] bezpieczna zmiana nazwy i usuwanie bloku: plik, require, klucze tłumaczeń, ikony i wszystkie odwołania zmieniają się razem
+- [x] bezpieczna zmiana nazwy i usuwanie bloku: plik, require, klucze tłumaczeń, ikony i wszystkie odwołania zmieniają się razem; *w 0.2.1 (wersja zapoznawcza)*
 - [ ] kolor bloku wybierany suwakiem, z podglądem przemalowanej ikony przed dodaniem
 - [ ] tłumaczenia nowych bloków: ich klucze trafiają do wszystkich języków moda, oznaczone jako nieprzetłumaczone w zakładce Lokalizacja
 

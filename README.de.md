@@ -50,10 +50,10 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 - [x] Factorio-Versionen installiert das Studio selbst: `fmstudio factorio install 2.0` lädt den kostenlosen Headless-Server (Linux, WSL, CI), wo `smoke` ihn findet, auch aus dem Build-Tab; *der echte Download für 1.1, 2.0 und 2.1 in der CI mit Smoke-Tests geprüft*
 
 **0.3: Inhalte sehen und bearbeiten**
-- [ ] der Prototypen-Tab aus den Daten des Spiels selbst (`--dump-data`): was der Mod wirklich anlegt und ändert, mit allen Werten, auch für Kopien per `table.deepcopy`; „Welcher Mod hat diesen Gegenstand geändert, und wie?“
-- [ ] ein Eigenschaften-Panel für Bausteine: Lebenspunkte, Tempo, Inventar, Schaden… als Felder „Original → Ihr Wert“, die zurück ins Lua des Bausteins geschrieben werden
+- [x] der Prototypen-Tab aus den Daten des Spiels selbst (`--dump-data`): was der Mod wirklich anlegt und ändert, mit allen Werten, auch für Kopien per `table.deepcopy`; „Welcher Mod hat diesen Gegenstand geändert, und wie?“; *in 0.2.1 (Vorschau)*
+- [x] ein Eigenschaften-Panel für Bausteine: Lebenspunkte, Tempo, Inventar, Schaden… als Felder „Original → Ihr Wert“, die zurück ins Lua des Bausteins geschrieben werden; *in 0.2.1 (Vorschau)*
 - [ ] schnell im Spiel ausprobieren: ein Knopf startet Factorio auf einer Testkarte, das Neue liegt schon im Inventar
-- [ ] Bausteine sicher umbenennen oder entfernen: Datei, require, Übersetzungsschlüssel, Symbole und alle Verweise ändern sich gemeinsam
+- [x] Bausteine sicher umbenennen oder entfernen: Datei, require, Übersetzungsschlüssel, Symbole und alle Verweise ändern sich gemeinsam; *in 0.2.1 (Vorschau)*
 - [ ] die Farbe eines Bausteins per Schieberegler, mit Vorschau des umgefärbten Symbols vor dem Hinzufügen
 - [ ] Übersetzungen neuer Bausteine: ihre Schlüssel kommen in alle Sprachen des Mods, im Lokalisierungs-Tab als unübersetzt markiert
 

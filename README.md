@@ -48,10 +48,10 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 - [x] Factorio versions installed by the studio: `fmstudio factorio install 2.0` downloads the free headless server (Linux, WSL, CI), where `smoke` finds it, also from the Build tab; *the real download for 1.1, 2.0 and 2.1 smoke-tested in CI*
 
 **0.3: see and edit content**
-- [ ] the Prototypes tab from the game's own data (`--dump-data`): what the mod really creates and changes, with every value, also for copies made with `table.deepcopy`; "which mod changed this item, and to what?"
-- [ ] a properties panel for building blocks: health, speed, inventory, damage... as fields showing "original → yours", written back into the block's Lua
+- [x] the Prototypes tab from the game's own data (`--dump-data`): what the mod really creates and changes, with every value, also for copies made with `table.deepcopy`; "which mod changed this item, and to what?"; *in 0.2.1 (preview)*
+- [x] a properties panel for building blocks: health, speed, inventory, damage... as fields showing "original → yours", written back into the block's Lua; *in 0.2.1 (preview)*
 - [ ] a quick try in the game: one button starts Factorio on a test map with the new items already in the inventory
-- [ ] rename or remove a block safely: its file, the require, the locale keys, the icons and every reference change together
+- [x] rename or remove a block safely: its file, the require, the locale keys, the icons and every reference change together; *in 0.2.1 (preview)*
 - [ ] the colour of a block chosen with a slider, with the recoloured icon previewed before it is added
 - [ ] translations of new blocks: their keys added to every language of the mod, marked as untranslated in the Localization tab
 
