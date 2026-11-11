@@ -14,6 +14,13 @@ namespace FactorioModStudio.Server;
 internal static class BlocksApi
 {
     private const long MaxBodyBytes = 16 * 1024;
+    private const long MaxIconBodyBytes = 6 * 1024 * 1024; // a 4 MB picture in base64
+
+    private static IReadOnlyList<BlockIconFile> SafeIcons(string root, string file, string? gameData)
+    {
+        try { return BlockOperations.IconsOf(root, file, gameData); }
+        catch (FmsException) { return Array.Empty<BlockIconFile>(); }
+    }
 
     private static IResult Error(int status, string message) => Results.Json(new { error = message }, statusCode: status);
 
@@ -40,7 +47,9 @@ internal static class BlocksApi
                     kind = kind?.Id,
                     iconSuffixes = kind?.Icons ?? Array.Empty<string>(),
                     color = BlockOperations.ColorOf(source)?.Hex,
-                    icons = catalog.GameDataDirectory is not null
+                    icons = catalog.GameDataDirectory is not null,
+                    // Each prototype's icon: the file the block has for it, or null (the original, tinted in the game).
+                    iconFiles = SafeIcons(root, file, catalog.GameDataDirectory)
                 },
                 new JsonSerializerOptions(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never });
         });
@@ -101,19 +110,22 @@ internal static class BlocksApi
         // with the earlier content of every path it touched, so Undo puts the mod back as it was.
         var undoRoot = Path.Combine(catalog.WorkspaceDirectory ?? context.Root, ".fmstudio", "trash", "~blocks");
 
-        // { "file": "prototypes/x.lua", "name": "new-name" (rename), "migration": true (rename), "color": "#rrggbb" (recolor), "dryRun": true }
+        // { "file": "prototypes/x.lua", "name": "new-name" (rename), "migration": true (rename), "color": "#rrggbb" (recolor),
+        //   "suffix": "-ammo", "png": "<base64>" | null (icon: a picture of your own, or the original recoloured again), "dryRun": true }
         app.MapPost("/api/mods/{id}/blocks/{operation}", async (HttpContext http, string id, string operation) =>
         {
-            if (operation is not ("rename" or "remove" or "upgrade" or "recolor")) return Error(StatusCodes.Status404NotFound, "Unknown block operation.");
+            if (operation is not ("rename" or "remove" or "upgrade" or "recolor" or "icon")) return Error(StatusCodes.Status404NotFound, "Unknown block operation.");
             var entry = catalog.Find(id);
             if (entry is null) return Error(StatusCodes.Status404NotFound, "Unknown mod.");
             if (!entry.Editable) return Error(StatusCodes.Status403Forbidden, "This mod is read-only.");
 
             byte[] body;
-            try { body = await UiServer.ReadLimited(http.Request.Body, MaxBodyBytes, http.RequestAborted); }
-            catch (InvalidDataException) { return Error(StatusCodes.Status413PayloadTooLarge, "The request is too large (limit 16 KB)."); }
+            var limit = operation == "icon" ? MaxIconBodyBytes : MaxBodyBytes;
+            try { body = await UiServer.ReadLimited(http.Request.Body, limit, http.RequestAborted); }
+            catch (InvalidDataException) { return Error(StatusCodes.Status413PayloadTooLarge, $"The request is too large (limit {(operation == "icon" ? "6 MB" : "16 KB")})."); }
 
-            string? file, name, color;
+            string? file, name, color, suffix;
+            byte[]? png = null;
             bool migration, dryRun;
             try
             {
@@ -124,6 +136,12 @@ internal static class BlocksApi
                 file = Text("file");
                 name = Text("name");
                 color = Text("color");
+                suffix = Text("suffix");
+                if (Text("png") is { } data)
+                {
+                    try { png = Convert.FromBase64String(data); }
+                    catch (FormatException) { return Error(StatusCodes.Status400BadRequest, "\"png\" is not base64."); }
+                }
                 migration = Flag("migration", true);
                 dryRun = Flag("dryRun", false);
             }
@@ -141,6 +159,7 @@ internal static class BlocksApi
                 {
                     "rename" => BlockOperations.PlanRename(root, file, name ?? "", migration),
                     "remove" => BlockOperations.PlanRemove(root, file),
+                    "icon" => BlockOperations.PlanIcon(root, file, suffix ?? "", png, catalog.GameDataDirectory),
                     "recolor" => BlockOperations.PlanRecolor(root, file,
                         BlockColor.FromHex(color) ?? throw new FmsException("\"color\" must be #rrggbb."), catalog.GameDataDirectory),
                     _ => BlockOperations.PlanUpgrade(root, file, catalog.GameDataDirectory)

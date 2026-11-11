@@ -1,6 +1,7 @@
 // The Blocks tab: the building blocks of a mod in a list, the chosen one in an editor next to it. The editor shows each number the
 // block sets as "original / yours / in the game" (GET /api/mods/{id}/blocks), saves changed numbers into the block's Lua (POST),
-// renames the block in its header, changes its colour with a slider (icons previewed, POST /blocks/recolor), and removes or
+// renames the block in its header, changes its colour with a slider (icons previewed, POST /blocks/recolor) and its icons with
+// pictures of your own (Replace... or a dropped PNG, POST /blocks/icon), and removes or
 // upgrades it from its "⋯" menu (POST /blocks/{operation}, each with Undo).
 // The originals come from the game: when the mod has no game data yet, a dump job (the Prototypes tab's "In the game") starts by
 // itself the first time a block is opened, and the editor fills in when it is done.
@@ -8,7 +9,7 @@
 import { t, formatNumber } from '/i18n.js';
 import { fieldLabel, shownValue, resetText } from '/block-props.js';
 import { createColourField } from '/colour-field.js';
-import { sameHue } from '/colour-logic.js';
+import { sameHue, iconUrl } from '/colour-logic.js';
 
 const POLL_MS = 1000;
 const TOAST_MS = 10000;
@@ -92,6 +93,7 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
     const data = s.details.get(s.selected);
     s.colourEdit = data?.color && !sameHue(colour, data.color) ? colour : null;
     paintColourBar(s);
+    previewTiles(data, s.colourEdit);
   } });
   const colourApply = el('button', { type: 'button', class: 'primary', 'data-testid': 'blocks-colour-apply', onclick: () => applyColour() });
   const colourCancel = el('button', { type: 'button', 'data-testid': 'blocks-colour-cancel', onclick: () => {
@@ -115,12 +117,101 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
     const editable = current.editable && data.editable && !data.needsUpgrade;
     if (colourBound !== key) {
       colourBound = key;
-      colourField.set({ block: data.kind, icons: data.iconSuffixes || [], colour: s.colourEdit ?? data.color, original: data.color, previews: data.icons, disabled: !editable });
+      colourField.set({ block: data.kind, icons: [], colour: s.colourEdit ?? data.color, original: data.color, previews: true, disabled: !editable });
     } else colourField.set({ disabled: !editable });
     paintColourBar(s);
     return el('div', { class: 'bv-colour' }, colourField.element,
       data.needsUpgrade && current.editable && el('span', { class: 'small muted', text: t('colour.oldBlock') }),
-      colourBar);
+      colourBar,
+      iconTiles(s, summary, data, editable));
+  }
+
+  // ------------------------------------------------------------ icons: one tile per prototype, Replace... or a dropped PNG
+
+  const MAX_ICON_BYTES = 4 * 1024 * 1024;
+  const iconPicker = el('input', { type: 'file', accept: 'image/png,.png', hidden: true, 'data-testid': 'blocks-icon-file' });
+  document.body.append(iconPicker);
+  let pickFor = null; // the suffix Replace... was pressed for
+
+  iconPicker.addEventListener('change', () => {
+    const picked = iconPicker.files?.[0];
+    iconPicker.value = '';
+    if (picked && pickFor !== null) replaceIcon(pickFor, picked);
+  });
+
+  function previewTiles(data, colour) {
+    if (!data) return;
+    for (const img of root.querySelectorAll('.bv-icon-tile img[data-suffix]')) {
+      const f = (data.iconFiles || []).find((x) => x.suffix === img.dataset.suffix);
+      // A picture of your own keeps its colours, so only the recoloured originals follow the slider.
+      if (!f || (f.path && f.custom)) continue;
+      const src = colour ? (data.icons ? iconUrl(data.kind, f.suffix, colour) : null) : (f.path ? iconSrc(f.path) : (data.icons ? iconUrl(data.kind, f.suffix, data.color) : null));
+      if (src) img.src = src;
+    }
+  }
+
+  function iconTiles(s, summary, data, editable) {
+    const files = data.iconFiles || [];
+    if (!files.length) return null;
+    return el('div', { class: 'bv-icons', 'data-testid': 'blocks-icons' },
+      el('span', { class: 'cf-label', text: t('icons.label') }),
+      el('div', { class: 'bv-icon-tiles' }, files.map((f) => {
+        const src = f.path ? iconSrc(f.path) : (data.icons ? iconUrl(data.kind, f.suffix, data.color) : null);
+        const tile = el('div', { class: 'bv-icon-tile', 'data-testid': 'blocks-icon-tile', 'data-suffix': f.suffix, title: editable ? t('icons.dropHint') : null },
+          src ? el('img', { alt: '', src, 'data-suffix': f.suffix }) : el('span', { class: 'bv-icon-none', 'aria-hidden': 'true', text: '⚙' }),
+          el('span', { class: 'bv-icon-text' },
+            el('span', { class: 'mono small', text: f.prototype }),
+            el('span', { class: 'muted small', text: f.custom ? t('icons.own') : f.path ? t('icons.recoloured') : t('icons.tinted') })),
+          editable && el('span', { class: 'bv-icon-actions' },
+            el('button', { type: 'button', class: 'files-btn', 'data-testid': 'blocks-icon-replace', onclick: () => { pickFor = f.suffix; iconPicker.click(); } },
+              el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: '⇪' }), el('span', { text: t('icons.replace') })),
+            f.custom && data.icons && el('button', { type: 'button', class: 'linklike small', 'data-testid': 'blocks-icon-restore', title: t('icons.restoreHint'),
+              onclick: () => restoreIcon(f.suffix), text: t('icons.restore') })));
+        if (editable) {
+          tile.addEventListener('dragover', (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); tile.classList.add('drop'); } });
+          tile.addEventListener('dragleave', () => tile.classList.remove('drop'));
+          tile.addEventListener('drop', (e) => {
+            e.preventDefault();
+            tile.classList.remove('drop');
+            const dropped = e.dataTransfer?.files?.[0];
+            if (dropped) replaceIcon(f.suffix, dropped);
+          });
+        }
+        return tile;
+      })),
+      editable && el('p', { class: 'muted small bv-icon-tip', text: t('icons.tip') }));
+  }
+
+  const asBase64 = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+
+  async function replaceIcon(suffix, picked) {
+    if (!/\.png$/i.test(picked.name) && picked.type !== 'image/png') { showToast(t('icons.notPng'), [], true); return; }
+    if (picked.size > MAX_ICON_BYTES) { showToast(t('icons.tooLarge'), [], true); return; }
+    let png;
+    try { png = await asBase64(picked); } catch (error) { showToast(failText(error), [], true); return; }
+    await iconOperation(suffix, png, 'icons.replaced');
+  }
+
+  const restoreIcon = (suffix) => iconOperation(suffix, null, 'icons.restored');
+
+  async function iconOperation(suffix, png, doneKey) {
+    const { modId } = current;
+    const s = stateOf(modId);
+    const summary = blocksOf(current.overview).find((b) => b.file === s.selected);
+    if (!summary) return;
+    try {
+      const done = await post(modId, 'icon', { file: summary.file, suffix, png });
+      s.iconStamp = Date.now();
+      colourBound = null;
+      const warnings = done.warnings || [];
+      showToast([t(doneKey, { name: idOf(summary) + suffix }), ...warnings].join(' '), [undoButton(modId, [done.undoId])]);
+      await loadDetail(modId, summary.file);
+    } catch (error) { showToast(failText(error), [], true); }
   }
 
   async function applyColour() {

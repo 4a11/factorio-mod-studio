@@ -1029,6 +1029,15 @@ button.primary.danger { background: var(--error); border-color: var(--error); }
 .bv-colour .cf-row { max-width: 560px; }
 .bv-colour-bar { display: flex; justify-content: flex-end; gap: 8px; max-width: 560px; }
 .bv-colour-bar[hidden] { display: none; }
+.bv-icons { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border); }
+.bv-icon-tiles { display: flex; flex-wrap: wrap; gap: 8px; }
+.bv-icon-tile { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 10px 6px 6px; border: 1px dashed var(--border); border-radius: 8px; background: var(--bg); }
+.bv-icon-tile.drop { border-color: var(--accent); background: var(--accent-soft); }
+.bv-icon-tile img, .bv-icon-none { width: 48px; height: 48px; flex: none; object-fit: cover; object-position: left; display: inline-flex; align-items: center; justify-content: center; font-size: 26px; }
+.bv-icon-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bv-icon-text .mono { overflow-wrap: anywhere; }
+.bv-icon-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-left: 6px; }
+.bv-icon-tip { margin: 0; }
 .bv-savebar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; box-shadow: 0 -4px 16px rgba(0, 0, 0, .25); }
 .bv-savebar > span { flex: 1; }
 @media (max-width: 860px) {

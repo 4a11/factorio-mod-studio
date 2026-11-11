@@ -11,11 +11,16 @@ public sealed record BlockFileChange(string Path, byte[]? Content)
     public bool Delete => Content is null;
 }
 
-/// <param name="Operation">"rename", "remove", "upgrade" or "recolor".</param>
+/// <param name="Operation">"rename", "remove", "upgrade", "recolor" or "icon".</param>
 /// <param name="Renamed">For a rename: old prototype name to new one.</param>
 /// <param name="Warnings">What the studio could not change by itself (references it cannot see, a missing game data folder...).</param>
 public sealed record BlockPlan(string Operation, string File, IReadOnlyList<BlockFileChange> Changes,
     IReadOnlyDictionary<string, string> Renamed, IReadOnlyList<string> Warnings);
+
+/// <param name="Suffix">What is appended to the block's name for this prototype ("" for the main one).</param>
+/// <param name="Path">The icon file of the block for it, relative to the mod; null when the original is only tinted in the game.</param>
+/// <param name="Custom">The file is not the original recoloured to the block's colour: a picture of your own (known only with the game).</param>
+public sealed record BlockIconFile(string Suffix, string Prototype, string? Path, bool Custom = false);
 
 /// <summary>
 /// Renames, removes and upgrades a building block (a Lua file written by <see cref="ModContent"/>) together with everything that
@@ -276,9 +281,19 @@ public static class BlockOperations
             return map;
         }
 
+        var oldTint = TintOf(block.Source)!.Value;
         void Redo(string? path, string vanilla, string what)
         {
             if (path is null) return;
+            // A file that is not the original recoloured to the old colour was replaced by hand: it stays.
+            var full = Path.Combine(block.Root, path.Replace('/', Path.DirectorySeparatorChar));
+            if (gameDataDirectory is not null && File.Exists(full)
+                && ModContent.RecoloredIcon(gameDataDirectory, vanilla, oldTint) is { } before
+                && !before.AsSpan().SequenceEqual(File.ReadAllBytes(full)))
+            {
+                warnings.Add($"{path} is a picture of your own: it keeps its colours.");
+                return;
+            }
             if (gameDataDirectory is null) { warnings.Add("No Factorio installation was found: the colour changes in the game, but the icon files keep the old one."); return; }
             if (ModContent.RecoloredIcon(gameDataDirectory, vanilla, color.Tuple) is { } png) changes[path] = png;
             else warnings.Add($"The game's picture {vanilla} was not found; {what} keeps its old colour.");
@@ -293,6 +308,108 @@ public static class BlockOperations
 
         changes[file] = Utf8(ModContent.WithTint(block.Source, color));
         return new BlockPlan("recolor", file, Order(changes), new Dictionary<string, string>(), warnings.Distinct().ToList());
+    }
+
+    // ------------------------------------------------------------------ icons
+
+    /// <summary>The size of the icon files the blocks write (and the helper declares: <c>icon_size = 64</c>).</summary>
+    public const int IconSize = 64;
+
+    /// <summary>The largest picture accepted as an icon.</summary>
+    public const int MaxIconBytes = 4 * 1024 * 1024;
+
+    /// <summary>
+    /// The icons of a block: one per prototype that gets its own icon (the main one, "-ammo"...), with the file the block registered
+    /// for it (copy.use_icons) or null when the prototype shows the original icon tinted in the game.
+    /// </summary>
+    /// <param name="gameDataDirectory">With the game at hand, <see cref="BlockIconFile.Custom"/> tells a picture of your own from the
+    /// original recoloured.</param>
+    public static IReadOnlyList<BlockIconFile> IconsOf(string modDirectory, string file, string? gameDataDirectory = null)
+    {
+        var block = Load(modDirectory, file);
+        var kind = IdentifyBlock(block.Source, block.Id);
+        if (kind is null) return Array.Empty<BlockIconFile>();
+        var registered = RegisteredIcons(block);
+        var tint = TintOf(block.Source) ?? kind.Tint;
+        return kind.Icons.Select(i =>
+        {
+            var prototype = block.Id + i.Suffix;
+            var path = registered.GetValueOrDefault(prototype);
+            var full = path is null ? null : Path.Combine(block.Root, path.Replace('/', Path.DirectorySeparatorChar));
+            if (full is null || !File.Exists(full)) return new BlockIconFile(i.Suffix, prototype, null);
+            var custom = gameDataDirectory is not null
+                         && ModContent.RecoloredIcon(gameDataDirectory, $"graphics/icons/{i.Vanilla}.png", tint) is { } original
+                         && !original.AsSpan().SequenceEqual(File.ReadAllBytes(full));
+            return new BlockIconFile(i.Suffix, prototype, path, custom);
+        }).ToList();
+    }
+
+    private static Dictionary<string, string> RegisteredIcons(BlockInfo block)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        var modName = ModNameOf(block.Root);
+        if (UseIcons.Match(block.Source) is { Success: true } m)
+            foreach (Match entry in Regex.Matches(m.Groups["body"].Value, @"\[\s*""(?<key>[^""]+)""\s*\]\s*=\s*""__(?<mod>[^""]+?)__/(?<path>[^""]+)"""))
+                if (entry.Groups["mod"].Value == modName) map[entry.Groups["key"].Value] = entry.Groups["path"].Value;
+        return map;
+    }
+
+    /// <summary>
+    /// Gives one prototype of the block (<paramref name="suffix"/>: "" for the main one, "-ammo"...) another icon: the picture
+    /// <paramref name="png"/> fitted to 64×64, or with <paramref name="png"/> null the original recoloured to the block's colour again
+    /// (from <paramref name="gameDataDirectory"/>). A prototype without an icon file of its own gets one, registered in copy.use_icons.
+    /// </summary>
+    public static BlockPlan PlanIcon(string modDirectory, string file, string suffix, byte[]? png, string? gameDataDirectory)
+    {
+        var block = Load(modDirectory, file);
+        if (NeedsUpgrade(block.Source)) throw new FmsException($"{file} is an old block: give it icons of its own first, then change them.");
+        var kind = IdentifyBlock(block.Source, block.Id) ?? throw new FmsException($"{file} does not match any building block the studio knows.");
+        var icon = kind.Icons.FirstOrDefault(i => i.Suffix == (suffix ?? ""))
+                   ?? throw new FmsException($"{block.Id}{suffix} has no icon of its own in this block.");
+        var prototype = block.Id + icon.Suffix;
+        var warnings = new List<string>();
+
+        byte[] content;
+        if (png is null)
+        {
+            var tint = TintOf(block.Source) ?? kind.Tint;
+            content = ModContent.RecoloredIcon(gameDataDirectory, $"graphics/icons/{icon.Vanilla}.png", tint)
+                      ?? throw new FmsException(gameDataDirectory is null
+                          ? "No Factorio installation was found to take the original icon from."
+                          : $"The game's icon {icon.Vanilla}.png was not found.");
+        }
+        else
+        {
+            if (png.Length > MaxIconBytes) throw new FmsException($"The picture is larger than {MaxIconBytes / (1024 * 1024)} MB.");
+            content = IconRecolor.FitIcon(png, IconSize, out var problem, out var size) ?? throw new FmsException(problem ?? "The picture cannot be read.");
+            if (size != (IconSize, IconSize))
+                warnings.Add(size.Width > size.Height
+                    ? $"The picture is {size.Width}×{size.Height}: its left {size.Height}×{size.Height} square was used{(size.Height == IconSize ? "" : $", scaled to {IconSize}×{IconSize}")}."
+                    : $"The picture was scaled from {size.Width}×{size.Height} to {IconSize}×{IconSize}.");
+        }
+
+        var changes = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
+        var registered = RegisteredIcons(block);
+        if (registered.TryGetValue(prototype, out var path))
+        {
+            changes[path] = content;
+        }
+        else
+        {
+            // Not registered yet (the block was added without the game at hand): a file of its own and an entry in copy.use_icons.
+            path = $"graphics/icons/{prototype}.png";
+            var modName = ModNameOf(block.Root);
+            var use = UseIcons.Match(block.Source);
+            if (!use.Success) throw new FmsException($"{file} has no copy.use_icons line to register the icon in.");
+            var body = use.Groups["body"].Value;
+            var entry = $" [\"{prototype}\"] = \"__{modName}__/{path}\" ";
+            var newBody = body.Trim().Length == 0 ? entry : body.TrimEnd() + "," + entry;
+            var text = block.Source[..use.Groups["body"].Index] + newBody + block.Source[(use.Groups["body"].Index + use.Groups["body"].Length)..];
+            changes[file] = Utf8(text);
+            changes[path] = content;
+        }
+
+        return new BlockPlan("icon", file, Order(changes), new Dictionary<string, string>(), warnings);
     }
 
     /// <summary>The block's colour from its <c>local tint</c> line, or null.</summary>

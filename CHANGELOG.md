@@ -26,6 +26,11 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   goes into the Lua and the game tints the icons). Adding writes the block in that colour; in the Blocks tab *Apply the colour*
   changes its `local tint` and recolours its icon and sprite files again, with Undo. Old blocks get icons of their own first.
   From the command line: `fmstudio add <block> [name] --color #rrggbb`.
+- **Icons of your own for a block**: the Blocks tab shows each icon of the block (the main one, the ammo, the underground
+  belt...) with *Replace...*, or a PNG dropped on it. Any PNG works (palette, grey, 16-bit too): a square picture is scaled to
+  64×64, a wider one is read as an icon with mipmaps and its left square is used. *Back to the original* puts the recoloured
+  original back; both with Undo. A prototype that only had the original tinted in the game gets an icon file of its own.
+  Changing the block's colour leaves your own icons as they are.
 - **New blocks in every language of the mod**: adding a block writes its names into the other languages too, in English with a
   `; fms: untranslated` line above each key: the keys are in place for whoever translates the files, the game shows the English
   names meanwhile, and the Localization tab lists them as untranslated (marked *English for now*). Saving a translation removes the mark; renaming and removing the block
