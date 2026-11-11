@@ -496,9 +496,10 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
   }
 
   function markReadonlyLine(tab, line) {
-    for (const row of tab.pane.querySelectorAll('.ln.hl')) row.classList.remove('hl');
+    // "marked", not "hl": .hl is the editor's absolutely positioned highlight layer and would cover the whole view.
+    for (const row of tab.pane.querySelectorAll('.ln.marked')) row.classList.remove('marked');
     const row = tab.pane.querySelector(`.ln[data-line="${line}"]`);
-    if (row) { row.classList.add('hl'); row.scrollIntoView({ block: 'center' }); }
+    if (row) { row.classList.add('marked'); row.scrollIntoView({ block: 'center' }); }
   }
 
   function goToDiagnostic(tab, index) {

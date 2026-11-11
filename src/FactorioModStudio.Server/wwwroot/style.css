@@ -341,7 +341,7 @@ details .file-row:hover { background: var(--surface-2); }
 .code .ln { display: grid; grid-template-columns: 56px minmax(0, 1fr); }
 .code .no { text-align: right; padding-right: 12px; color: var(--muted); user-select: none; }
 .code .tx { white-space: pre-wrap; word-break: break-word; padding-right: 12px; }
-.code .ln.hl { background: var(--accent-soft); }
+.code .ln.marked { background: var(--accent-soft); }
 .viewer-image { padding: 16px; display: flex; justify-content: center; }
 .viewer-image img { max-width: 100%; image-rendering: pixelated; background: repeating-conic-gradient(var(--surface-2) 0 25%, var(--surface) 0 50%) 0 0 / 16px 16px; }
 .viewer-msg { padding: 16px; color: var(--muted); }
