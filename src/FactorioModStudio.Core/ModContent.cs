@@ -192,6 +192,24 @@ public static class ModContent
             create.Add(localePath);
         }
 
+        // Every other language of the mod gets the keys too, in English and marked as untranslated: the game shows the English
+        // names until someone translates them, and the Localization tab lists them as still to do.
+        var english = localeFile ?? modName + ".cfg";
+        foreach (var language in LocaleData.Languages(root).Where(l => l != "en").OrderBy(l => l, StringComparer.Ordinal))
+        {
+            if (!LocaleEditor.IsValidLanguageCode(language)) continue;
+            var dir = Path.Combine(root, "locale", language);
+            if (!Directory.Exists(dir)) continue; // a language that only exists inside an archive or with an odd folder
+            var cfg = new[] { english, modName + ".cfg" }.FirstOrDefault(f => File.Exists(Path.Combine(dir, f)))
+                      ?? Directory.EnumerateFiles(dir, "*.cfg").Select(Path.GetFileName).OrderBy(f => f, StringComparer.Ordinal).FirstOrDefault();
+            var path = $"locale/{language}/{cfg ?? english}";
+            var text = cfg is null ? "" : ReadText(Path.Combine(dir, cfg));
+            var merged = MergeLocale(text, entries, markUntranslated: true);
+            if (merged == text) continue;
+            files[path] = Utf8(merged);
+            (cfg is null ? create : change).Add(path);
+        }
+
         var prototypes = entries.Select(e => e.Key).Distinct(StringComparer.Ordinal).ToList();
         return new Prepared(new ContentPlan(block.Info.Id, name, title, create, change, prototypes), files);
     }
@@ -293,7 +311,8 @@ public static class ModContent
     }
 
     /// <summary>Adds each key to its section (a new section goes to the end); keys that are already there keep their value.</summary>
-    internal static string MergeLocale(string text, IEnumerable<(string Section, string Key, string Value)> entries)
+    /// <param name="markUntranslated">Put <see cref="LocaleEditor.UntranslatedLine"/> above every key added (another language).</param>
+    internal static string MergeLocale(string text, IEnumerable<(string Section, string Key, string Value)> entries, bool markUntranslated = false)
     {
         var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n').ToList();
@@ -306,6 +325,7 @@ public static class ModContent
             {
                 if (lines.Count > 0 && lines[^1].Trim().Length > 0) lines.Add("");
                 lines.Add($"[{section}]");
+                if (markUntranslated) lines.Add(LocaleEditor.UntranslatedLine);
                 lines.Add($"{key}={value}");
                 continue;
             }
@@ -317,6 +337,7 @@ public static class ModContent
             var insertAt = end;
             while (insertAt > header + 1 && lines[insertAt - 1].Trim().Length == 0) insertAt--;
             lines.Insert(insertAt, $"{key}={value}");
+            if (markUntranslated) lines.Insert(insertAt, LocaleEditor.UntranslatedLine);
         }
 
         return string.Join(newline, lines) + newline;

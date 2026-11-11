@@ -333,6 +333,7 @@ export function createLocaleView({ api, el }) {
     const keyCell = el('td', { class: 'locale-key', 'data-label': t('locale.colKey') },
       el('div', { class: 'mono locale-key-name', title: where || null, text: row.key }),
       row.identical && el('span', { class: 'badge info locale-identical', title: t('locale.identicalHint'), text: t('locale.identical') }),
+      row.marked && el('span', { class: 'badge info locale-marked', 'data-testid': 'locale-marked', title: t('locale.markedHint'), text: t('locale.marked') }),
       row.status === 'extra' && el('span', { class: 'badge warning', title: t('locale.extraHint'), text: t('locale.extra') }));
 
     // Source cell

@@ -12,10 +12,13 @@ public enum LocaleRowStatus { Translated, Untranslated, Extra }
 /// <param name="SourceFile">Path relative to the mod root with '/' separators; null for Extra rows.</param>
 /// <param name="TargetFile">File of the first definition of the key in the target language; null if absent.</param>
 /// <param name="Suggestion">Only for untranslated rows: a translation taken from the local translation memory.</param>
+/// <param name="Marked">Untranslated although the key is in the file: the studio wrote the source text there with the
+/// <see cref="LocaleEditor.UntranslatedMark"/> line above it (a new building block), so the game shows it until it is translated.
+/// <see cref="Target"/> is null for such a row; saving a translation removes the mark.</param>
 public sealed record LocaleRow(
     string Section, string Key, string Source, string? Target, LocaleRowStatus Status, bool Identical,
     string? SourceFile, string? TargetFile, int? TargetLine,
-    IReadOnlyList<string> PlaceholderMissing, IReadOnlyList<string> PlaceholderUnexpected, string? Suggestion);
+    IReadOnlyList<string> PlaceholderMissing, IReadOnlyList<string> PlaceholderUnexpected, string? Suggestion, bool Marked = false);
 
 public sealed record LocaleLanguageSummary(string Code, int Total, int Translated, int Untranslated, int Identical, int Extra, int PlaceholderProblems);
 
@@ -43,6 +46,18 @@ public sealed class LocaleConflictException : FmsException
 public static class LocaleEditor
 {
     public const string DefaultSourceLanguage = "en";
+
+    /// <summary>
+    /// A comment line the studio puts above a key it wrote in the source language's words into another language: the key is there
+    /// (the game shows that text), but it is not translated yet. The Localization tab lists it as untranslated; saving a translation
+    /// of the key removes the line.
+    /// </summary>
+    public const string UntranslatedMark = "; fms: untranslated";
+
+    /// <summary>The whole line written above such a key, saying what to do for people who edit the file by hand.</summary>
+    public const string UntranslatedLine = UntranslatedMark + " (English for now): translate the line below, then delete this one";
+
+    internal static bool IsUntranslatedMark(string line) => line.TrimStart().StartsWith(UntranslatedMark, StringComparison.Ordinal);
 
     private const long MaxCfgBytes = 16 * 1024 * 1024;
     private const int MaxChanges = 5000;
@@ -92,6 +107,8 @@ public static class LocaleEditor
         public List<LocaleEntry> Entries { get; } = new();
         public List<LocaleEntry> Firsts { get; } = new();
         public Dictionary<string, LocaleEntry> First { get; } = new(StringComparer.Ordinal);
+        /// <summary>Entries ("file:line") right below an <see cref="UntranslatedMark"/> line.</summary>
+        public HashSet<string> Marked { get; } = new(StringComparer.Ordinal);
         public string Revision { get; set; } = "";
     }
 
@@ -141,7 +158,13 @@ public static class LocaleEditor
 
             files.Add((relative, bytes));
             if (bytes.Length <= MaxCfgBytes)
-                LocaleChecker.ParseCfg(Utf8.GetString(bytes), $"locale/{language}/{relative}", data.Entries, null);
+            {
+                var text = Utf8.GetString(bytes);
+                LocaleChecker.ParseCfg(text, $"locale/{language}/{relative}", data.Entries, null);
+                var lines = text.TrimStart('﻿').Split('\n');
+                for (var i = 1; i < lines.Length; i++)
+                    if (IsUntranslatedMark(lines[i - 1])) data.Marked.Add($"locale/{language}/{relative}:{i + 1}");
+            }
         }
 
         data.Revision = RevisionOf(files);
@@ -170,7 +193,12 @@ public static class LocaleEditor
 
             if (target.First.TryGetValue(LocaleLanguage.Id(entry.Section, entry.Key), out var found))
             {
-                if (!string.IsNullOrWhiteSpace(found.Value))
+                if (target.Marked.Contains($"{found.File}:{found.Line}"))
+                {
+                    rows.Add(new LocaleRow(entry.Section, entry.Key, entry.Value, null, LocaleRowStatus.Untranslated, false,
+                        entry.File, found.File, found.Line, empty, empty, null, Marked: true));
+                }
+                else if (!string.IsNullOrWhiteSpace(found.Value))
                 {
                     var diff = LocalePlaceholders.Compare(entry.Value, found.Value);
                     rows.Add(new LocaleRow(entry.Section, entry.Key, entry.Value, found.Value, LocaleRowStatus.Translated,
@@ -500,6 +528,15 @@ public static class LocaleEditor
 
             if (definitions.TryGetValue(id, out var existing))
             {
+                // A key the studio marked as untranslated: whatever is saved for it now is its translation, so the mark goes.
+                var at = existing.File.Lines.IndexOf(existing.Line);
+                var unmarked = at > 0 && IsUntranslatedMark(Utf8.GetString(existing.File.Lines[at - 1].Content));
+                if (unmarked)
+                {
+                    existing.File.Lines.RemoveAt(at - 1);
+                    existing.File.Touched = true;
+                }
+
                 if (change.Value is null)
                 {
                     existing.File.Lines.Remove(existing.Line);
@@ -511,7 +548,11 @@ public static class LocaleEditor
                 var content = existing.Line.Content;
                 var eq = Array.IndexOf(content, (byte)'=');
                 var replaced = content[..(eq + 1)].Concat(Utf8.GetBytes(change.Value)).ToArray();
-                if (replaced.AsSpan().SequenceEqual(content)) continue;
+                if (replaced.AsSpan().SequenceEqual(content))
+                {
+                    if (unmarked) updated++;
+                    continue;
+                }
                 existing.Line.Content = replaced;
                 existing.File.Touched = true;
                 updated++;

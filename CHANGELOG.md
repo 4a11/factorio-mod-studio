@@ -26,6 +26,10 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   goes into the Lua and the game tints the icons). Adding writes the block in that colour; in the Blocks tab *Apply the colour*
   changes its `local tint` and recolours its icon and sprite files again, with Undo. Old blocks get icons of their own first.
   From the command line: `fmstudio add <block> [name] --color #rrggbb`.
+- **New blocks in every language of the mod**: adding a block writes its names into the other languages too, in English with a
+  `; fms: untranslated` line above each key: the keys are in place for whoever translates the files, the game shows the English
+  names meanwhile, and the Localization tab lists them as untranslated (marked *English for now*). Saving a translation removes the mark; renaming and removing the block
+  take the marks along. A translation that is already there is kept.
 - **The full game from factorio.com**: besides the headless server, the studio installs Factorio with graphics (Windows x64 and
   Linux x64) into its own folder, where Run and the smoke tests find it. It needs a factorio.com account that owns the game:
   the installations dialog in the Build tab saves a username and token (on Windows the token is encrypted for your Windows user;

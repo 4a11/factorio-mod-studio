@@ -428,9 +428,10 @@ public static class BlockOperations
             renamed.TryGetValue(m.Groups["key"].Value, out var to) ? m.Groups["lead"].Value + to + m.Groups["eq"].Value : m.Value,
             RegexOptions.Multiline);
 
+    // A key goes with the "; fms: untranslated" line the studio put above it in another language.
     private static string RemoveLocaleKeys(string text, IReadOnlySet<string> names) =>
-        Regex.Replace(text, @"^\s*(?<key>[^=\[\];#\r\n]+?)\s*=.*(\r?\n|$)", m => names.Contains(m.Groups["key"].Value) ? "" : m.Value,
-            RegexOptions.Multiline);
+        Regex.Replace(text, @"^(?<mark>[ \t]*" + Regex.Escape(LocaleEditor.UntranslatedMark) + @"[^\r\n]*\r?\n)?\s*(?<key>[^=\[\];#\r\n]+?)\s*=.*(\r?\n|$)",
+            m => names.Contains(m.Groups["key"].Value) ? "" : m.Value, RegexOptions.Multiline);
 
     private static string RemoveRequire(string text, string id) =>
         Regex.Replace(text, $@"^\s*require\(\s*[""']prototypes\.{Regex.Escape(id)}[""']\s*\)\s*(\r?\n|$)", "", RegexOptions.Multiline);
