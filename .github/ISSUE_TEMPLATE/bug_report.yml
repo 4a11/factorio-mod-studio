@@ -6,34 +6,76 @@ body:
     attributes:
       value: |
         Thanks for reporting! A security problem should **not** go here: see [SECURITY.md](https://github.com/4a11/factorio-mod-studio/blob/main/SECURITY.md).
-  - type: textarea
-    id: what
+        One problem per report, please; a short report is fine, the more of the fields below are filled in, the faster it gets fixed.
+  - type: dropdown
+    id: area
     attributes:
-      label: What happened
-      description: What you did, what you expected and what happened instead.
+      label: Where in the studio
+      options:
+        - Overview
+        - Files (editor, code view)
+        - Prototypes
+        - Blocks
+        - Resources
+        - Localization
+        - Problems
+        - Build (run, smoke, Quick try, pack)
+        - Installing Factorio
+        - Command line
+        - Something else
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
       label: Steps to reproduce
-      description: The command you ran or the tab and buttons you used. A small mod (or a link to one) that shows the problem helps a lot.
+      description: The command you ran or the tab and buttons you used, step by step.
       placeholder: |
-        1. fmstudio new my-mod --template item-recipe
-        2. ...
+        1. Opened the base mod in the Files tab
+        2. Clicked prototypes/entity/entities.lua
+        3. ...
     validations:
       required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Screenshots help a lot; paste or drop them here.
+    validations:
+      required: true
+  - type: dropdown
+    id: repro
+    attributes:
+      label: How often
+      options:
+        - Every time
+        - Sometimes
+        - Once so far
+    validations:
+      required: true
+  - type: input
+    id: mod
+    attributes:
+      label: Which mod
+      description: Your own mod (attach a zip if you can), `base`, or a link to the mod portal.
+      placeholder: e.g. base, my-mod (zip attached), https://mods.factorio.com/mod/...
   - type: input
     id: version
     attributes:
       label: Factorio Mod Studio version
-      description: The output of `fmstudio --version`.
+      description: Shown at the bottom of the sidebar, or the output of `fmstudio --version`.
     validations:
       required: true
   - type: dropdown
     id: client
     attributes:
-      label: Where
+      label: Studio started as
       options:
         - Desktop app
         - Browser UI (fmstudio ui)
@@ -53,8 +95,8 @@ body:
   - type: input
     id: factorio
     attributes:
-      label: Factorio version
-      placeholder: e.g. 2.0.72, or "not relevant"
+      label: Factorio version and how it is installed
+      placeholder: e.g. 2.0.72 Steam, 2.1.24 zip from factorio.com, headless server installed by the studio, or "not relevant"
   - type: textarea
     id: logs
     attributes:
