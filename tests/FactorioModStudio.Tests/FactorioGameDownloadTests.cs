@@ -236,4 +236,110 @@ public class FactorioGameDownloadTests
         using var dir = new TempDir();
         await Assert.ThrowsAnyAsync<FmsException>(() => Downloads(dir, Server(_ => Zip(GameZip("2.0.73")))).InstallGameAsync(version, Account));
     }
+
+    // ------------------------------------------------------------------ resuming, free space
+
+    [Fact]
+    public async Task InstallGame_AnInterruptedDownload_ContinuesWithARange_AndLeavesNothingAfterwards()
+    {
+        using var dir = new TempDir();
+        var zip = GameZip("2.0.73");
+        var partial = Downloads(dir, Server(_ => Zip(zip))).PartialPath("2.0.73", "game");
+        Directory.CreateDirectory(Path.GetDirectoryName(partial)!);
+        File.WriteAllBytes(partial, zip[..100]); // what an earlier, interrupted download left
+
+        RangeHeaderValue? asked = null;
+        var http = Server(request =>
+        {
+            asked = request.Headers.Range;
+            var content = new ByteArrayContent(zip[100..]);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+            content.Headers.ContentRange = new ContentRangeHeaderValue(100, zip.Length - 1, zip.Length);
+            return new HttpResponseMessage(HttpStatusCode.PartialContent) { Content = content };
+        });
+        var result = await Downloads(dir, http).InstallGameAsync("2.0.73", Account);
+
+        Assert.Equal(100, asked?.Ranges.Single().From);
+        Assert.True(File.Exists(Path.Combine(result.Path, "bin", "x64", "factorio.exe")));
+        Assert.False(File.Exists(partial));
+    }
+
+    [Fact]
+    public async Task InstallGame_AServerThatIgnoresTheRange_StartsTheFileOver()
+    {
+        using var dir = new TempDir();
+        var downloads = Downloads(dir, Server(_ => Zip(GameZip("2.0.73"))));
+        var partial = downloads.PartialPath("2.0.73", "game");
+        Directory.CreateDirectory(Path.GetDirectoryName(partial)!);
+        File.WriteAllBytes(partial, new byte[] { 9, 9, 9 }); // must not end up in front of the archive
+
+        var result = await downloads.InstallGameAsync("2.0.73", Account);
+        Assert.True(File.Exists(Path.Combine(result.Path, "bin", "x64", "factorio.exe")));
+    }
+
+    [Fact]
+    public async Task InstallGame_WithoutEnoughFreeSpace_SaysHowMuchIsNeeded_AndKeepsNothing()
+    {
+        using var dir = new TempDir();
+        var downloads = new FactorioDownloads(new HttpClient(Server(_ => Zip(GameZip("2.0.73")))), new FakeRunner(_ => throw new InvalidOperationException()),
+            dir.Combine("factorio"), gamePlatform: () => ("win64-manual", null), freeSpace: _ => 10);
+        var error = await Assert.ThrowsAnyAsync<FmsException>(() => downloads.InstallGameAsync("2.0.73", Account));
+        Assert.Contains("free disk space", error.Message);
+        Assert.False(File.Exists(downloads.PartialPath("2.0.73", "game")));
+    }
+
+    // ------------------------------------------------------------------ logging in to factorio.com
+
+    private static FactorioDownloadsTests.FakeHttp LoginServer(string answer, List<string>? bodies = null) => new(request =>
+    {
+        bodies?.Add(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(answer, System.Text.Encoding.UTF8, "application/json") };
+    });
+
+    [Fact]
+    public async Task Login_AsksForAToken_WithGameOwnership_AndGivesTheAccount()
+    {
+        var bodies = new List<string>();
+        var http = LoginServer("""{ "token": "0123456789abcdef0123", "username": "Engineer" }""", bodies);
+        var result = await FactorioAccount.LoginAsync(new HttpClient(http), "me@example.com", "s3cret pass");
+        Assert.True(result.Ok);
+        Assert.Equal(new FactorioCredentials("Engineer", "0123456789abcdef0123", "studio"), result.Credentials);
+        Assert.Equal(FactorioAccount.LoginUrl, Assert.Single(http.Requests));
+        var body = Assert.Single(bodies);
+        Assert.Contains("api_version=6", body);
+        Assert.Contains("require_game_ownership=true", body);
+        Assert.DoesNotContain("email_authentication_code", body);
+    }
+
+    [Fact]
+    public async Task Login_EmailCodeRequired_IsReported_AndTheCodeIsSentNextTime()
+    {
+        var first = await FactorioAccount.LoginAsync(new HttpClient(LoginServer("""{ "error": "email-authentication-required", "message": "Check your e-mail." }""")), "me", "pw");
+        Assert.False(first.Ok);
+        Assert.True(first.NeedsEmailCode);
+        Assert.Equal("Check your e-mail.", first.Message);
+
+        var bodies = new List<string>();
+        await FactorioAccount.LoginAsync(new HttpClient(LoginServer("""{ "token": "0123456789abcdef0123", "username": "me" }""", bodies)), "me", "pw", " 123456 ");
+        Assert.Contains("email_authentication_code=123456", Assert.Single(bodies));
+    }
+
+    [Fact]
+    public async Task Login_Refused_SaysSo_WithoutThePassword()
+    {
+        var result = await FactorioAccount.LoginAsync(new HttpClient(LoginServer("""{ "error": "login-failed", "message": "" }""")), "me", "hunter22");
+        Assert.False(result.Ok);
+        Assert.Equal("login-failed", result.Error);
+        Assert.DoesNotContain("hunter22", result.Message);
+    }
+
+    [Theory]
+    [InlineData("", "pw")]
+    [InlineData("me", "")]
+    public async Task Login_EmptyInput_AsksNobody(string login, string password)
+    {
+        var http = LoginServer("{}");
+        Assert.Equal("invalid-input", (await FactorioAccount.LoginAsync(new HttpClient(http), login, password)).Error);
+        Assert.Empty(http.Requests);
+    }
 }

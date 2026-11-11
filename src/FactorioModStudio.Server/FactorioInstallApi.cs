@@ -44,6 +44,24 @@ internal sealed class FactorioInstalls
 
     public FactorioCredentials? Credentials() => FactorioAccount.Resolve(AccountFile, PlayerDataFile);
 
+    private readonly Queue<DateTime> _logins = new();
+
+    /// <summary>
+    /// False when there were already 5 login attempts in the last minute: factorio.com rate-limits clients that fail often, and a
+    /// page (or a script on this machine with the session token) must not be able to hammer it with passwords.
+    /// </summary>
+    public bool TryCountLogin()
+    {
+        lock (_gate)
+        {
+            var now = DateTime.UtcNow;
+            while (_logins.Count > 0 && now - _logins.Peek() > TimeSpan.FromMinutes(1)) _logins.Dequeue();
+            if (_logins.Count >= 5) return false;
+            _logins.Enqueue(now);
+            return true;
+        }
+    }
+
     public FactorioDownloads Downloads() => _create();
 
     public InstallSnapshot? Current { get { lock (_gate) return _current; } }
@@ -328,6 +346,51 @@ internal static class FactorioInstallApi
                 catch (FmsException ex) { return Error(StatusCodes.Status400BadRequest, ex.Message); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return Error(StatusCodes.Status500InternalServerError, "Could not save the account: " + ex.Message); }
             }
+            return Json(new { account = Account(installs.AccountStatus()) });
+        });
+
+        // { "login", "password", "emailCode"? }: asks factorio.com for a token and saves it. The password is used for this one request
+        // and kept nowhere (not logged, not saved, not sent back); only the token is saved, protected like a typed one.
+        app.MapPost("/api/factorio/account/login", async (HttpContext http) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            var (document, error) = await ReadBody(http, 4096);
+            if (error is not null) return error;
+            string? login, password, emailCode = null;
+            using (document)
+            {
+                var root = document!.RootElement;
+                if (!root.TryGetProperty("login", out var l) || l.ValueKind != JsonValueKind.String
+                    || !root.TryGetProperty("password", out var p) || p.ValueKind != JsonValueKind.String)
+                    return Error(StatusCodes.Status400BadRequest, "Send { \"login\", \"password\" } and, when factorio.com asked for it, \"emailCode\".");
+                login = l.GetString();
+                password = p.GetString();
+                if (root.TryGetProperty("emailCode", out var c) && c.ValueKind == JsonValueKind.String) emailCode = c.GetString();
+            }
+            if (!installs.TryCountLogin()) return Error(StatusCodes.Status429TooManyRequests, "Too many login attempts; wait a minute and try again.");
+
+            FactorioLoginResult result;
+            try
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted);
+                timeout.CancelAfter(TimeSpan.FromSeconds(30));
+                result = await installs.Downloads().LoginAsync(login!, password!, emailCode, timeout.Token);
+            }
+            catch (OperationCanceledException) { return Error(StatusCodes.Status504GatewayTimeout, "factorio.com did not answer within 30 seconds."); }
+
+            if (!result.Ok)
+            {
+                var status = result.Error switch
+                {
+                    "invalid-input" => StatusCodes.Status400BadRequest,
+                    "unreachable" or "bad-answer" => StatusCodes.Status502BadGateway,
+                    _ => StatusCodes.Status409Conflict,
+                };
+                return Json(new { error = result.Message, code = result.Error, needsEmailCode = result.NeedsEmailCode }, status);
+            }
+            try { FactorioAccount.Save(result.Credentials!.Username, result.Credentials.Token, installs.AccountFile); }
+            catch (FmsException ex) { return Error(StatusCodes.Status502BadGateway, ex.Message); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return Error(StatusCodes.Status500InternalServerError, "Could not save the account: " + ex.Message); }
             return Json(new { account = Account(installs.AccountStatus()) });
         });
 

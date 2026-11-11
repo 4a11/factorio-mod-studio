@@ -671,6 +671,9 @@ button.primary:disabled { opacity: .6; cursor: default; }
 .build-job-title { font-size: 15px; }
 .files-empty.build-empty { text-align: left; }
 .build-issues-more { display: block; margin: 6px 0 0; }
+.build-token-details { margin-top: 2px; }
+.build-token-details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.build-token-details[open] summary { margin-bottom: 6px; }
 .build-empty-list { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 10px 0 0; }
 .build-empty-list dt { font-weight: 600; }
 .build-empty-list dd { margin: 0; }

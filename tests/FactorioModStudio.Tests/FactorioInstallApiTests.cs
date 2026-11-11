@@ -28,9 +28,9 @@ public class FactorioInstallApiTests
         /// <param name="gameProblem">Why the full game cannot be installed (null: it can, as on Linux); by default the same as
         /// <paramref name="platformProblem"/>, so "off Linux" still asks nobody.</param>
         public static async Task<Env> Create(string? platformProblem = null, string tarVersion = "2.0.73", HttpStatusCode download = HttpStatusCode.OK,
-            string? gameProblem = SameProblem)
+            string? gameProblem = SameProblem, FactorioDownloadsTests.FakeHttp? server = null)
         {
-            var env = new Env { Factorio = FactorioDownloadsTests.Server(download: download) };
+            var env = new Env { Factorio = server ?? FactorioDownloadsTests.Server(download: download) };
             ApiEnv.AddMod(env.Workspace, "alpha", "2.0");
             var tar = FactorioDownloadsTests.Tar(tarVersion);
             if (gameProblem == SameProblem) gameProblem = platformProblem;
@@ -287,5 +287,46 @@ public class FactorioInstallApiTests
         Assert.Contains("WSL", r.Str("platformProblem"));
         Assert.NotEmpty(r.Json.GetProperty("branches").EnumerateArray());
         Assert.Equal(JsonValueKind.Null, r.Json.GetProperty("game").GetProperty("platformProblem").ValueKind);
+    }
+
+    // ------------------------------------------------------------------ logging in to factorio.com
+
+    private static FactorioDownloadsTests.FakeHttp LoginServer(string answer) => new(_ =>
+        new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(answer, System.Text.Encoding.UTF8, "application/json") });
+
+    private static Task<ApiResp> Login(HttpClient http) =>
+        ApiEnv.Send(http, HttpMethod.Post, "/api/factorio/account/login", """{ "login": "me@example.com", "password": "hunter22" }""");
+
+    [Fact]
+    public async Task Login_SavesTheToken_NeverThePassword()
+    {
+        await using var env = await Env.Create(server: LoginServer("""{ "token": "0123456789abcdef0123", "username": "Engineer" }"""));
+        var r = await Login(env.Http);
+        Assert.Equal(HttpStatusCode.OK, r.Status);
+        Assert.Equal("Engineer", r.Json.GetProperty("account").S("username"));
+        Assert.Equal("studio", r.Json.GetProperty("account").S("source"));
+        Assert.DoesNotContain("hunter22", r.Raw);
+        Assert.DoesNotContain("0123456789abcdef0123", r.Raw);
+        Assert.DoesNotContain("hunter22", File.ReadAllText(env.AccountFile));
+    }
+
+    [Fact]
+    public async Task Login_EmailCode_IsAskedFor_AndNothingIsSaved()
+    {
+        await using var env = await Env.Create(server: LoginServer("""{ "error": "email-authentication-required", "message": "Check your e-mail." }"""));
+        var r = await Login(env.Http);
+        Assert.Equal(HttpStatusCode.Conflict, r.Status);
+        Assert.True(r.Json.GetProperty("needsEmailCode").GetBoolean());
+        Assert.False(File.Exists(env.AccountFile));
+    }
+
+    [Fact]
+    public async Task Login_NeedsTheSessionToken_AndIsLimitedToFiveAttemptsAMinute()
+    {
+        await using var env = await Env.Create(server: LoginServer("""{ "error": "login-failed", "message": "Wrong password." }"""));
+        using var anonymous = new HttpClient { BaseAddress = env.Http.BaseAddress };
+        Assert.Equal(HttpStatusCode.Forbidden, (await Login(anonymous)).Status);
+        for (var i = 0; i < 5; i++) Assert.Equal(HttpStatusCode.Conflict, (await Login(env.Http)).Status);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await Login(env.Http)).Status);
     }
 }

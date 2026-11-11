@@ -13,6 +13,14 @@ public sealed record FactorioCredentials(string Username, string Token, string S
     public override string ToString() => $"{Username} ({Source})";
 }
 
+/// <summary>What <see cref="FactorioAccount.LoginAsync"/> got: the account, or factorio.com's error code and message.</summary>
+/// <param name="Error">"login-failed", "email-authentication-required", "unreachable", "bad-answer", "invalid-input" or another code of factorio.com.</param>
+public sealed record FactorioLoginResult(bool Ok, string? Error, string? Message, FactorioCredentials? Credentials)
+{
+    public static FactorioLoginResult Failed(string error, string message) => new(false, error, message, null);
+    public bool NeedsEmailCode => Error == "email-authentication-required";
+}
+
 /// <param name="Source">Where the download would take its account from: "env", "studio", "game" or null (none).</param>
 /// <param name="Username">That account's username (never the token).</param>
 /// <param name="GameUsername">The account the installed Factorio is signed in to, when its player-data.json has one.</param>
@@ -98,6 +106,63 @@ public static class FactorioAccount
         if (!IsToken(token)) throw new FmsException("The token is the line of letters and digits from your profile on factorio.com (8 to 128 characters).");
         var (text, protection) = Protect(token);
         Write(storePath ?? StorePath(), new JsonObject { ["username"] = username, ["token"] = text, ["protection"] = protection });
+    }
+
+    // ------------------------------------------------------------------ logging in
+
+    public const string LoginUrl = "https://auth.factorio.com/api-login";
+
+    /// <summary>
+    /// Asks factorio.com for a service token with the username (or e-mail) and password, the way the game's own launcher does
+    /// (https://wiki.factorio.com/Web_authentication_API, api_version 6, the account must own the game). The password goes to
+    /// auth.factorio.com over HTTPS once and is kept nowhere; only the token that comes back is saved (see <see cref="Save"/>).
+    /// When factorio.com wants the code it e-mailed (a login from a new place), the result says so: ask for it and call again with it.
+    /// </summary>
+    public static async Task<FactorioLoginResult> LoginAsync(HttpClient http, string login, string password, string? emailCode = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(http);
+        login = (login ?? "").Trim();
+        if (login.Length is 0 or > 200 || login.Any(char.IsControl)) return FactorioLoginResult.Failed("invalid-input", "Enter your factorio.com username or e-mail.");
+        if (string.IsNullOrEmpty(password) || password.Length > 1024) return FactorioLoginResult.Failed("invalid-input", "Enter your password.");
+        emailCode = string.IsNullOrWhiteSpace(emailCode) ? null : emailCode.Trim();
+        if (emailCode is { Length: > 100 }) return FactorioLoginResult.Failed("invalid-input", "The e-mail code is too long.");
+
+        var form = new List<KeyValuePair<string, string>>
+        {
+            new("username", login), new("password", password), new("api_version", "6"), new("require_game_ownership", "true"),
+        };
+        if (emailCode is not null) form.Add(new("email_authentication_code", emailCode));
+
+        string body;
+        try
+        {
+            using var content = new FormUrlEncodedContent(form);
+            using var response = await http.PostAsync(LoginUrl, content, cancellationToken).ConfigureAwait(false);
+            body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex)
+        {
+            return FactorioLoginResult.Failed("unreachable", $"Could not reach factorio.com: {ex.Message}");
+        }
+
+        try
+        {
+            if (JsonNode.Parse(body) is not JsonObject answer) return FactorioLoginResult.Failed("bad-answer", "factorio.com answered with something unexpected.");
+            var token = Text(answer, "token");
+            var username = Text(answer, "username");
+            if (IsToken(token) && IsUsername(username)) return new FactorioLoginResult(true, null, null, new FactorioCredentials(username!, token!, "studio"));
+            var code = Text(answer, "error") ?? "login-failed";
+            var message = Text(answer, "message");
+            // factorio.com's own text is shown as it is, cut to a sane length; it never contains the password.
+            message = string.IsNullOrWhiteSpace(message) ? null : message.Length > 300 ? message[..300] : message;
+            return FactorioLoginResult.Failed(code, message ?? (code == "email-authentication-required"
+                ? "factorio.com sent a code to your e-mail: enter it to finish logging in."
+                : "factorio.com did not accept the username and password, or the account does not own Factorio."));
+        }
+        catch (JsonException)
+        {
+            return FactorioLoginResult.Failed("bad-answer", "factorio.com answered with something that is not JSON.");
+        }
     }
 
     /// <summary>Remembers "use the account the installed game is signed in to"; nothing from player-data.json is copied.</summary>

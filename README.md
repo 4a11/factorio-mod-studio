@@ -235,13 +235,21 @@ taken from, in this order:
 
 1. the `FACTORIO_USERNAME` and `FACTORIO_TOKEN` variables (CI);
 2. the account saved in the Build tab, in `<user data dir>/FactorioModStudio/factorio-account.json`, outside every workspace: on
-   Windows the token is encrypted for the current Windows user (DPAPI), elsewhere the file is readable by its owner only;
+   Windows the token is encrypted for the current Windows user (DPAPI), elsewhere the file is readable by its owner only. It is
+   saved by *Log in* (the username or e-mail and password go to `auth.factorio.com/api-login` once, with `require_game_ownership`,
+   as the game's launcher does; only the token that comes back is kept, the password nowhere) or by pasting a token;
 3. when chosen in the Build tab, the account the installed game is signed in to: its `player-data.json` (`service-username`,
    `service-token`) is read each time and nothing is copied from it.
 
 The token is sent only to factorio.com and appears in no message, log line or API answer. When factorio.com does not accept it (or
 the account does not own the game) the install fails with that reason and leaves nothing behind. The token is on your profile page
 at factorio.com.
+
+Before a download the studio checks the free space on the drive (the archive plus about two to four times its size for unpacking)
+and refuses with the numbers when it is short. An interrupted download (cancelled, stalled, network gone) is kept in
+`<user data dir>/FactorioModStudio/factorio/.partial/` and the next install of that version asks only for the rest (an HTTP
+range); a server that sends everything again starts the file over, and a finished archive is deleted once it is installed or
+found broken.
 
 **A missing version.** When no installed Factorio matches the mod's `factorio_version` (and its `base` dependency),
 `fmstudio smoke --install` downloads the newest headless release of that branch, or the exact release a `base = x` / `base <= x`
@@ -255,9 +263,11 @@ for the mod's branch (a release that satisfies its `base` dependency), with a pr
 is picked automatically and *Smoke test* is enabled. With a factorio.com account the box also offers *Install Factorio 2.0.76 (full
 game)*; where the headless server cannot run (Windows) it offers only that, or a button that opens the account form. *Manage
 installations...* has *Install a Factorio version* for any branch (*Install* for the headless server, *Install full game*), marks
-the studio's installs as *headless* or *full game* and removes them. Its *Full game* part sets the account: a username and token,
-or *Use &lt;name&gt; (signed in to Factorio on this computer)* when the game's `player-data.json` has one; *Forget* deletes the saved
-account. Where neither can be installed (macOS) the box says so instead of offering a download. One install runs at a time for
+the studio's installs as *headless* or *full game* and removes them. Its *Full game* part sets the account: *Log in* with the
+factorio.com username or e-mail and password (and the e-mailed code when factorio.com asks for one), *Use &lt;name&gt; (signed in to
+Factorio on this computer)* when the game's `player-data.json` has one, or *Paste a token instead*; *Forget* deletes the saved
+account. When the Factorio that runs the mod is a headless server, the box says that *Run in Factorio* needs the full game and
+offers it. Where neither can be installed (macOS) the box says so instead of offering a download. One install runs at a time for
 the whole studio; reloading the page picks it up again.
 
 | Request | Result |
@@ -269,6 +279,7 @@ the whole studio; reloading the page picks it up again.
 | `DELETE /api/factorio/install/{MAJOR.MINOR.PATCH}[?game=true]` | `{ removed, game }`; `400` not a version, `404` not installed by the studio, `409` being installed |
 | `GET /api/factorio/account` | `{ account: { source, username, gameUsername, useGame } }`; `source`: `env`, `studio`, `game` or null. The token is never returned |
 | `PUT /api/factorio/account` `{ "username", "token" }` or `{ "useGame": true }` | saves the account, answers like `GET`; `400` not a username / token, `409` (`useGame`) the game is not signed in |
+| `POST /api/factorio/account/login` `{ "login", "password", "emailCode"? }` | asks factorio.com for a token and saves it, answers like `GET`; `409` `{ error, code, needsEmailCode }` refused (`needsEmailCode`: send again with the e-mailed code), `429` more than 5 attempts in a minute, `502` / `504` factorio.com unreachable. The password is neither stored nor logged |
 | `DELETE /api/factorio/account` | forgets the saved account, answers like `GET` |
 
 The writes need the session token and pass the same-origin check like every other write. `GET /api/factorio/installations` marks

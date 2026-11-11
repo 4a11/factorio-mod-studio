@@ -27,6 +27,15 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   it is only ever sent to factorio.com and never shown again) or uses the account Factorio itself is signed in to, read from its
   player-data.json each time. From the command line: `fmstudio factorio install 2.0 --game` with that account or with
   `FACTORIO_USERNAME` and `FACTORIO_TOKEN`; `fmstudio factorio remove <version> --game` deletes it.
+- **Log in to factorio.com** from the installations dialog (username or e-mail and password, and the code factorio.com e-mails
+  when it asks for one): the studio gets a token the way the game's launcher does and saves only the token, protected like a
+  typed one; the password is used for that one request and kept nowhere. Five attempts a minute at most. Pasting a token still
+  works, under *Paste a token instead*.
+- **Downloads continue where they stopped**: an install that was cancelled, stalled or lost the network keeps what it got and
+  asks the server for the rest next time. Before downloading, the studio checks the free disk space (archive plus unpacking)
+  and says how much is needed; the progress shows megabytes ("41% (620 of 1500 MB)").
+- **Run needs the full game**: when the Factorio that runs the mod is a headless server, the Build tab says that *Run in
+  Factorio* needs the full game and offers to install it.
 - **FMS049**: an error when the `base` dependency cannot be met by any release of the `factorio_version` the mod targets
   (`factorio_version` 1.1 with `base >= 2.0.0`): the game would refuse to load the mod.
 

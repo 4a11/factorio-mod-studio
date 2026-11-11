@@ -854,9 +854,39 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
   const account = () => get.available?.game?.account ?? null;
   const gameProblem = () => get.available?.game?.platformProblem ?? null;
   const hasAccount = () => !!account()?.source;
-  const acc = { busy: false, error: null };
+  const acc = { busy: false, error: null, needsCode: false };
   const accUser = el('input', { type: 'text', id: 'build-account-user', 'data-testid': 'build-account-user', maxlength: '100', autocomplete: 'off', spellcheck: 'false' });
   const accToken = el('input', { type: 'password', id: 'build-account-token', 'data-testid': 'build-account-token', maxlength: '128', autocomplete: 'off', spellcheck: 'false' });
+  // Logging in: the password goes to the studio's server once, which asks factorio.com for a token; the field is emptied after.
+  const loginUser = el('input', { type: 'text', id: 'build-login-user', 'data-testid': 'build-login-user', maxlength: '200', autocomplete: 'username', spellcheck: 'false' });
+  const loginPassword = el('input', { type: 'password', id: 'build-login-password', 'data-testid': 'build-login-password', maxlength: '1024', autocomplete: 'current-password' });
+  const loginCode = el('input', { type: 'text', id: 'build-login-code', 'data-testid': 'build-login-code', maxlength: '100', autocomplete: 'one-time-code', inputmode: 'text', spellcheck: 'false' });
+  const tokenDetails = el('details', { class: 'build-token-details', 'data-testid': 'build-token-details' });
+
+  async function logIn() {
+    if (acc.busy) return;
+    const login = loginUser.value.trim();
+    const password = loginPassword.value;
+    if (!login || !password || (acc.needsCode && !loginCode.value.trim())) return;
+    acc.busy = true;
+    acc.error = null;
+    renderGet();
+    try {
+      const body = { login, password, ...(acc.needsCode ? { emailCode: loginCode.value.trim() } : {}) };
+      const answer = await api('/api/factorio/account/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (get.available?.game) get.available.game.account = answer?.account ?? null;
+      loginPassword.value = '';
+      loginCode.value = '';
+      acc.needsCode = false;
+    } catch (error) {
+      if (error.body?.needsEmailCode) acc.needsCode = true; // keep the password for the second try with the code
+      else loginPassword.value = '';
+      acc.error = error.message;
+    }
+    acc.busy = false;
+    renderGet();
+    if (acc.needsCode && loginCode.isConnected) loginCode.focus();
+  }
 
   async function saveAccount(body) {
     if (acc.busy) return;
@@ -893,17 +923,28 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
       event.preventDefault();
       if (accUser.value.trim() && accToken.value.trim()) saveAccount({ username: accUser.value.trim(), token: accToken.value.trim() });
     };
+    const submitLogin = (event) => { event.preventDefault(); logIn(); };
+    tokenDetails.replaceChildren(
+      el('summary', { text: t('build.login.tokenInstead') }),
+      el('form', { class: 'build-account-form', 'data-testid': 'build-account-form', novalidate: true, autocomplete: 'off', onsubmit: submit },
+        el('label', { for: 'build-account-user', text: t('build.game.username') }), accUser,
+        el('label', { for: 'build-account-token', text: t('build.game.token') }), accToken,
+        el('button', { type: 'submit', class: 'small', 'data-testid': 'build-account-save', disabled: acc.busy ? true : null, text: t('build.game.save') })),
+      el('p', { class: 'muted small', text: t('build.game.tokenHint') }));
     return [
       el('p', { class: 'muted small', text: t('build.game.needAccount') }),
       a.gameUsername && el('div', { class: 'build-get-row' },
         el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-account-use-game', disabled: acc.busy ? true : null,
           onclick: () => saveAccount({ useGame: true }), text: t('build.game.useGame', { name: a.gameUsername }) })),
-      el('form', { class: 'build-account-form', 'data-testid': 'build-account-form', novalidate: true, autocomplete: 'off', onsubmit: submit },
-        el('label', { for: 'build-account-user', text: t('build.game.username') }), accUser,
-        el('label', { for: 'build-account-token', text: t('build.game.token') }), accToken,
-        el('button', { type: 'submit', class: 'small', 'data-testid': 'build-account-save', disabled: acc.busy ? true : null, text: t('build.game.save') })),
-      el('p', { class: 'muted small', text: t('build.game.tokenHint') }),
-      acc.error && el('p', { class: 'small build-get-error', text: acc.error }),
+      el('form', { class: 'build-account-form', 'data-testid': 'build-login-form', novalidate: true, onsubmit: submitLogin },
+        el('label', { for: 'build-login-user', text: t('build.login.user') }), loginUser,
+        el('label', { for: 'build-login-password', text: t('build.login.password') }), loginPassword,
+        acc.needsCode && el('label', { for: 'build-login-code', text: t('build.login.code') }), acc.needsCode && loginCode,
+        el('button', { type: 'submit', class: 'primary small', 'data-testid': 'build-login-submit', disabled: acc.busy ? true : null,
+          text: acc.busy ? t('build.login.busy') : t('build.login.submit') })),
+      el('p', { class: 'muted small', text: t('build.login.hint') }),
+      acc.error && el('p', { class: 'small build-get-error', role: 'alert', 'data-testid': 'build-login-error', text: acc.error }),
+      tokenDetails,
     ];
   }
 
@@ -913,7 +954,9 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     if (!i) return null;
     const percent = i.total ? Math.min(100, Math.floor((i.received * 100) / i.total)) : null;
     const text = i.state === 'downloading'
-      ? (percent !== null ? t('build.get.downloading', { version: i.version, percent }) : t('build.get.downloadingSize', { version: i.version, mb: Math.floor(i.received / (1024 * 1024)) }))
+      ? (percent !== null
+        ? t('build.get.downloadingOf', { version: i.version, percent, mb: Math.floor(i.received / (1024 * 1024)), total: Math.max(1, Math.round(i.total / (1024 * 1024))) })
+        : t('build.get.downloadingSize', { version: i.version, mb: Math.floor(i.received / (1024 * 1024)) }))
       : i.state === 'unpacking' ? t('build.get.unpacking', { version: i.version })
         : i.state === 'succeeded' ? t(i.alreadyInstalled ? 'build.get.already' : 'build.get.done', { version: i.version })
           : i.state === 'cancelled' ? t('build.get.cancelled', { version: i.version })
@@ -930,10 +973,13 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
   function renderGet() {
     const branch = wantedBranch();
     const missing = !!s.env && typeof s.env === 'object' && s.env.resolution?.mode === 'none' && !!branch;
+    // The game that runs the mod is a headless server: smoke tests work, "Run in Factorio" needs the full game.
+    const chosenId = s.env && typeof s.env === 'object' ? s.env.resolution?.chosenId : null;
+    const gameOnly = !missing && !!branch && !!chosenId && s.installs.some((i) => i.id === chosenId && i.headless === true);
     const forThisMod = get.install && branch && get.install.version.startsWith(`${branch}.`);
-    refs.getBox.hidden = !(missing || installing() || (forThisMod && get.install.state !== 'succeeded'));
+    refs.getBox.hidden = !(missing || gameOnly || installing() || (forThisMod && get.install.state !== 'succeeded'));
     if (!refs.getBox.hidden && !get.available && !get.loading && !get.availableError) loadAvailable();
-    refs.getBox.replaceChildren(...mainBox(branch).filter(Boolean)); // replaceChildren would print null / false as text
+    refs.getBox.replaceChildren(...mainBox(branch, gameOnly).filter(Boolean)); // replaceChildren would print null / false as text
     if (refs.installDialog.open) refs.getDialogBox.replaceChildren(...dialogBox().filter(Boolean));
   }
 
@@ -950,7 +996,8 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     return null;
   }
 
-  function mainBox(branch) {
+  /** @param {boolean} gameOnly the mod already has a headless server: offer only the full game, for "Run in Factorio". */
+  function mainBox(branch, gameOnly = false) {
     const progress = installView();
     const spec = wantedSpec(branch);
     if (installing() || (progress && get.install.state !== 'succeeded')) {
@@ -958,13 +1005,15 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     }
     const problem = availabilityProblem();
     const gameOk = !!get.available && !gameProblem();
+    if (gameOnly && get.available && !gameOk) return [el('p', { class: 'small', text: t('build.game.runNeedsGame') }), el('p', { class: 'muted small', text: gameProblem() })];
     if (problem && !gameOk) return problem;
     if (!get.available || !branch) return [];
     const release = (get.available.branches || []).find((b) => b.branch === branch);
     if (!release) return [el('p', { class: 'small', text: t('build.get.noRelease', { branch }) })];
     const version = spec === branch ? release.newest : spec;
-    const headlessOk = !get.available.platformProblem;
+    const headlessOk = !get.available.platformProblem && !gameOnly;
     return [
+      gameOnly && el('p', { class: 'small', 'data-testid': 'build-get-run-needs-game', text: t('build.game.runNeedsGame') }),
       el('div', { class: 'build-get-row' },
         headlessOk && el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-get-install', onclick: () => startInstall(spec) },
           el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: '↓' }), el('span', { text: t('build.get.install', { version }) })),

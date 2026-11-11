@@ -51,15 +51,18 @@ public sealed class FactorioDownloads
     private readonly string _directory;
     private readonly Func<string?> _platformProblem;
     private readonly Func<(string? Platform, string? Problem)> _gamePlatform;
+    private readonly Func<string, long?> _freeSpace;
     private readonly TimeSpan _stallTimeout;
 
     /// <param name="directory">Where installations go; normally <see cref="FactorioInstallations.ManagedInstallationsDirectory"/>.</param>
     /// <param name="platformProblem">Why this machine cannot run the headless server, or null when it can. Tests replace it.</param>
     /// <param name="stallTimeout">How long a download may receive nothing; <see cref="StallTimeout"/> by default.</param>
     /// <param name="gamePlatform">The full game's package for this machine, or why there is none (<see cref="GamePlatform"/>). Tests replace it.</param>
+    /// <param name="freeSpace">Free bytes on the drive of a folder, null when unknown (<see cref="FreeSpace"/>). Tests replace it.</param>
     public FactorioDownloads(HttpClient http, IProcessRunner runner, string directory, Func<string?>? platformProblem = null, TimeSpan? stallTimeout = null,
-        Func<(string? Platform, string? Problem)>? gamePlatform = null)
+        Func<(string? Platform, string? Problem)>? gamePlatform = null, Func<string, long?>? freeSpace = null)
     {
+        _freeSpace = freeSpace ?? FreeSpace;
         _http = http;
         _runner = runner;
         _directory = Path.GetFullPath(directory);
@@ -67,6 +70,30 @@ public sealed class FactorioDownloads
         _gamePlatform = gamePlatform ?? GamePlatform;
         _stallTimeout = stallTimeout ?? StallTimeout;
     }
+
+    /// <summary>Logs in to factorio.com with this downloader's HTTP client (<see cref="FactorioAccount.LoginAsync"/>).</summary>
+    public Task<FactorioLoginResult> LoginAsync(string login, string password, string? emailCode, CancellationToken cancellationToken = default) =>
+        FactorioAccount.LoginAsync(_http, login, password, emailCode, cancellationToken);
+
+    /// <summary>Free bytes on the drive that holds <paramref name="folder"/>, or null when the system cannot tell.</summary>
+    public static long? FreeSpace(string folder)
+    {
+        try
+        {
+            var root = Path.GetPathRoot(Path.GetFullPath(folder));
+            return string.IsNullOrEmpty(root) ? null : new DriveInfo(root).AvailableFreeSpace;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { return null; }
+    }
+
+    /// <summary>
+    /// Where the archive of an install is downloaded to: "&lt;directory&gt;/.partial/&lt;version&gt;-&lt;kind&gt;.part". It stays there when the
+    /// download is interrupted (cancelled, stalled, network gone), so the next install of that version continues where it stopped.
+    /// </summary>
+    public string PartialPath(string version, string kind) =>
+        IsVersion(version) && kind is "headless" or "game"
+            ? Path.Combine(_directory, ".partial", $"{version}-{kind}.part")
+            : throw new ArgumentException("Not a MAJOR.MINOR.PATCH version or not a known kind.", nameof(version));
 
     /// <summary>Why the full game cannot be installed on this machine, or null when it can.</summary>
     public string? GamePlatformProblem => _gamePlatform().Problem;
@@ -289,11 +316,13 @@ public sealed class FactorioDownloads
 
         // Everything happens in a staging folder next to the target; only a verified game is moved into place.
         var staging = Path.Combine(_directory, $".staging-{Guid.NewGuid():N}");
+        string? downloaded = null; // a complete archive is not kept: installed, or broken
         try
         {
             System.IO.Directory.CreateDirectory(staging);
-            var archive = Path.Combine(staging, "factorio-headless.tar.xz");
+            var archive = PartialPath(version, "headless");
             await DownloadAsync(HeadlessUrl(version), HeadlessUrl(version), archive, MaxDownloadBytes, "headless", progress, cancellationToken).ConfigureAwait(false);
+            downloaded = archive;
 
             var unpacked = Path.Combine(staging, "unpacked");
             System.IO.Directory.CreateDirectory(unpacked);
@@ -317,8 +346,7 @@ public sealed class FactorioDownloads
         }
         finally
         {
-            try { if (System.IO.Directory.Exists(staging)) System.IO.Directory.Delete(staging, recursive: true); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best effort */ }
+            Cleanup(staging, downloaded);
         }
     }
 
@@ -348,12 +376,14 @@ public sealed class FactorioDownloads
         var shown = GameUrl(version, platform);
         var url = $"{shown}?username={Uri.EscapeDataString(credentials.Username)}&token={Uri.EscapeDataString(credentials.Token)}";
         var staging = Path.Combine(_directory, $".staging-{Guid.NewGuid():N}");
+        string? downloaded = null;
         try
         {
             System.IO.Directory.CreateDirectory(staging);
             var zip = platform == "win64-manual";
-            var archive = Path.Combine(staging, zip ? "factorio.zip" : "factorio.tar.xz");
-            await DownloadAsync(url, shown, archive, MaxGameDownloadBytes, "game", progress, cancellationToken).ConfigureAwait(false);
+            var archive = PartialPath(version, "game");
+            await DownloadAsync(url, shown, archive, MaxGameDownloadBytes, "game", progress, cancellationToken, unpackFactor: zip ? 3 : 5).ConfigureAwait(false);
+            downloaded = archive;
 
             var unpacked = Path.Combine(staging, "unpacked");
             System.IO.Directory.CreateDirectory(unpacked);
@@ -388,23 +418,45 @@ public sealed class FactorioDownloads
         }
         finally
         {
-            try { if (System.IO.Directory.Exists(staging)) System.IO.Directory.Delete(staging, recursive: true); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best effort */ }
+            Cleanup(staging, downloaded);
         }
+    }
+
+    private static void Cleanup(string staging, string? archive)
+    {
+        try { if (System.IO.Directory.Exists(staging)) System.IO.Directory.Delete(staging, recursive: true); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best effort */ }
+        try { if (archive is not null && File.Exists(archive)) File.Delete(archive); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best effort */ }
     }
 
     /// <param name="url">What is requested; may carry the account, so it never appears in a message.</param>
     /// <param name="shown">The same address without the account, for messages.</param>
     /// <param name="what">"headless" or "game", for messages.</param>
-    private async Task DownloadAsync(string url, string shown, string file, long maxBytes, string what, IProgress<(long Received, long? Total)>? progress, CancellationToken cancellationToken)
+    /// <param name="file">The partial file: what is already in it is asked for no more (an HTTP range); a server that ignores the
+    /// range sends everything again and the file starts over.</param>
+    /// <param name="unpackFactor">How many times the archive's size the install needs on the drive (archive plus unpacked game).</param>
+    private async Task DownloadAsync(string url, string shown, string file, long maxBytes, string what, IProgress<(long Received, long? Total)>? progress,
+        CancellationToken cancellationToken, int unpackFactor = 5)
     {
         var limit = $"The download is larger than {maxBytes / (1024 * 1024)} MB; refusing it.";
+        var have = File.Exists(file) ? new FileInfo(file).Length : 0;
         // Cancelled by the caller, or by silence: restarted after every chunk, so a slow download is fine and a dead one is not.
         using var stall = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         stall.CancelAfter(_stallTimeout);
         try
         {
-            using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, stall.Token).ConfigureAwait(false);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (have > 0) request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(have, null);
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, stall.Token).ConfigureAwait(false);
+            if (response.StatusCode == System.Net.HttpStatusCode.RequestedRangeNotSatisfiable)
+            {
+                // What is kept no longer fits what the server has: start over.
+                File.Delete(file);
+                stall.Dispose();
+                await DownloadAsync(url, shown, file, maxBytes, what, progress, cancellationToken, unpackFactor).ConfigureAwait(false);
+                return;
+            }
             var game = what == "game";
             if (game && response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
                 throw new FmsException(RefusedAccount);
@@ -418,13 +470,22 @@ public sealed class FactorioDownloads
             if (game && response.Content.Headers.ContentType?.MediaType is { } media && media.StartsWith("text/", StringComparison.OrdinalIgnoreCase))
                 throw new FmsException(RefusedAccount);
 
-            var total = response.Content.Headers.ContentLength;
+            // 206 with the range asked for: continue the file; anything else is the whole archive again.
+            var resumed = have > 0 && response.StatusCode == System.Net.HttpStatusCode.PartialContent
+                          && response.Content.Headers.ContentRange is { From: { } from } && from == have;
+            if (!resumed) have = 0;
+            var total = resumed ? response.Content.Headers.ContentRange!.Length ?? (response.Content.Headers.ContentLength + have) : response.Content.Headers.ContentLength;
             if (total > maxBytes) throw new FmsException(limit);
+            if (total is { } size && _freeSpace(_directory) is { } free && free < size * unpackFactor - have)
+                throw new FmsException($"Not enough free disk space: Factorio {what} is {Megabytes(size)} to download and needs about " +
+                                       $"{Megabytes(size * unpackFactor)} with unpacking; {Megabytes(free)} is free on the drive of {_directory}.");
 
             await using var input = await response.Content.ReadAsStreamAsync(stall.Token).ConfigureAwait(false);
-            await using var output = new FileStream(file, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            System.IO.Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            await using var output = new FileStream(file, resumed ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
             var buffer = new byte[81920];
-            long received = 0;
+            long received = have;
+            if (resumed) progress?.Report((received, total));
             int read;
             while ((read = await input.ReadAsync(buffer, stall.Token).ConfigureAwait(false)) > 0)
             {
@@ -449,6 +510,10 @@ public sealed class FactorioDownloads
 
     private const string RefusedAccount =
         "factorio.com did not accept the username and token, or this account does not own Factorio. Check them on your profile at factorio.com.";
+
+    private static string Megabytes(long bytes) => bytes >= 1024L * 1024 * 1024
+        ? $"{bytes / (1024.0 * 1024 * 1024):0.0} GB"
+        : $"{Math.Max(1, bytes / (1024 * 1024))} MB";
 
     private static string Redact(string message, string url, string shown) => url == shown ? message : message.Replace(url, shown, StringComparison.Ordinal);
 }
