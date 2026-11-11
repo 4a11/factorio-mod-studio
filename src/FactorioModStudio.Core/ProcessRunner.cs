@@ -37,6 +37,7 @@ public sealed class ProcessRunner : ICancellableProcessRunner
             CreateNoWindow = true
         };
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+        SteamLaunch.Apply(startInfo); // the Steam copy of Factorio would otherwise restart itself through Steam and exit at once
 
         var lines = new List<string>();
         var gate = new object();

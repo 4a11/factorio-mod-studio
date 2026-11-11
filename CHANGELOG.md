@@ -61,6 +61,13 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 - **FMS049**: an error when the `base` dependency cannot be met by any release of the `factorio_version` the mod targets
   (`factorio_version` 1.1 with `base >= 2.0.0`): the game would refuse to load the mod.
 
+### Fixed
+- **Run with the Steam copy of Factorio**: started by the studio, the game asked Steam to start it again ("Steam requires game
+  restart, restarting...") and exited at once, so the job said *Succeeded* right away, the game's errors never reached
+  Problems and Cancel could not stop it. The studio now starts a Factorio from a Steam library with its Steam app id, as Steam
+  does: the game stays the process the studio started (still signed in to a running Steam) and the job lasts until it closes.
+  The same for Quick try, smoke tests and `fmstudio run`.
+
 ## [0.2.1] - 2026-11-09
 
 A preview on the way to 0.3 (see and edit content): the mod as the game loads it, and a tab for building blocks.

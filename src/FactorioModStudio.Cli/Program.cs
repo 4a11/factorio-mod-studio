@@ -323,6 +323,7 @@ public static class Program
         PrintPrepared(output, prepared);
 
         var startInfo = new ProcessStartInfo(factorio) { UseShellExecute = false };
+        SteamLaunch.Apply(startInfo); // stay the process that runs the game, instead of a Steam restart
         startInfo.ArgumentList.Add("--mod-directory");
         startInfo.ArgumentList.Add(prepared.ModsDirectory);
         if (cmd.Has("--try"))
