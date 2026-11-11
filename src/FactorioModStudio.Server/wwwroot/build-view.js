@@ -5,6 +5,10 @@
 // page can detach and re-attach it (it redraws the whole mod page on live updates) without losing the log.
 // Everything that comes from the server or from a mod (log lines, messages, file names) is only set with textContent / attributes.
 //
+// Layout (the Files-tab style): a "Factorio" card (which game runs the mod, why, the picker and "Installations..."), the toolbar
+// (actions, then the options of the smoke test and pack), then the recent jobs on the left and the chosen job on the right
+// (state, verdict, problems, log); an empty state explains the four actions before the first job.
+//
 // "Install a missing Factorio": when no installation matches the mod's factorio_version, a button installs the headless server
 // (Factorio without graphics: enough for smoke tests, not for playing) through /api/factorio/install; the installations dialog
 // offers any branch. One install runs at a time for the whole studio, so its state lives outside the per-mod state.
@@ -18,6 +22,7 @@ const INSTALL_POLL_MS = 700;
 const MAX_POLL_DELAY_MS = 5000;
 const MAX_LOG_LINES = 5000;
 const MAX_TICKS = 216000;
+const ISSUE_PREVIEW = 10; // problems shown under a job before "Show all"
 const enc = encodeURIComponent;
 
 const KINDS = ['validate', 'pack', 'smoke', 'run'];
@@ -95,21 +100,26 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
 
   const root = el('div', { class: 'build-panel', 'data-testid': 'build-panel' });
 
-  refs.env = el('div', { class: 'note build-env', 'data-testid': 'build-env', 'data-found': 'false', role: 'status' });
-  refs.readonly = label(el('div', { class: 'note', 'data-testid': 'build-readonly', role: 'note' }), 'build.readonly');
+  refs.env = el('div', { class: 'build-env', 'data-testid': 'build-env', 'data-found': 'false', role: 'status' });
+  refs.readonly = label(el('div', { class: 'files-readonly small', 'data-testid': 'build-readonly', role: 'note' }), 'build.readonly');
 
   refs.ticks = el('input', { type: 'number', id: 'build-ticks', 'data-testid': 'build-ticks', min: '1', max: String(MAX_TICKS), step: '1', value: '600', inputmode: 'numeric' });
   refs.seed = el('input', { type: 'number', id: 'build-seed', 'data-testid': 'build-seed', step: '1', value: '1', inputmode: 'numeric' });
   refs.force = el('input', { type: 'checkbox', id: 'build-force', 'data-testid': 'build-force' });
   const field = (id, key, input) => el('div', { class: 'build-field' }, label(el('label', { for: id }), key), input);
-  refs.options = el('div', { class: 'build-options' },
-    field('build-ticks', 'build.ticks', refs.ticks),
-    field('build-seed', 'build.seed', refs.seed),
-    el('div', { class: 'build-field' }, refs.force, label(el('label', { for: 'build-force' }), 'build.force')));
+  // The options belong to one action each: they sit in groups named after it.
+  refs.options = el('div', { class: 'files-viewbar build-options' },
+    el('div', { class: 'build-option-group' }, label(el('span', { class: 'build-option-title' }), 'build.options.smoke'),
+      field('build-ticks', 'build.ticks', refs.ticks),
+      field('build-seed', 'build.seed', refs.seed)),
+    el('div', { class: 'build-option-group' }, label(el('span', { class: 'build-option-title' }), 'build.options.pack'),
+      el('div', { class: 'build-field' }, refs.force, label(el('label', { for: 'build-force' }), 'build.force'))));
 
+  const ICONS = { validate: '✓', pack: '▣', smoke: '▶', run: '▶', cancel: '■' };
   const button = (kind, extra = {}) => {
-    const node = el('button', { type: 'button', 'data-testid': `build-${kind}`, ...extra });
-    label(node, `build.${kind}`);
+    const node = el('button', { type: 'button', class: 'files-btn', 'data-testid': `build-${kind}`, ...extra },
+      el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: ICONS[kind] ?? '' }));
+    node.append(label(el('span'), `build.${kind}`));
     return node;
   };
   refs.validate = button('validate');
@@ -123,11 +133,13 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
   refs.smoke.addEventListener('click', () => start('smoke'));
   refs.run.addEventListener('click', () => start('run'));
   refs.cancel.addEventListener('click', cancel);
-  refs.actions = el('div', { class: 'build-actions' }, refs.validate, refs.pack, refs.smoke, refs.run, refs.cancel);
+  refs.actions = el('div', { class: 'files-actions build-actions' }, refs.validate, refs.pack, refs.smoke, refs.run, refs.cancel);
 
   refs.state = el('span', { class: 'build-state', 'data-testid': 'build-state', 'data-state': 'idle', role: 'status' });
   refs.message = el('span', { class: 'build-message', 'data-testid': 'build-message', role: 'alert' });
-  refs.statusRow = el('div', { class: 'build-status' }, refs.state, refs.message);
+  refs.jobTitle = el('strong', { class: 'build-job-title', 'data-testid': 'build-job-title' });
+  refs.jobTime = el('span', { class: 'muted small', 'data-testid': 'build-job-time' });
+  refs.statusRow = el('div', { class: 'build-status' }, refs.jobTitle, refs.state, refs.jobTime, refs.message);
 
   refs.logText = document.createTextNode('');
   refs.log = el('pre', { class: 'build-log', 'data-testid': 'build-log', tabindex: '0', role: 'log' }, refs.logText);
@@ -136,11 +148,16 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
   refs.truncated.hidden = true;
 
   refs.result = el('div', { class: 'build-result', 'data-testid': 'build-result' });
-  refs.historyHeading = label(el('h3', { class: 'section' }), 'build.history.heading');
+  refs.historyHeading = label(el('h3', { class: 'section build-jobs-heading' }), 'build.history.heading');
   refs.history = el('ul', { class: 'build-history', 'data-testid': 'build-history' });
+  // Before the first job: what the four actions do, so the buttons need no long labels.
+  refs.empty = el('div', { class: 'files-empty build-empty', 'data-testid': 'build-empty' },
+    label(el('strong'), 'build.empty.title'),
+    el('dl', { class: 'build-empty-list' },
+      ...['validate', 'pack', 'smoke', 'run'].flatMap((kind) => [label(el('dt'), `build.${kind}`), label(el('dd', { class: 'muted' }), `build.empty.${kind}`)])));
 
   // Installation picker: "automatic" follows the mod's factorio_version, any other entry is a manual choice for the next jobs.
-  refs.resolution = el('div', { class: 'note build-resolution', 'data-testid': 'build-resolution', 'data-mode': 'none', role: 'status' });
+  refs.resolution = el('div', { class: 'small build-resolution', 'data-testid': 'build-resolution', 'data-mode': 'none', role: 'status' });
   refs.resolution.hidden = true;
   refs.installSelect = el('select', { id: 'build-install-select', 'data-testid': 'build-install-select' });
   refs.installManage = label(el('button', { type: 'button', 'data-testid': 'build-install-manage' }), 'build.install.manage');
@@ -191,7 +208,16 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     refs.getDialogBox,
     el('div', { class: 'nm-actions build-path-actions' }, refs.instClose));
 
-  root.append(refs.env, refs.resolution, refs.picker, refs.installHint, refs.getBox, refs.readonly, refs.options, refs.actions, refs.statusRow, refs.log, refs.truncated, refs.result, refs.historyHeading, refs.history, refs.installDialog);
+  // The "Factorio" card: which game runs the mod (and why), the picker, and what to install when none fits.
+  refs.envCard = el('section', { class: 'build-card', 'data-testid': 'build-card', 'data-state': 'checking', 'aria-labelledby': 'build-card-title' },
+    el('div', { class: 'build-card-head' }, label(el('h3', { id: 'build-card-title', class: 'build-card-title' }), 'build.card.title'), refs.env),
+    refs.resolution, refs.picker, refs.installHint, refs.getBox);
+  refs.toolbar = el('div', { class: 'files-toolbar build-toolbar' }, refs.actions, refs.options);
+  refs.jobs = el('aside', { class: 'build-jobs', 'data-testid': 'build-jobs' }, refs.historyHeading, refs.history);
+  refs.job = el('section', { class: 'build-job', 'data-testid': 'build-job' }, refs.statusRow, refs.result, refs.log, refs.truncated);
+  refs.main = el('div', { class: 'build-main' }, refs.jobs, el('div', { class: 'build-job-column' }, refs.empty, refs.job));
+  refs.tip = label(el('p', { class: 'muted small files-tip' }), 'build.tip');
+  root.append(refs.envCard, refs.readonly, refs.toolbar, refs.main, refs.tip, refs.installDialog);
 
   // ------------------------------------------------------------ rendering
 
@@ -217,28 +243,26 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     const env = s.env;
     const found = !!env && typeof env === 'object' && env.found === true;
     refs.env.dataset.found = found ? 'true' : 'false';
+    refs.envCard.dataset.state = env === 'checking' || env === null ? 'checking' : found ? 'ok' : 'missing';
     renderPicker();
     renderResolution();
-    if (env === 'checking' || env === null) { // nothing to report yet: hidden, and no data-found until the answer is in
+    if (env === 'checking' || env === null) { // nothing to report yet: no data-found until the answer is in
       delete refs.env.dataset.found;
-      refs.env.hidden = true;
-      refs.env.replaceChildren(t('build.env.checking'));
+      refs.env.hidden = false;
+      refs.env.replaceChildren(el('span', { class: 'muted', text: t('build.env.checking') }));
       return;
     }
     refs.env.hidden = false;
     if (found) {
       const sourceKey = SOURCES.has(env.source) ? `build.path.source.${env.source}` : null;
       refs.env.replaceChildren(
-        el('span', { text: t('build.env.found') + ' ' }),
-        el('strong', { 'data-testid': 'build-env-version', text: env.version || unknownVersion() }),
-        ' ',
-        el('span', { class: 'mono', text: env.path }),
-        ' ',
-        el('span', { class: 'muted small', 'data-testid': 'build-env-source', 'data-source': env.source ?? '', text: sourceKey ? `(${t(sourceKey)})` : '' }));
+        el('strong', { class: 'build-env-version', 'data-testid': 'build-env-version', text: env.version || unknownVersion() }),
+        sourceKey ? el('span', { class: 'badge build-env-source', 'data-testid': 'build-env-source', 'data-source': env.source ?? '', text: t(sourceKey) }) : null,
+        el('span', { class: 'mono muted build-env-path', title: env.path, text: env.path }));
       renderGet();
       return;
     }
-    refs.env.replaceChildren(el('strong', { text: t('build.env.notFound') }), el('p', { class: 'small', text: t('build.env.hint') }));
+    refs.env.replaceChildren(el('strong', { class: 'build-env-missing', text: t('build.env.notFound') }), el('p', { class: 'small', text: t('build.env.hint') }));
     renderGet();
   }
 
@@ -259,6 +283,12 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     const state = entry ? entry.snap.state : 'idle';
     refs.state.dataset.state = state;
     refs.state.textContent = t(`build.state.${state}`);
+    refs.jobTitle.textContent = entry ? kindLabel(entry.snap.kind) : '';
+    refs.jobTime.textContent = entry ? timeText(entry.snap.startedAt) : '';
+    // Before the first job (or with none chosen) the explanation takes the place of the job; a message still shows above it.
+    refs.empty.hidden = !!entry;
+    refs.job.hidden = !entry && !s.message;
+    refs.log.hidden = !entry;
     let text = '';
     if (s.message) text = s.message.text ?? t(s.message.key, s.message.params);
     else if (entry && entry.snap.state === 'failed' && entry.snap.error) text = entry.snap.error;
@@ -381,10 +411,10 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
 
   /** What the game's log said (smoke test output, or factorio-current.log after a run): the counts and every message. */
   function gameLog(result) {
-    const rows = gameIssuesOf(result).map((issue) => issueRow(issue));
+    const issues = gameIssuesOf(result);
     return [
       el('p', { class: 'muted small', text: t('build.result.smokeCounts', { errors: result.errorCount ?? 0, warnings: result.warningCount ?? 0 }) }),
-      ...(rows.length ? [el('ul', { class: 'build-issues' }, rows)] : []),
+      ...(issues.length ? [issueRows(issues)] : []),
     ];
   }
 
@@ -397,9 +427,19 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     }));
   }
 
+  /** The first ISSUE_PREVIEW problems and "Show all N": a long validation report would push the log off the screen. */
   function issueList(issues) {
     if (!Array.isArray(issues) || issues.length === 0) return el('p', { class: 'muted', text: t('build.result.noIssues') });
-    return el('ul', { class: 'build-issues' }, issues.map((issue) => issueRow(issue)));
+    return issueRows(issues);
+  }
+
+  function issueRows(issues) {
+    const list = el('ul', { class: 'build-issues' }, issues.slice(0, ISSUE_PREVIEW).map((issue) => issueRow(issue)));
+    if (issues.length <= ISSUE_PREVIEW) return list;
+    const more = el('button', { type: 'button', class: 'linklike small build-issues-more', 'data-testid': 'build-issues-more',
+      text: t('build.result.showAll', { n: issues.length }) });
+    more.addEventListener('click', () => { list.replaceChildren(...issues.map((issue) => issueRow(issue))); more.remove(); });
+    return el('div', { class: 'build-issues-box' }, list, more);
   }
 
   function sizeText(bytes) {
@@ -409,7 +449,13 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     return `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
   }
 
+  function timeText(iso) {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleTimeString(getLanguage()); } catch { return String(iso); }
+  }
+
   function renderHistory() {
+    refs.jobs.hidden = s.history.length === 0; // the empty state on the right says it all
     const signature = s.history.map((job) => `${job.id}:${(s.entries.get(job.id) ?? job).snap?.state ?? job.state}`).join('|') + `#${s.shownId}`;
     if (signature === s.historySig && !s.historyForce) return;
     notify();
@@ -419,17 +465,17 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     refs.history.replaceChildren(...s.history.map((job) => {
       const entry = s.entries.get(job.id);
       const state = entry ? entry.snap.state : job.state;
-      let time = job.startedAt;
-      try { time = new Date(job.startedAt).toLocaleTimeString(getLanguage()); } catch { /* keep the ISO text */ }
+      const time = timeText(job.startedAt);
       return el('li', {
         class: 'build-history-item' + (job.id === s.shownId ? ' current' : ''),
         'data-testid': 'build-history-item', 'data-job-id': job.id, 'data-kind': job.kind, 'data-state': state,
         'aria-current': job.id === s.shownId ? 'true' : null,
         onclick: () => select(job.id),
       }, el('button', { type: 'button', class: 'build-history-button' },
+        el('span', { class: `build-history-dot ${state}`, 'aria-hidden': 'true' }),
         el('span', { class: 'build-history-kind', text: kindLabel(job.kind) }),
-        el('span', { class: `build-history-state ${state}`, text: t(`build.state.${state}`) }),
-        el('span', { class: 'muted small', text: time })));
+        el('span', { class: 'muted small build-history-time', text: time }),
+        el('span', { class: `build-history-state ${state}`, text: t(`build.state.${state}`) })));
     }));
   }
 

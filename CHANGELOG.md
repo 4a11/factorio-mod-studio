@@ -10,6 +10,11 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   toggles with counts, grouping by rule, by file or as one list (remembered), collapsible groups that show 20 rows and
   "Show N more", *Copy list* for bug reports, and a ⋯ / right-click menu on every problem: open the file, copy the message,
   show only this rule or this file. Click (or Enter) opens the file at the line; the arrow keys move between problems.
+- **The Build tab, redesigned**: a *Factorio* card on top (the version that runs the mod, where it was found, why it was chosen,
+  the picker and *Manage installations...*, with a green or red edge), the actions with icons, the options grouped under the
+  action they belong to (*Smoke test*: ticks and seed, *Pack*: even with errors), then the recent jobs on the left and the
+  chosen job on the right: its state, time, verdict, problems (the first 10, then *Show all*) and log. Before the first job an
+  empty state explains what each action does.
 - **The game version follows the mod's `base` dependency**: a mod that needs `base >= 2.0.20` is no longer given an installed
   Factorio 2.0.10 just because the branch matches. The Build tab, smoke tests, runs and `fmstudio factorio` pass over
   installations that do not satisfy it and say why; the install button offers a release that does (`base = 2.0.20` installs

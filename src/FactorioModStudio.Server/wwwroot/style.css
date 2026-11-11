@@ -636,6 +636,50 @@ button.primary:disabled { opacity: .6; cursor: default; }
 .build-resolution { overflow-wrap: anywhere; }
 .build-resolution[data-mode="none"] { border-color: var(--error); }
 .build-install-hint { margin: 0; color: var(--error); }
+/* Build tab layout: the Factorio card, the toolbar, then recent jobs | the chosen job. */
+.build-card { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: var(--radius); min-width: 0; }
+.build-card[data-state="ok"] { border-left-color: var(--ok); }
+.build-card[data-state="missing"] { border-left-color: var(--error); }
+.build-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
+.build-card-title { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.build-env { display: flex; flex: 1 1 260px; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
+.build-env-version { font-size: 15px; }
+.build-env-path { flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.build-env p { flex-basis: 100%; }
+.build-env-missing { color: var(--error); }
+.build-card .build-resolution { color: var(--muted); }
+.build-card .build-resolution[data-mode="none"] { color: var(--error); }
+.build-card .build-get { margin: 2px 0 0; }
+.build-toolbar { margin-bottom: 0; }
+.build-option-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 4px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+.build-option-title { font-size: 12px; font-weight: 600; color: var(--muted); }
+.build-option-group .build-field input[type="number"] { width: 90px; }
+.build-main { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.build-jobs { flex: 0 0 230px; max-height: 70vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.build-jobs-heading { margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.build-jobs .build-history-item:last-child { border-bottom: 0; }
+.build-history-button { flex-wrap: nowrap; align-items: center; gap: 8px; }
+.build-history-kind { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.build-history-state { font-size: 12px; }
+.build-history-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.build-history-dot.succeeded { background: var(--ok); }
+.build-history-dot.failed { background: var(--error); }
+.build-history-dot.cancelled { background: var(--warning); }
+.build-history-dot.running, .build-history-dot.queued { background: var(--info); }
+.build-job-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.build-job { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.build-job-title { font-size: 15px; }
+.files-empty.build-empty { text-align: left; }
+.build-issues-more { display: block; margin: 6px 0 0; }
+.build-empty-list { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 10px 0 0; }
+.build-empty-list dt { font-weight: 600; }
+.build-empty-list dd { margin: 0; }
+@media (max-width: 760px) {
+  .build-main { flex-direction: column; align-items: stretch; }
+  .build-jobs { flex: none; max-height: 40vh; }
+  .build-empty-list { grid-template-columns: 1fr; gap: 2px; }
+  .build-empty-list dd { margin-bottom: 6px; }
+}
 .build-install-list { list-style: none; margin: 0; padding: 0; max-height: 40vh; overflow: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
 .build-install-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--border); min-width: 0; }
 .build-install-item:last-child { border-bottom: 0; }
