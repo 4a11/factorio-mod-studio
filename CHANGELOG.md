@@ -5,6 +5,12 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-12
+
+A preview: updates from the studio's window, and far fewer false problems on real mods. **Updating from 0.3.0:** after the
+update is installed, the old version's *Restart* may fail; close the studio and open it again, the new version is already in
+place.
+
 ### Added
 - **Updates from the studio's window.** The version at the bottom of the sidebar is now a chip ("v0.3.0 · Releases", a dot
   when a newer version is out, a ring while one downloads) that opens *About and updates*: the version, the update channel,
@@ -221,7 +227,8 @@ The first release.
   tool on NuGet.
 - README translations of the introduction in the 7 other interface languages.
 
-[Unreleased]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/4a11/factorio-mod-studio/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/4a11/factorio-mod-studio/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/4a11/factorio-mod-studio/compare/v0.1.1...v0.2.0
