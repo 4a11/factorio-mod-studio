@@ -126,7 +126,7 @@ public static class ModValidator
         CheckVersionRules(result, info);
     }
 
-    /// <summary>FMS015 (DLC mod needs Factorio 2.0+) and FMS016 (unusual target version).</summary>
+    /// <summary>FMS015 (DLC mod needs Factorio 2.0+), FMS016 (unusual target version) and FMS049 (base dependency outside the target version).</summary>
     private static void CheckVersionRules(ValidationResult result, ModInfo info)
     {
         if (info.FactorioVersion is not { } version || !FactorioVersionPattern.IsMatch(version)) return;
@@ -144,6 +144,25 @@ public static class ModValidator
         if (!KnownFactorioVersions.Contains(normalised, StringComparer.Ordinal))
             result.Add(Severity.Info, "FMS016",
                 $"\"factorio_version\" \"{version}\" is unusual (known versions: {string.Join(", ", KnownFactorioVersions)}); fine if intentional.", "info.json");
+
+        if (parsed && FactorioInstallations.BaseRequirement(info.ParsedDependencies) is { Version: { } needed } requirement
+            && !BranchCanSatisfy(major, minor, requirement.Operator!, needed))
+            result.Add(Severity.Error, "FMS049",
+                $"Dependency \"{requirement}\" cannot be met by any Factorio {major}.{minor}, the version \"factorio_version\" targets; the game would refuse to load the mod.", "info.json");
+    }
+
+    /// <summary>FMS049: whether some release MAJOR.MINOR.x satisfies "base OP needed" (base has the game's version).</summary>
+    private static bool BranchCanSatisfy(int major, int minor, string op, ModVersion needed)
+    {
+        var branch = (major, minor).CompareTo((needed.Major, needed.Minor)); // < 0: the branch is older than the needed version
+        return op switch
+        {
+            ">=" or ">" => branch >= 0,
+            "=" => branch == 0,
+            "<=" => branch <= 0,
+            "<" => branch < 0 || (branch == 0 && needed.Patch > 0),
+            _ => true
+        };
     }
 
     private static void CheckDependencies(ValidationResult result, JsonElement root)

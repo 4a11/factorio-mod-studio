@@ -5,6 +5,16 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
+### Changed
+- **The game version follows the mod's `base` dependency**: a mod that needs `base >= 2.0.20` is no longer given an installed
+  Factorio 2.0.10 just because the branch matches. The Build tab, smoke tests, runs and `fmstudio factorio` pass over
+  installations that do not satisfy it and say why; the install button offers a release that does (`base = 2.0.20` installs
+  exactly that one). An installation chosen by hand is kept, with a note about the mismatch.
+
+### Added
+- **FMS049**: an error when the `base` dependency cannot be met by any release of the `factorio_version` the mod targets
+  (`factorio_version` 1.1 with `base >= 2.0.0`): the game would refuse to load the mod.
+
 ## [0.2.1] - 2026-11-09
 
 A preview on the way to 0.3 (see and edit content): the mod as the game loads it, and a tab for building blocks.

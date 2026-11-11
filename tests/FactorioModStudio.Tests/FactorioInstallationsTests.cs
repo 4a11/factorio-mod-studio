@@ -324,6 +324,76 @@ public class FactorioInstallationsTests
         Inst("/i/a/factorio", "2.0.60"), Inst("/i/b/factorio", "2.0.76"), Inst("/i/c/factorio", "1.1.110"), Inst("/i/d/factorio", "2.1.3"),
     };
 
+    // ------------------------------------------------------------------ the base dependency ("base >= 2.0.20")
+
+    private static Dependency Base(string text) => Dependency.TryParse(text, out var d) ? d : throw new ArgumentException(text);
+
+    [Fact]
+    public void BaseRequirement_TakesTheBaseDependencyWithAVersionOnly()
+    {
+        Assert.Equal("base >= 2.0.20", FactorioInstallations.BaseRequirement(new[] { Base("flib >= 0.15.0"), Base("base >= 2.0.20") })!.ToString());
+        Assert.Null(FactorioInstallations.BaseRequirement(new[] { Base("base") }));
+        Assert.Null(FactorioInstallations.BaseRequirement(new[] { Base("! base") }));
+        Assert.Null(FactorioInstallations.BaseRequirement(null));
+    }
+
+    [Fact]
+    public void Pick_PassesOverInstallationsThatDoNotSatisfyTheBaseDependency()
+    {
+        var list = new List<FactorioInstallation> { Inst("/i/a/factorio", "2.0.10"), Inst("/i/b/factorio", "2.0.30"), Inst("/i/c/factorio", "2.0.50") };
+        Assert.Equal("/i/c/factorio", FactorioInstallations.Pick(list, "2.0", baseRequirement: Base("base >= 2.0.20")).Chosen!.Path);
+        var below = FactorioInstallations.Pick(list, "2.0", baseRequirement: Base("base < 2.0.40"));
+        Assert.Equal("/i/b/factorio", below.Chosen!.Path);
+        Assert.Contains("base < 2.0.40", below.Reason);
+        Assert.Equal("/i/a/factorio", FactorioInstallations.Pick(list, "2.0", baseRequirement: Base("base = 2.0.10")).Chosen!.Path);
+    }
+
+    [Fact]
+    public void Pick_NothingSatisfiesTheBaseDependency_SaysSoAndNamesTheInstalledVersion()
+    {
+        var list = new List<FactorioInstallation> { Inst("/i/a/factorio", "2.0.10"), Inst("/i/b/factorio", "1.1.110") };
+        var p = FactorioInstallations.Pick(list, "2.0", baseRequirement: Base("base >= 2.0.20"));
+        Assert.Null(p.Chosen);
+        Assert.Equal("none", p.Mode);
+        Assert.Contains("2.0.10", p.Reason);
+        Assert.Contains("base >= 2.0.20", p.Reason);
+    }
+
+    [Fact]
+    public void Pick_UnknownVersionNeverSatisfiesABaseDependency()
+    {
+        var list = new List<FactorioInstallation> { Inst("/i/a/factorio", null) };
+        Assert.Null(FactorioInstallations.Pick(list, null, baseRequirement: Base("base >= 2.0.0")).Chosen);
+        Assert.Equal("/i/a/factorio", FactorioInstallations.Pick(list, null).Chosen!.Path);
+    }
+
+    [Fact]
+    public void Pick_Manual_KeepsTheChoiceButNamesTheBaseMismatch()
+    {
+        var a = Inst("/i/a/factorio", "2.0.10");
+        var p = FactorioInstallations.Pick(new List<FactorioInstallation> { a }, "2.0", a.Id, Base("base >= 2.0.20"));
+        Assert.Same(a, p.Chosen);
+        Assert.Equal("manual", p.Mode);
+        Assert.Contains("base >= 2.0.20", p.Reason);
+    }
+
+    [Fact]
+    public void PickToPlay_AppliesTheBaseDependencyToo()
+    {
+        var list = new List<FactorioInstallation> { Inst("/i/a/factorio", "2.0.10"), Inst("/i/b/factorio", "2.0.30") };
+        Assert.Equal("/i/b/factorio", FactorioInstallations.PickToPlay(list, "2.0", isHeadless: _ => false, baseRequirement: Base("base >= 2.0.20")).Chosen!.Path);
+    }
+
+    [Theory]
+    [InlineData("2.0", null, "2.0")]
+    [InlineData("2.0", "base >= 2.0.20", "2.0")]
+    [InlineData("2.0", "base = 2.0.20", "2.0.20")]
+    [InlineData("2.0", "base <= 2.0.20", "2.0.20")]
+    [InlineData("2.0", "base = 1.1.110", "2.0")]   // another branch: FMS049 reports it, the install stays on the target branch
+    [InlineData(null, "base = 2.0.20", null)]
+    public void InstallSpec_IsTheBranchOrThePinnedRelease(string? factorioVersion, string? requirement, string? expected) =>
+        Assert.Equal(expected, FactorioInstallations.InstallSpec(factorioVersion, requirement is null ? null : Base(requirement)));
+
     [Theory]
     [InlineData("2.0", "/i/b/factorio")]
     [InlineData("1.1", "/i/c/factorio")]
@@ -827,7 +897,7 @@ public class FactorioInstallationsTests
     }
 }
 
-// ====================================================================== Validator rules FMS015 / FMS016
+// ====================================================================== Validator rules FMS015 / FMS016 / FMS049
 
 public class FactorioVersionValidatorTests
 {
@@ -891,6 +961,32 @@ public class FactorioVersionValidatorTests
         Assert.Null(Issue(r, "FMS015"));
         Assert.Null(Issue(r, "FMS016"));
     }
+
+    [Theory]
+    [InlineData("1.1", "base >= 2.0.0")]
+    [InlineData("1.1", "base > 2.0.5")]
+    [InlineData("2.0", "base = 1.1.110")]
+    [InlineData("2.0", "base <= 1.1.110")]
+    [InlineData("2.0", "base < 2.0.0")]
+    public void Fms049_BaseDependencyOutsideTheTargetVersion_IsAnError(string version, string dep)
+    {
+        var i = Issue(Validate(version, dep), "FMS049");
+        Assert.NotNull(i);
+        Assert.Equal(Severity.Error, i!.Severity);
+        Assert.Contains(dep, i.Message);
+    }
+
+    [Theory]
+    [InlineData("2.0", "base >= 2.0.20")]
+    [InlineData("2.0", "base >= 1.1.0")]
+    [InlineData("2.0", "base > 2.0.99")]
+    [InlineData("2.0", "base = 2.0.20")]
+    [InlineData("2.0", "base < 2.0.1")]
+    [InlineData("1.1", "base < 2.0.0")]
+    [InlineData("2.0", "base")]
+    [InlineData("1.1", "! base")]
+    public void Fms049_DoesNotFire_WhenSomeReleaseOfTheTargetFits(string version, string dep) =>
+        Assert.Null(Issue(Validate(version, dep), "FMS049"));
 
     [Fact]
     public void Fms015_NotEvaluated_WhenFactorioVersionIsMissing()

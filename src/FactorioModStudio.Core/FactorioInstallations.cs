@@ -136,11 +136,37 @@ public static class FactorioInstallations
 
     private static string Describe(FactorioInstallation install) => install.Version is null ? $"an installation of unknown version ({install.Path})" : $"Factorio {install.Version}";
 
+    /// <summary>
+    /// The version constraint the mod puts on the game itself: its <c>base</c> dependency with an operator ("base &gt;= 2.0.20"),
+    /// or null. An incompatibility ("! base") is not a constraint on the version.
+    /// </summary>
+    public static Dependency? BaseRequirement(IEnumerable<Dependency>? dependencies) =>
+        dependencies?.FirstOrDefault(d => d.Kind != DependencyKind.Incompatible && d.Operator is not null && d.Version is not null
+                                          && string.Equals(d.Name, "base", StringComparison.Ordinal));
+
+    /// <summary>True when there is no constraint, or the installation's version is known and satisfies it.</summary>
+    public static bool SatisfiesBase(string? installVersion, Dependency? baseRequirement) =>
+        baseRequirement is null || (ModVersion.TryParse(installVersion, out var version) && baseRequirement.IsSatisfiedBy(version));
+
+    /// <summary>
+    /// What to install for a mod that has no matching installation: the exact release when the base dependency pins one
+    /// ("= 2.0.20", or "&lt;= 2.0.20" in the mod's branch), otherwise MAJOR.MINOR (its newest release). Null without a valid factorio_version.
+    /// </summary>
+    public static string? InstallSpec(string? modFactorioVersion, Dependency? baseRequirement)
+    {
+        if (!TryMajorMinor(modFactorioVersion, out var mm)) return null;
+        var branch = $"{mm.Major}.{mm.Minor}";
+        if (baseRequirement is { Operator: "=" or "<=", Version: { } pinned } && VersionMatches(pinned.ToString(), branch)) return pinned.ToString();
+        return branch;
+    }
+
     /// <summary>Picks the installation for a mod (see the versions contract). Pure: no file access.</summary>
-    public static FactorioPick Pick(IReadOnlyList<FactorioInstallation> installs, string? modFactorioVersion, string? manualId = null)
+    /// <param name="baseRequirement">The mod's <see cref="BaseRequirement"/>: installations that do not satisfy it are passed over.</param>
+    public static FactorioPick Pick(IReadOnlyList<FactorioInstallation> installs, string? modFactorioVersion, string? manualId = null, Dependency? baseRequirement = null)
     {
         ArgumentNullException.ThrowIfNull(installs);
         var wanted = TryMajorMinor(modFactorioVersion, out var mm) ? $"{mm.Major}.{mm.Minor}" : null;
+        var needs = baseRequirement is null ? null : $"{baseRequirement.Name} {baseRequirement.Operator} {baseRequirement.Version}";
 
         if (manualId is not null)
         {
@@ -149,7 +175,9 @@ public static class FactorioInstallations
                 return new FactorioPick(null, "none", "The selected Factorio installation is not known (it may have been removed). Choose another installation or use automatic selection.");
             var reason = wanted is not null && !VersionMatches(manual.Version, modFactorioVersion)
                 ? $"{Describe(manual)} selected by hand, but the mod targets Factorio {wanted} (version mismatch)."
-                : $"{Describe(manual)} selected by hand.";
+                : !SatisfiesBase(manual.Version, baseRequirement)
+                    ? $"{Describe(manual)} selected by hand, but the mod needs {needs} (version mismatch)."
+                    : $"{Describe(manual)} selected by hand.";
             return new FactorioPick(manual, "manual", reason);
         }
 
@@ -159,22 +187,36 @@ public static class FactorioInstallations
             .ThenBy(i => i.Path, StringComparer.Ordinal)
             .ToList();
 
+        var found = installs.Select(i => i.Version).Distinct().OrderBy(v => v, Comparer<string?>.Create(CompareVersions))
+            .Select(v => v ?? "unknown").ToList();
+        var list = found.Count == 0 ? "none" : string.Join(", ", found);
+
         if (wanted is null)
         {
             if (ordered.Count == 0)
                 return new FactorioPick(null, "none", "No Factorio installation was found. Add one or choose an installation manually.");
-            var top = ordered[0];
             var why = modFactorioVersion is null ? "The mod has no valid factorio_version" : $"The mod has no valid factorio_version (\"{modFactorioVersion}\")";
-            return new FactorioPick(top, "auto", $"{why}; using the newest installation, {Describe(top)}.");
+            var top = ordered.FirstOrDefault(i => SatisfiesBase(i.Version, baseRequirement));
+            if (top is null)
+                return new FactorioPick(null, "none", $"{why}, and no installed Factorio satisfies {needs} (found: {list}). Install one or choose an installation manually.");
+            return new FactorioPick(top, "auto", needs is null
+                ? $"{why}; using the newest installation, {Describe(top)}."
+                : $"{why}; using the newest installation that satisfies {needs}, {Describe(top)}.");
         }
 
-        var match = ordered.FirstOrDefault(i => VersionMatches(i.Version, wanted));
+        var branch = ordered.Where(i => VersionMatches(i.Version, wanted)).ToList();
+        var match = branch.FirstOrDefault(i => SatisfiesBase(i.Version, baseRequirement));
         if (match is not null)
-            return new FactorioPick(match, "auto", $"{Describe(match)} matches the mod's factorio_version {wanted}.");
+            return new FactorioPick(match, "auto", needs is null
+                ? $"{Describe(match)} matches the mod's factorio_version {wanted}."
+                : $"{Describe(match)} matches the mod's factorio_version {wanted} and its dependency {needs}.");
 
-        var found = installs.Select(i => i.Version).Distinct().OrderBy(v => v, Comparer<string?>.Create(CompareVersions))
-            .Select(v => v ?? "unknown").ToList();
-        var list = found.Count == 0 ? "none" : string.Join(", ", found);
+        if (branch.Count > 0)
+        {
+            var have = string.Join(", ", branch.Select(i => i.Version).Distinct());
+            return new FactorioPick(null, "none",
+                $"Factorio {have} matches the mod's factorio_version {wanted}, but the mod needs {needs}. Install a {wanted} release that satisfies it or choose an installation manually.");
+        }
         return new FactorioPick(null, "none", $"No installed Factorio matches {wanted} (found: {list}). Install one or choose an installation manually.");
     }
 
@@ -183,12 +225,12 @@ public static class FactorioInstallations
     /// so they are left out, and the reason says so when that leaves nothing.
     /// </summary>
     /// <param name="isHeadless">Tells the studio's headless servers apart; <see cref="FactorioDownloads.IsHeadlessInstall"/> by default.</param>
-    public static FactorioPick PickToPlay(IReadOnlyList<FactorioInstallation> installs, string? modFactorioVersion, string? manualId = null, Func<string, bool>? isHeadless = null)
+    public static FactorioPick PickToPlay(IReadOnlyList<FactorioInstallation> installs, string? modFactorioVersion, string? manualId = null, Func<string, bool>? isHeadless = null, Dependency? baseRequirement = null)
     {
         ArgumentNullException.ThrowIfNull(installs);
         isHeadless ??= path => FactorioDownloads.IsHeadlessInstall(path);
         var playable = installs.Where(i => !isHeadless(i.Path)).ToList();
-        var pick = Pick(playable, modFactorioVersion, manualId);
+        var pick = Pick(playable, modFactorioVersion, manualId, baseRequirement);
         if (pick.Chosen is null && playable.Count != installs.Count)
             pick = pick with { Reason = pick.Reason + " The headless servers installed by the studio have no graphics: they are used for smoke tests, not to play." };
         return pick;

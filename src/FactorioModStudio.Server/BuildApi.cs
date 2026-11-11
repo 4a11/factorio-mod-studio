@@ -47,7 +47,11 @@ internal static class BuildApi
             return Json(new
             {
                 factorio = new { found = status.Found, path = status.Path, error = status.Error, source = status.Source, version = status.Version },
-                resolution = new { modVersion = resolution.ModVersion, mode = resolution.Mode, chosenId = resolution.ChosenId, reason = resolution.Reason }
+                resolution = new
+                {
+                    modVersion = resolution.ModVersion, mode = resolution.Mode, chosenId = resolution.ChosenId, reason = resolution.Reason,
+                    baseRequirement = resolution.BaseRequirement, installSpec = resolution.InstallSpec
+                }
             });
         });
 

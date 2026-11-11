@@ -734,6 +734,11 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     const match = /^\s*(\d+)\.(\d+)/.exec(s.env?.resolution?.modVersion || '');
     return match ? `${match[1]}.${match[2]}` : null;
   };
+  /** What to install for this mod: the branch, or the exact release its "base = / <= x" dependency pins (decided by the server). */
+  const wantedSpec = (branch) => {
+    const spec = s.env?.resolution?.installSpec;
+    return typeof spec === 'string' && branch && spec.startsWith(`${branch}.`) ? spec : branch;
+  };
 
   async function loadAvailable(force = false) {
     if (get.loading || (get.available && !force)) return;
@@ -838,8 +843,9 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
 
   function mainBox(branch) {
     const progress = installView();
+    const spec = wantedSpec(branch);
     if (installing() || (progress && get.install.state !== 'succeeded')) {
-      return [progress, !installing() && branch ? el('button', { type: 'button', class: 'small', onclick: () => startInstall(branch), text: t('build.get.retry') }) : null];
+      return [progress, !installing() && branch ? el('button', { type: 'button', class: 'small', onclick: () => startInstall(spec), text: t('build.get.retry') }) : null];
     }
     const problem = availabilityProblem();
     if (problem) return problem;
@@ -848,8 +854,8 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     if (!release) return [el('p', { class: 'small', text: t('build.get.noRelease', { branch }) })];
     return [
       el('div', { class: 'build-get-row' },
-        el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-get-install', onclick: () => startInstall(branch) },
-          el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: '↓' }), el('span', { text: t('build.get.install', { version: release.newest }) }))),
+        el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-get-install', onclick: () => startInstall(spec) },
+          el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: '↓' }), el('span', { text: t('build.get.install', { version: spec === branch ? release.newest : spec }) }))),
       el('p', { class: 'muted small', text: t('build.get.why') }),
       get.startError && el('p', { class: 'small build-get-error', text: t('build.get.startError', { message: get.startError }) }),
     ];

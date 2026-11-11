@@ -350,17 +350,26 @@ public static class Program
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
     }
 
+    /// <summary>The project's mod's constraint on the game ("base &gt;= 2.0.20"), or null when there is none or info.json cannot be read.</summary>
+    private static Dependency? ProjectModBaseRequirement(ProjectContext context)
+    {
+        try { return FactorioInstallations.BaseRequirement(ModInfo.Load(Path.Combine(context.ModDirectory, "info.json")).ParsedDependencies); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or FmsException) { return null; }
+    }
+
     private static string VersionText(string? version) => version ?? "unknown version";
 
     /// <summary>
     /// <c>--factorio</c> is used exactly as given (a version mismatch only prints a warning); otherwise the installation that matches the
     /// mod's factorio_version is picked from FACTORIO_PATH, fmstudio.json, the UI's list and the usual folders.
     /// <paramref name="play"/>: the game itself is started, so the studio's headless servers do not count.
-    /// <paramref name="installMissing"/>: when nothing matches, called with the mod's MAJOR.MINOR to install it; returns the executable.
+    /// <paramref name="installMissing"/>: when nothing matches, called with what to install (the mod's MAJOR.MINOR, or the exact release its
+    /// base dependency pins, see <see cref="FactorioInstallations.InstallSpec"/>); returns the executable.
     /// </summary>
     private static string ChooseFactorio(CommandLine cmd, ProjectContext context, TextWriter log, bool play = false, Func<string, string>? installMissing = null)
     {
         var modVersion = ProjectModFactorioVersion(context);
+        var baseRequirement = ProjectModBaseRequirement(context);
         string path;
         string? version;
 
@@ -373,8 +382,10 @@ public static class Program
         else
         {
             var candidates = FactorioInstallations.Candidates(context, new FactorioSettings(context.StateDirectory).Read());
-            var pick = play ? FactorioInstallations.PickToPlay(candidates, modVersion) : FactorioInstallations.Pick(candidates, modVersion);
-            var branch = FactorioInstallations.NormaliseMajorMinor(modVersion);
+            var pick = play
+                ? FactorioInstallations.PickToPlay(candidates, modVersion, baseRequirement: baseRequirement)
+                : FactorioInstallations.Pick(candidates, modVersion, baseRequirement: baseRequirement);
+            var branch = FactorioInstallations.InstallSpec(modVersion, baseRequirement);
             if (pick.Chosen is null && installMissing is not null && branch is not null)
             {
                 log.WriteLine($"{pick.Reason} Installing it, as --install asks.");
@@ -402,6 +413,8 @@ public static class Program
 
         if (FactorioInstallations.NormaliseMajorMinor(modVersion) is { } wanted && version is not null && !FactorioInstallations.VersionMatches(version, wanted))
             log.WriteLine($"warning: the mod targets Factorio {wanted} but this installation is {version}.");
+        else if (version is not null && !FactorioInstallations.SatisfiesBase(version, baseRequirement))
+            log.WriteLine($"warning: the mod needs {baseRequirement} but this installation is {version}.");
         return path;
     }
 
@@ -473,9 +486,10 @@ public static class Program
         var spec = cmd.Positional.Skip(1).FirstOrDefault();
         if (spec is null)
         {
-            spec = FactorioInstallations.NormaliseMajorMinor(ProjectModFactorioVersion(LoadProject(cmd)))
+            var project = LoadProject(cmd);
+            spec = FactorioInstallations.InstallSpec(ProjectModFactorioVersion(project), ProjectModBaseRequirement(project))
                    ?? throw new FmsException("Usage: fmstudio factorio install <MAJOR.MINOR | MAJOR.MINOR.PATCH | stable | latest>. Without a version, the project's mod must declare factorio_version.");
-            if (!cmd.Has("--json")) output.WriteLine($"The project's mod targets Factorio {spec}.");
+            if (!cmd.Has("--json")) output.WriteLine($"The project's mod needs Factorio {spec}.");
         }
 
         // Check the platform before going to the network: on Windows and macOS nothing could be installed anyway.
@@ -597,7 +611,7 @@ public static class Program
         return http;
     }
 
-    /// <summary>For <c>smoke --install</c>: the newest headless release of <paramref name="branch"/>; returns its executable.</summary>
+    /// <summary>For <c>smoke --install</c>: the newest headless release of <paramref name="branch"/> (or that exact release); returns its executable.</summary>
     private static string InstallBranch(string branch, TextWriter log, IProcessRunner runner, HttpClient? http)
     {
         var downloads = Downloads(runner, http);
@@ -632,7 +646,7 @@ public static class Program
         var context = LoadProject(cmd);
         var candidates = FactorioInstallations.Candidates(context, new FactorioSettings(context.StateDirectory).Read());
         var modVersion = ProjectModFactorioVersion(context);
-        var pick = FactorioInstallations.Pick(candidates, modVersion);
+        var pick = FactorioInstallations.Pick(candidates, modVersion, baseRequirement: ProjectModBaseRequirement(context));
 
         if (cmd.Has("--json"))
         {

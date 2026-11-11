@@ -31,7 +31,9 @@ internal sealed record RunJobResult(int ExitCode, int ErrorCount = 0, int Warnin
 internal sealed record FactorioStatus(bool Found, string? Path, string? Error, string Source = "none", string? Version = null);
 
 /// <summary>How the installation for a mod was (or could not be) chosen.</summary>
-internal sealed record FactorioResolution(string? ModVersion, string Mode, string? ChosenId, string Reason);
+/// <param name="BaseRequirement">The mod's constraint on the game ("base &gt;= 2.0.20"), or null.</param>
+/// <param name="InstallSpec">What to install when nothing fits: MAJOR.MINOR, or the exact release the base dependency pins; null without a factorio_version.</param>
+internal sealed record FactorioResolution(string? ModVersion, string Mode, string? ChosenId, string Reason, string? BaseRequirement = null, string? InstallSpec = null);
 
 internal sealed record EnvironmentReport(FactorioStatus Factorio, FactorioResolution Resolution);
 
@@ -155,17 +157,27 @@ internal sealed class BuildJobs : IDisposable
     }
 
     /// <summary>The target version declared by the mod's info.json (null when unreadable or absent).</summary>
-    public string? ModFactorioVersion(CatalogEntry? entry)
+    public string? ModFactorioVersion(CatalogEntry? entry) => ModGameRequirement(entry).Version;
+
+    /// <summary>The mod's factorio_version and its constraint on the game (<see cref="FactorioInstallations.BaseRequirement"/>); nulls when unreadable.</summary>
+    public (string? Version, Dependency? Base) ModGameRequirement(CatalogEntry? entry)
     {
-        if (entry is null) return null;
-        try { return ModInfo.Load(Path.Combine(_catalog.Materialize(entry), "info.json")).FactorioVersion; }
-        catch (Exception ex) when (ex is FmsException or IOException or UnauthorizedAccessException or JsonException or InvalidDataException) { return null; }
+        if (entry is null) return (null, null);
+        try
+        {
+            var info = ModInfo.Load(Path.Combine(_catalog.Materialize(entry), "info.json"));
+            return (info.FactorioVersion, FactorioInstallations.BaseRequirement(info.ParsedDependencies));
+        }
+        catch (Exception ex) when (ex is FmsException or IOException or UnauthorizedAccessException or JsonException or InvalidDataException) { return (null, null); }
     }
 
     /// <param name="play">The game itself is started (Run): the studio's headless servers do not count.</param>
-    public FactorioPick Pick(IReadOnlyList<FactorioInstallation> candidates, string? modVersion, string? manualId, bool play = false)
+    /// <param name="baseRequirement">The mod's "base &gt;= x" dependency: installations that do not satisfy it are passed over.</param>
+    public FactorioPick Pick(IReadOnlyList<FactorioInstallation> candidates, string? modVersion, string? manualId, bool play = false, Dependency? baseRequirement = null)
     {
-        var pick = play ? FactorioInstallations.PickToPlay(candidates, modVersion, manualId) : FactorioInstallations.Pick(candidates, modVersion, manualId);
+        var pick = play
+            ? FactorioInstallations.PickToPlay(candidates, modVersion, manualId, baseRequirement: baseRequirement)
+            : FactorioInstallations.Pick(candidates, modVersion, manualId, baseRequirement);
         if (pick.Chosen is null && manualId is null)
         {
             var unusable = FactorioInstallations.UnusableConfiguredSources(_project);
@@ -178,13 +190,14 @@ internal sealed class BuildJobs : IDisposable
     public EnvironmentReport GetEnvironment(CatalogEntry? entry, string? manualId = null)
     {
         var candidates = GetCandidates();
-        var modVersion = ModFactorioVersion(entry);
-        var pick = Pick(candidates, modVersion, manualId);
+        var (modVersion, baseRequirement) = ModGameRequirement(entry);
+        var pick = Pick(candidates, modVersion, manualId, baseRequirement: baseRequirement);
         var chosen = pick.Chosen;
         var status = chosen is null
             ? new FactorioStatus(false, null, pick.Reason, "none")
             : new FactorioStatus(true, chosen.Path, null, chosen.Sources.FirstOrDefault() ?? "none", chosen.Version);
-        return new EnvironmentReport(status, new FactorioResolution(modVersion, pick.Mode, chosen?.Id, pick.Reason));
+        return new EnvironmentReport(status, new FactorioResolution(modVersion, pick.Mode, chosen?.Id, pick.Reason,
+            baseRequirement?.ToString(), FactorioInstallations.InstallSpec(modVersion, baseRequirement)));
     }
 
     // ------------------------------------------------------------ queries
@@ -255,8 +268,8 @@ internal sealed class BuildJobs : IDisposable
             // Decided now (not in the worker) so that the first snapshot already says which Factorio is used.
             try
             {
-                var modVersion = ModFactorioVersion(entry);
-                var pick = Pick(GetCandidates(refresh: true), modVersion, request.Installation, play: request.Kind == JobKind.Run);
+                var (modVersion, baseRequirement) = ModGameRequirement(entry);
+                var pick = Pick(GetCandidates(refresh: true), modVersion, request.Installation, play: request.Kind == JobKind.Run, baseRequirement: baseRequirement);
                 lock (_gate) job.Factorio = new JobFactorio(pick.Chosen, pick.Mode, pick.Reason, modVersion);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
