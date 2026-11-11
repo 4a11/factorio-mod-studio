@@ -5,7 +5,21 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
-### Fixed
+### Added
+- **Updates from the studio's window.** The version at the bottom of the sidebar is now a chip ("v0.3.0 · Releases", a dot
+  when a newer version is out, a ring while one downloads) that opens *About and updates*: the version, the update channel,
+  how this copy was installed, the last check with *Check now*, and a newer version with its release notes. *Download and
+  install* runs in the background with a progress bar (MB, speed) and *Cancel*, in the dialog and in a small banner above the
+  chip; then *Restart now* or *Later*. Also in the command palette.
+
+### Changed
+- **Updates are swapped in at the next start**, not while the studio runs: the download waits in `.pending-update` next to
+  the program, and *Restart now* (or any later start of the window or `fmstudio`) puts it in place before anything else
+  loads. A single-file program reads its own file on demand, so swapping it while running broke the first feature used
+  afterwards, and the restart itself failed. `fmstudio update` works the same way.
+- A failed download says why (not "see inner exception") and links to the release page, for networks that block GitHub's
+  download host.
+
 - **Far fewer false problems on real mods.** Checked against 57 published mods (bob's, 5dim, Yuoki, flib, helmod...): about
   4600 reported problems became about 950, and what is left is mostly real (missing translations, duplicate keys).
   - Locale keys before the first `[section]` (valid in Factorio, e.g. flib's `locale-identifier=...`) are no longer

@@ -26,7 +26,11 @@ public enum InstallKind
 
 /// <param name="Version">"0.3.0" (the tag without its "v").</param>
 /// <param name="Notes">The release notes (Markdown): the version's section of CHANGELOG.md and the install steps.</param>
-public sealed record StudioRelease(string Version, string Notes, string Url, IReadOnlyList<ReleaseAsset> Assets);
+public sealed record StudioRelease(string Version, string Notes, string Url, IReadOnlyList<ReleaseAsset> Assets)
+{
+    /// <summary>When GitHub published the release ("published_at"); null when it does not say.</summary>
+    public DateTimeOffset? Published { get; init; }
+}
 
 /// <param name="Sha256">The hex digest GitHub reports for the file, when it does.</param>
 public sealed record ReleaseAsset(string Name, string Url, long Size, string? Sha256);
@@ -48,6 +52,10 @@ public sealed class StudioUpdates
     public const long MaxDownloadBytes = 400L * 1024 * 1024;
     private const string OldSuffix = ".old";
     private const string StagingPrefix = ".update-";
+    /// <summary>A downloaded update waiting for the next start: <c>.pending-update/fmstudio/</c> and its <c>version</c>.</summary>
+    private const string PendingFolder = ".pending-update";
+    private const string PendingRoot = "fmstudio";
+    private const string PendingVersionFile = "version";
     private static readonly TimeSpan ExtractTimeout = TimeSpan.FromMinutes(5);
     private static readonly Regex TagPattern = new(@"^v?([0-9]{1,4})\.([0-9]{1,4})\.([0-9]{1,4})$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
@@ -124,7 +132,11 @@ public sealed class StudioUpdates
                         assets.Add(new ReleaseAsset(name, url, size,
                             digest is not null && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? digest[7..].ToLowerInvariant() : null));
                     }
-                list.Add(new StudioRelease($"{v.Major}.{v.Minor}.{v.Patch}", Text(release, "body") ?? "", Text(release, "html_url") ?? "", assets));
+                list.Add(new StudioRelease($"{v.Major}.{v.Minor}.{v.Patch}", Text(release, "body") ?? "", Text(release, "html_url") ?? "", assets)
+                {
+                    Published = DateTimeOffset.TryParse(Text(release, "published_at"), System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.AssumeUniversal, out var published) ? published : null
+                });
             }
         }
         catch (JsonException ex)
@@ -218,10 +230,164 @@ public sealed class StudioUpdates
     // ------------------------------------------------------------------ install
 
     /// <summary>
-    /// Replaces this copy's files with <paramref name="release"/>'s archive for this system. Only for <see cref="InstallKind.ReleaseArchive"/>;
-    /// the new version runs after a restart. <paramref name="progress"/> gets (bytes received, total).
+    /// Replaces this copy's files with <paramref name="release"/>'s archive for this system right away. Only for
+    /// <see cref="InstallKind.ReleaseArchive"/>, and only for a program that ends right after it: a single-file program loads its
+    /// libraries from its own file on demand, so one that keeps running after the swap fails on the first library it has not
+    /// loaded yet. The studio's window and `fmstudio update` use <see cref="PrepareAsync"/> and <see cref="ApplyPendingAtStart"/>.
+    /// <paramref name="progress"/> gets (bytes received, total).
     /// </summary>
     public async Task ApplyAsync(StudioRelease release, IProgress<(long Received, long? Total)>? progress = null, CancellationToken cancellationToken = default)
+    {
+        var (staging, root) = await DownloadAndUnpackAsync(release, progress, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Swap(root, _appDirectory);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new FmsException($"The studio's folder cannot be written ({_appDirectory}): {ex.Message}", ex);
+        }
+        finally
+        {
+            DeleteQuietly(staging);
+        }
+    }
+
+    /// <summary>
+    /// Downloads and unpacks <paramref name="release"/> into the pending-update folder next to the program, touching nothing that
+    /// runs. The next start of the window or of fmstudio swaps it in (<see cref="ApplyPendingAtStart"/>); "Restart now" is such a
+    /// start. A pending update of another version is replaced.
+    /// </summary>
+    public async Task PrepareAsync(StudioRelease release, IProgress<(long Received, long? Total)>? progress = null, CancellationToken cancellationToken = default)
+    {
+        var (staging, root) = await DownloadAndUnpackAsync(release, progress, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var pending = Path.Combine(_appDirectory, PendingFolder);
+            DeleteQuietly(pending);
+            if (Directory.Exists(pending)) throw new FmsException($"An earlier pending update could not be removed ({pending}).");
+            Directory.CreateDirectory(pending);
+            Directory.Move(root, Path.Combine(pending, PendingRoot));
+            File.WriteAllText(Path.Combine(pending, PendingVersionFile), release.Version); // written last: a complete folder has it
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new FmsException($"The studio's folder cannot be written ({_appDirectory}): {ex.Message}", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new FmsException($"The update could not be put next to the studio ({_appDirectory}): {ex.Message}", ex);
+        }
+        finally
+        {
+            DeleteQuietly(staging);
+        }
+    }
+
+    /// <summary>The version waiting in the pending-update folder, or null when there is none (or it is incomplete).</summary>
+    public static string? PendingVersion(string? appDirectory = null)
+    {
+        var pending = Path.Combine(appDirectory ?? AppContext.BaseDirectory, PendingFolder);
+        try
+        {
+            var file = Path.Combine(pending, PendingVersionFile);
+            if (!File.Exists(file) || !Directory.Exists(Path.Combine(pending, PendingRoot))) return null;
+            return Parse(File.ReadAllText(file).Trim()) is { } v ? $"{v.Major}.{v.Minor}.{v.Patch}" : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>
+    /// For the first lines of Program.Main (the window and fmstudio): swaps in a pending update and starts the new program with
+    /// the same arguments. Returns the exit code to end with, or null to go on as usual (no update waiting, another studio of this
+    /// folder still running, or the swap failed and was undone). Nothing is loaded lazily between the swap and the start of the
+    /// new program, see <see cref="ApplyAsync"/>.
+    /// </summary>
+    /// <param name="programName">"FactorioModStudio" or "fmstudio" (without ".exe").</param>
+    /// <param name="waitForExit">fmstudio waits for the new program and passes its exit code on (its console stays); the window
+    /// does not.</param>
+    /// <param name="waitForPid">A process to wait for first: the window that asked for the restart.</param>
+    public static int? ApplyPendingAtStart(string programName, string[] args, bool waitForExit, int? waitForPid = null)
+    {
+        var folder = AppContext.BaseDirectory;
+        try
+        {
+            if (waitForPid is { } pid)
+            {
+                try { using var parent = System.Diagnostics.Process.GetProcessById(pid); parent.WaitForExit(30_000); }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { /* already gone */ }
+            }
+            if (PendingVersion(folder) is null || DetectKind(folder) != InstallKind.ReleaseArchive) return null;
+            if (OtherStudioRunning(folder)) return null; // its program files must not change under it; next time
+
+            // Everything the start of the new program needs is loaded now, while this program's file is still in place.
+            var exe = OperatingSystem.IsWindows() ? ".exe" : "";
+            var program = Path.Combine(folder, programName + exe);
+            var start = new System.Diagnostics.ProcessStartInfo(program) { UseShellExecute = false, WorkingDirectory = Directory.GetCurrentDirectory() };
+            foreach (var arg in args) start.ArgumentList.Add(arg);
+            WarmUpProcessStart();
+
+            var pending = Path.Combine(folder, PendingFolder);
+            Swap(Path.Combine(pending, PendingRoot), folder);
+            DeleteQuietly(pending);
+
+            using var next = System.Diagnostics.Process.Start(start);
+            if (next is null) return 1;
+            if (!waitForExit) return 0;
+            next.WaitForExit();
+            return next.ExitCode;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FmsException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            return null; // Swap undoes a half-done swap; the old version starts and the update waits for the next time
+        }
+    }
+
+    /// <summary>True when another FactorioModStudio or fmstudio process runs from <paramref name="folder"/>.</summary>
+    private static bool OtherStudioRunning(string folder)
+    {
+        var self = Environment.ProcessId;
+        var full = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        foreach (var name in new[] { "FactorioModStudio", "fmstudio" })
+            foreach (var process in System.Diagnostics.Process.GetProcessesByName(name))
+                using (process)
+                {
+                    if (process.Id == self) continue;
+                    try
+                    {
+                        var path = process.MainModule?.FileName;
+                        if (path is not null && string.Equals(Path.GetDirectoryName(path)?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), full,
+                                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                            return true;
+                    }
+                    catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or NotSupportedException) { /* not ours to see */ }
+                }
+        return false;
+    }
+
+    /// <summary>Starts a program that does nothing, so every library starting a process needs is loaded before the swap.</summary>
+    private static void WarmUpProcessStart()
+    {
+        _ = typeof(System.ComponentModel.Win32Exception).Assembly;
+        var info = OperatingSystem.IsWindows()
+            ? new System.Diagnostics.ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "cmd.exe")) { ArgumentList = { "/c", "exit", "0" } }
+            : new System.Diagnostics.ProcessStartInfo("/bin/sh") { ArgumentList = { "-c", "true" } };
+        info.UseShellExecute = false;
+        info.CreateNoWindow = true;
+        try { using var p = System.Diagnostics.Process.Start(info); p?.WaitForExit(5000); _ = p?.ExitCode; }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { /* the real start reports its own error */ }
+    }
+
+    private static void DeleteQuietly(string path)
+    {
+        try { if (Directory.Exists(path)) Directory.Delete(path, recursive: true); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best effort; CleanUp gets staging folders next time */ }
+    }
+
+    /// <summary>Downloads the archive for this system into a new staging folder and unpacks it; the caller deletes the folder.</summary>
+    private async Task<(string Staging, string Root)> DownloadAndUnpackAsync(StudioRelease release, IProgress<(long Received, long? Total)>? progress, CancellationToken cancellationToken)
     {
         if (Kind != InstallKind.ReleaseArchive)
             throw new FmsException(Kind == InstallKind.DotnetTool
@@ -256,17 +422,17 @@ public sealed class StudioUpdates
             var exe = OperatingSystem.IsWindows() ? ".exe" : "";
             if (!File.Exists(Path.Combine(root, "fmstudio" + exe)) || !File.Exists(Path.Combine(root, "FactorioModStudio" + exe)))
                 throw new FmsException("The archive does not hold fmstudio and FactorioModStudio; nothing was changed.");
-            cancellationToken.ThrowIfCancellationRequested();
-            Swap(root, _appDirectory);
+            return (staging, root);
         }
         catch (UnauthorizedAccessException ex)
         {
+            DeleteQuietly(staging);
             throw new FmsException($"The studio's folder cannot be written ({_appDirectory}): {ex.Message}", ex);
         }
-        finally
+        catch
         {
-            try { if (Directory.Exists(staging)) Directory.Delete(staging, recursive: true); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best effort; CleanUp gets it next time */ }
+            DeleteQuietly(staging);
+            throw;
         }
     }
 
@@ -304,7 +470,11 @@ public sealed class StudioUpdates
         }
         catch (HttpRequestException ex)
         {
-            throw new FmsException($"The download failed: {ex.Message}", ex);
+            // GitHub sends the archive from another host (release-assets.githubusercontent.com) that some networks block while the
+            // release list from api.github.com still comes through: give the real reason (not "see inner exception") and a way out.
+            var reason = ex.InnerException?.Message is { Length: > 0 } inner && !ex.Message.Contains(inner, StringComparison.Ordinal)
+                ? $"{ex.Message.Replace(", see inner exception.", ":", StringComparison.Ordinal)} {inner}" : ex.Message;
+            throw new FmsException($"The download failed: {reason} If this keeps happening, download the archive from the release page and unpack it over the studio's folder.", ex);
         }
     }
 

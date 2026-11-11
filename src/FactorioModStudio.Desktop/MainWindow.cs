@@ -97,14 +97,18 @@ public sealed class MainWindow : Window
         }
     }
 
-    /// <summary>After an update: the new program starts in the same folder, then this window closes (and stops its server).</summary>
+    /// <summary>
+    /// "Restart now" after an update was downloaded: a fresh copy of this program waits until this window has closed (and stopped
+    /// its server), swaps in the new version and starts it (Program.Main). This process never runs on swapped files.
+    /// </summary>
     private void Restart()
     {
-        if (Environment.ProcessPath is { } program)
+        var program = Environment.ProcessPath ?? throw new InvalidOperationException("The program's own path is not known.");
+        Process.Start(new ProcessStartInfo(program)
         {
-            try { Process.Start(new ProcessStartInfo(program) { WorkingDirectory = Directory.GetCurrentDirectory(), UseShellExecute = false }); }
-            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return; }
-        }
+            WorkingDirectory = Directory.GetCurrentDirectory(), UseShellExecute = false,
+            ArgumentList = { "--apply-update", Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture) }
+        });
         Dispatcher.UIThread.Post(Close);
     }
 

@@ -6,7 +6,10 @@ using Microsoft.AspNetCore.Http;
 
 namespace FactorioModStudio.Server;
 
-/// <summary>Where installing an update is: "downloading", "succeeded" or "failed".</summary>
+/// <summary>
+/// Where installing an update is: "downloading", "succeeded" (downloaded and waiting next to the program for the next start),
+/// "failed" or "cancelled".
+/// </summary>
 internal sealed record UpdateSnapshot(string Version, string State, long Received, long? Total, string? Error);
 
 /// <summary>
@@ -22,6 +25,7 @@ internal sealed class StudioUpdater
     private readonly object _gate = new();
     private (DateTime At, UpdateChannel Channel, UpdateCheck? Check, string? Error)? _last;
     private UpdateSnapshot? _install;
+    private CancellationTokenSource? _cancel;
 
     /// <param name="dataDirectory">Where the chosen channel is kept; the studio's data folder by default (tests pass their own).</param>
     public StudioUpdater(StudioUpdates updates, string? dataDirectory = null)
@@ -32,7 +36,24 @@ internal sealed class StudioUpdater
 
     public StudioUpdates Updates => _updates;
     public UpdateChannel Channel => UpdateSettings.Channel(_updates.Current, _dataDirectory);
-    public UpdateSnapshot? Install { get { lock (_gate) return _install; } }
+    public UpdateSnapshot? Install
+    {
+        get
+        {
+            lock (_gate)
+            {
+                if (_install is not null) return _install;
+            }
+            // An update downloaded in an earlier session that has not been swapped in yet (another studio of the folder was
+            // still running at the last start): ready, as if downloaded just now.
+            return _updates.Kind == InstallKind.ReleaseArchive && StudioUpdates.PendingVersion(_updates.AppDirectory) is { } pending
+                ? new UpdateSnapshot(pending, "succeeded", 0, null, null)
+                : null;
+        }
+    }
+
+    /// <summary>When GitHub was last asked (UTC), successfully or not; null before the first check.</summary>
+    public DateTime? LastChecked { get { lock (_gate) return _last?.At; } }
 
     public void SetChannel(UpdateChannel channel)
     {
@@ -63,7 +84,10 @@ internal sealed class StudioUpdater
         {
             if (_install is { State: "downloading" }) return null;
             _install = new UpdateSnapshot(release.Version, "downloading", 0, null, null);
+            _cancel?.Dispose();
+            _cancel = new CancellationTokenSource();
         }
+        var token = _cancel.Token;
         var progress = new SyncProgress(p =>
         {
             lock (_gate)
@@ -74,8 +98,14 @@ internal sealed class StudioUpdater
             UpdateSnapshot done;
             try
             {
-                await _updates.ApplyAsync(release, progress).ConfigureAwait(false);
+                // Only prepared next to the program: the running studio keeps its files until it restarts (StudioUpdates.PrepareAsync).
+                await _updates.PrepareAsync(release, progress, token).ConfigureAwait(false);
                 lock (_gate) done = _install! with { State = "succeeded" };
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                // Core checks the token up to the moment the files are swapped, never during the swap: nothing was changed.
+                lock (_gate) done = _install! with { State = "cancelled" };
             }
             catch (Exception ex)
             {
@@ -87,6 +117,17 @@ internal sealed class StudioUpdater
         return Install;
     }
 
+    /// <summary>Stops a running download; false when nothing is being downloaded.</summary>
+    public bool Cancel()
+    {
+        lock (_gate)
+        {
+            if (_install is not { State: "downloading" } || _cancel is null) return false;
+            _cancel.Cancel();
+            return true;
+        }
+    }
+
     private sealed class SyncProgress(Action<(long Received, long? Total)> report) : IProgress<(long Received, long? Total)>
     {
         public void Report((long Received, long? Total) value) => report(value);
@@ -95,7 +136,7 @@ internal sealed class StudioUpdater
 
 /// <summary>
 /// <c>GET /api/update</c> (the running version, the channel, a newer release if any, an install in progress),
-/// <c>POST /api/update/channel</c>, <c>POST /api/update/install</c> and <c>POST /api/update/restart</c>. Writes pass the session
+/// <c>POST /api/update/channel</c>, <c>POST /api/update/install</c>, <c>POST /api/update/cancel</c> and <c>POST /api/update/restart</c>. Writes pass the session
 /// token check in <c>UiServer.MapSecurity</c>; the release to install is always the one the server found itself, never one
 /// named by the request.
 /// </summary>
@@ -117,8 +158,11 @@ internal static class UpdateApi
             channel = StudioUpdates.ChannelName(updater.Channel),
             kind = kind switch { InstallKind.ReleaseArchive => "archive", InstallKind.DotnetTool => "tool", _ => "other" },
             command = kind == InstallKind.DotnetTool ? StudioUpdates.ToolCommand : null,
-            latest = check?.Newer is { } r ? new { version = r.Version, url = r.Url, preview = StudioUpdates.IsPreview(r.Version) } : null,
+            latest = check?.Newer is { } r
+                ? new { version = r.Version, url = r.Url, preview = StudioUpdates.IsPreview(r.Version), notes = r.Notes, published = r.Published }
+                : null,
             error,
+            checkedAt = updater.LastChecked is { } at ? DateTime.SpecifyKind(at, DateTimeKind.Utc) : (DateTime?)null,
             install = install is null ? null : new { version = install.Version, state = install.State, received = install.Received, total = install.Total, error = install.Error },
             canRestart
         };
@@ -174,12 +218,27 @@ internal static class UpdateApi
             return Json(Describe(updater, check, error, restart is not null), StatusCodes.Status202Accepted);
         });
 
+        app.MapPost("/api/update/cancel", async (HttpContext http) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            if (!updater.Cancel()) return Error(StatusCodes.Status409Conflict, "No update is being downloaded.");
+            // The download notices the cancellation within a moment; answer once it has, so the page sees "cancelled".
+            for (var i = 0; i < 50 && updater.Install is { State: "downloading" }; i++) await Task.Delay(100, http.RequestAborted);
+            var (check, error) = await updater.CheckAsync(force: false, http.RequestAborted);
+            return Json(Describe(updater, check, error, restart is not null));
+        });
+
         app.MapPost("/api/update/restart", (HttpContext http) =>
         {
             http.Response.Headers.CacheControl = "no-store";
             if (restart is null) return Error(StatusCodes.Status409Conflict, "Start fmstudio again to use the new version.");
             if (updater.Install is not { State: "succeeded" }) return Error(StatusCodes.Status409Conflict, "No update has been installed.");
-            restart();
+            try { restart(); }
+            catch (Exception ex)
+            {
+                // The new files are in place either way: say why the restart did not happen instead of an empty 500.
+                return Error(StatusCodes.Status500InternalServerError, $"Could not restart ({ex.GetType().Name}: {ex.Message}). Close the studio and start it again to use the new version.");
+            }
             return Results.Accepted();
         });
     }

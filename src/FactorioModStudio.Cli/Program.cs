@@ -13,6 +13,10 @@ public static class Program
 
     public static int Main(string[] args)
     {
+        // A downloaded update waits next to the program until nothing of this folder runs: swap it in now and run the new
+        // fmstudio with the same arguments (this one waits and passes its exit code on).
+        if (StudioUpdates.ApplyPendingAtStart("fmstudio", args, waitForExit: true) is { } code) return code;
+
         // What the last update left behind (the old program files) can go now that they no longer run.
         StudioUpdates.CleanUp();
 
@@ -623,12 +627,14 @@ public static class Program
             output.Write(p.Total is > 0 ? $" {step * 10}%" : $" {p.Received / (1024 * 1024)} MB");
         });
         if (!json) output.Write($"Downloading {newer.Version}:");
-        updates.ApplyAsync(newer, progress).GetAwaiter().GetResult();
+        // Prepared next to the program, swapped in by the next start of fmstudio or the window (a running program must not
+        // lose its own files, see StudioUpdates.ApplyAsync).
+        updates.PrepareAsync(newer, progress).GetAwaiter().GetResult();
         if (json) output.WriteLine(JsonSerializer.Serialize(new { check.Current, Updated = newer.Version }, NewJson));
         else
         {
             output.WriteLine(" done.");
-            output.WriteLine($"Updated to {newer.Version}. Start fmstudio (or the window) again to use it.");
+            output.WriteLine($"Version {newer.Version} is ready: it is installed the next time fmstudio or the window starts.");
         }
         return ExitOk;
     }

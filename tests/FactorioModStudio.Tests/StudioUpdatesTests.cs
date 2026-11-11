@@ -187,4 +187,116 @@ public class StudioUpdatesTests
 
         Assert.Equal(UpdateChannel.Stable, UpdateSettings.Channel("0.2.1", dir.Path));
     }
+
+    // ------------------------------------------------------------------ the dialog: release date, cancelling a download
+
+    [Fact]
+    public void Releases_carry_their_publish_date_when_GitHub_gives_one()
+    {
+        var releases = StudioUpdates.ParseReleases("""
+            [ { "tag_name": "v0.3.0", "published_at": "2026-11-11T18:20:00Z", "assets": [] },
+              { "tag_name": "v0.2.0", "assets": [] } ]
+            """);
+
+        Assert.Equal(new DateTimeOffset(2026, 11, 11, 18, 20, 0, TimeSpan.Zero), releases[0].Published);
+        Assert.Null(releases[1].Published);
+    }
+
+    [Fact]
+    public async Task A_download_can_be_cancelled_and_changes_nothing()
+    {
+        if (StudioUpdates.RuntimeId() is null) return;
+        var (dir, _, tar) = ReleaseFolder();
+        using var _dir = dir;
+        var json = ReleasesJson(("v0.3.0", false, null));
+        var http = new HttpClient(new FactorioDownloadsTests.FakeHttp(request => request.RequestUri!.Host == "api.github.com"
+            ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json) }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new StallingStream()) }));
+        var updater = new FactorioModStudio.Server.StudioUpdater(new StudioUpdates(http, tar, dir.Path, "0.2.0"), dir.Path);
+        var (check, _) = await updater.CheckAsync(force: true, CancellationToken.None);
+
+        Assert.NotNull(updater.Start(check!.Newer!));
+        Assert.Null(updater.Start(check.Newer!)); // one download at a time
+        await WaitFor(() => updater.Install is { Received: > 0 });
+        Assert.True(updater.Cancel());
+        await WaitFor(() => updater.Install is not { State: "downloading" });
+
+        Assert.Equal("cancelled", updater.Install!.State);
+        Assert.Equal("old fmstudio" + Exe, File.ReadAllText(dir.Combine("fmstudio" + Exe)));
+        Assert.DoesNotContain(Directory.EnumerateDirectories(dir.Path), d => System.IO.Path.GetFileName(d).StartsWith(".update-", StringComparison.Ordinal));
+        Assert.False(updater.Cancel()); // nothing left to cancel
+        Assert.NotNull(updater.LastChecked);
+    }
+
+    [Fact]
+    public async Task Prepare_puts_the_update_next_to_the_program_and_changes_nothing_that_runs()
+    {
+        if (StudioUpdates.RuntimeId() is null) return;
+        var (dir, archive, tar) = ReleaseFolder();
+        using var _dir = dir;
+        var updates = new StudioUpdates(Http(ReleasesJson(("v0.3.0", false, null)), archive), tar, dir.Path, "0.2.0");
+        var check = await updates.CheckAsync(UpdateChannel.Stable);
+
+        Assert.Null(StudioUpdates.PendingVersion(dir.Path));
+        await updates.PrepareAsync(check.Newer!);
+
+        // The running program's files are untouched (a single-file program reads its own file on demand) ...
+        Assert.Equal("old fmstudio" + Exe, File.ReadAllText(dir.Combine("fmstudio" + Exe)));
+        Assert.False(File.Exists(dir.Combine("README.md")));
+        // ... the new ones wait for the next start, and CleanUp leaves them alone.
+        Assert.Equal("0.3.0", StudioUpdates.PendingVersion(dir.Path));
+        Assert.Equal("new fmstudio" + Exe, File.ReadAllText(dir.Combine(".pending-update", "fmstudio", "fmstudio" + Exe)));
+        StudioUpdates.CleanUp(dir.Path);
+        Assert.Equal("0.3.0", StudioUpdates.PendingVersion(dir.Path));
+        Assert.DoesNotContain(Directory.EnumerateDirectories(dir.Path), d => System.IO.Path.GetFileName(d).StartsWith(".update-", StringComparison.Ordinal));
+
+        // A second download replaces the waiting one.
+        await updates.PrepareAsync(check.Newer!);
+        Assert.Equal("0.3.0", StudioUpdates.PendingVersion(dir.Path));
+
+        // The server reports it as ready even without a download in this session.
+        var updater = new FactorioModStudio.Server.StudioUpdater(updates, dir.Path);
+        Assert.Equal(("0.3.0", "succeeded"), (updater.Install!.Version, updater.Install.State));
+    }
+
+    [Fact]
+    public void Cancel_without_a_download_does_nothing()
+    {
+        using var dir = new TempDir();
+        var updater = new FactorioModStudio.Server.StudioUpdater(
+            new StudioUpdates(Http("[]"), new FakeRunner(_ => new ProcessResult(0, false, [])), dir.Path, "0.2.0"), dir.Path);
+        Assert.False(updater.Cancel());
+        Assert.Null(updater.Install);
+        Assert.Null(updater.LastChecked);
+    }
+
+    private static async Task WaitFor(Func<bool> condition)
+    {
+        for (var i = 0; i < 100 && !condition(); i++) await Task.Delay(50);
+        Assert.True(condition(), "timed out");
+    }
+
+    /// <summary>A download that sends one byte and then hangs until it is cancelled.</summary>
+    private sealed class StallingStream : Stream
+    {
+        private bool _sent;
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (!_sent) { _sent = true; buffer.Span[0] = 1; return 1; }
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return 0;
+        }
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+        public override int Read(byte[] buffer, int offset, int count) => ReadAsync(buffer, offset, count, CancellationToken.None).GetAwaiter().GetResult();
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
 }

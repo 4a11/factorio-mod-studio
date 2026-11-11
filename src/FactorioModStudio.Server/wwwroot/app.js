@@ -818,6 +818,7 @@ function commandList() {
   add('show-problems', t('ui.cmd.showProblems'), () => bottom.open('problems'));
   add('show-output', t('ui.cmd.showOutput'), () => bottom.open('output'));
   add('show-search', t('ui.cmd.showSearch'), () => bottom.focusSearch(), shortcutText('Ctrl+Shift+F'));
+  add('updates', t('update.dialog.title'), () => updateView.open());
   if (mod) add('find', t('ui.cmd.find'), () => bottom.focusSearch(), shortcutText('Ctrl+Shift+F'));
   if (editorTabs.canSave()) add('save', t('ui.cmd.save'), () => editorTabs.save(), shortcutText('Ctrl+S'));
   if (editorTabs.count() > 0) {
@@ -1485,7 +1486,8 @@ $('#mod-search').addEventListener('input', (e) => { state.modFilter = e.target.v
 
 // ---------------------------------------------------------------- updates
 
-const updateView = createUpdateView({ el, api, notice: $('#update-notice'), version: $('#studio-version'), channel: $('#update-channel') });
+const updateView = createUpdateView({ el, api, notice: $('#update-notice'), chip: $('#studio-version'),
+  hasUnsaved: () => editorTabs.hasDirty() || localeView.hasUnsaved() });
 
 // ---------------------------------------------------------------- language
 
