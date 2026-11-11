@@ -5,6 +5,25 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
+### Fixed
+- **Far fewer false problems on real mods.** Checked against 57 published mods (bob's, 5dim, Yuoki, flib, helmod...): about
+  4600 reported problems became about 950, and what is left is mostly real (missing translations, duplicate keys).
+  - Locale keys before the first `[section]` (valid in Factorio, e.g. flib's `locale-identifier=...`) are no longer
+    FMS040 errors.
+  - Scripts only `control.lua` requires (GUI data, remote interfaces, presets for other mods) are no longer read as
+    prototypes: no FMS042 for them and no stray entries on the Prototypes tab.
+  - FMS042: an item with `place_as_equipment_result` takes the equipment's name (the field name was misspelled in the check);
+    a further level of a technology the mod does not define (`automation-4`) takes that technology's name.
+  - FMS043 no longer warns about keys of the game or a dependency: the standard sections (`fluid-name.water`) and the game's
+    own ones (`description`, `gui`, `entity-status`...).
+  - FMS030: `string.format` templates (`ore/%d/%d.png`) and path prefixes completed later through a variable are not missing
+    files.
+- The Prototypes tab: a long type (`dont-use-entity-in-energy-production-achievement`) no longer squeezes the prototype's name
+  out of its row when the code viewer is open; the type and the file path are shortened instead, with the full text on hover.
+- The game's own mods (base, space-age...) and installed mods: no Release readiness card on Overview, and "In the game" no
+  longer offers an intro to a load they cannot do.
+- The Overview's translation summary rounds down like the Localization tab: 1515 of 1519 strings is 99%, not "complete".
+
 ## [0.3.0] - 2026-11-11
 
 See and edit content: building blocks with a colour slider, icons of your own and their names in every language, a quick try

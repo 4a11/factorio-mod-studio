@@ -52,6 +52,32 @@ public class ModReferencesTests
     }
 
     [Fact]
+    public void FormatTemplate_IsNotAMissingAsset_AndMarksItsFolderUsed()
+    {
+        // boblibrary: string.format("__boblibrary__/graphics/icons/ore/%d/%d.png", size, n)
+        using var mod = Fixtures.ValidMod();
+        Png(mod, "graphics/icons/ore/64/1.png");
+        mod.Write("data.lua", "local p = string.format(\"__my-mod__/graphics/icons/ore/%d/%d.png\", 64, 1)\n");
+
+        var o = Inspect(mod);
+        Assert.Empty(Issues(o, "FMS030"));
+        Assert.False(UnusedOf(o, "graphics/icons/ore/64/1.png"));
+    }
+
+    [Fact]
+    public void PathWithoutExtension_IsAPrefixCompletedLater()
+    {
+        // 5dim_core: local iconPath = "__5dim_core__/graphics/icon/tier-badges/tier-badge-"; ... iconPath .. tier .. ".png"
+        using var mod = Fixtures.ValidMod();
+        Png(mod, "graphics/badges/tier-badge-1.png");
+        mod.Write("data.lua", "local p = \"__my-mod__/graphics/badges/tier-badge-\"\nlocal icon = p .. 1 .. \".png\"\n");
+
+        var o = Inspect(mod);
+        Assert.Empty(Issues(o, "FMS030"));
+        Assert.False(UnusedOf(o, "graphics/badges/tier-badge-1.png"));
+    }
+
+    [Fact]
     public void MissingAsset_InNestedScript_ReportsThatScriptsPath()
     {
         using var mod = Fixtures.ValidMod();
@@ -380,5 +406,33 @@ public class ModReferencesTests
         Assert.DoesNotContain(o.Issues, i => i.Code is "FMS030" or "FMS031" or "FMS032");
         Assert.False(UnusedOf(o, "data.lua"));
         Assert.False(UnusedOf(o, "thumbnail.png"));
+    }
+
+    // ------------------------------------------------------------------ runtime-only scripts
+
+    [Fact]
+    public void ScriptRequiredOnlyFromControl_IsNotReadForPrototypes()
+    {
+        // bobplates' remote.lua: Milestones presets as { type = "item", name = ... } tables, loaded by control.lua only.
+        using var mod = Fixtures.ValidMod();
+        mod.Write("control.lua", "require(\"remote\")\n");
+        mod.Write("remote.lua", "local presets = { { type = \"item\", name = \"iron-plate\", quantity = 1 } }\n");
+        mod.Write("data.lua", "data:extend({ { type = \"item\", name = \"my-item\", icon = \"__base__/graphics/icons/iron-plate.png\", icon_size = 64, stack_size = 1 } })\n");
+
+        var o = Inspect(mod);
+        Assert.DoesNotContain(o.Prototypes, p => p.Name == "iron-plate");
+        Assert.Contains(o.Prototypes, p => p.Name == "my-item");
+        Assert.DoesNotContain(o.Issues, i => i.Code == "FMS042" && i.File == "remote.lua");
+    }
+
+    [Fact]
+    public void ScriptRequiredFromDataAndControl_IsStillReadForPrototypes()
+    {
+        using var mod = Fixtures.ValidMod();
+        mod.Write("control.lua", "require(\"shared\")\n");
+        mod.Write("data.lua", "require(\"shared\")\n");
+        mod.Write("shared.lua", "data:extend({ { type = \"item\", name = \"shared-item\", icon = \"__base__/graphics/icons/iron-plate.png\", icon_size = 64, stack_size = 1 } })\n");
+
+        Assert.Contains(Inspect(mod).Prototypes, p => p.Name == "shared-item");
     }
 }

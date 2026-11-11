@@ -67,13 +67,11 @@ public class LocaleCheckTests
     // ---------------------------------------------------------------- FMS040
 
     [Fact]
-    public void Fms040_KeyBeforeAnySection_IsAnErrorWithFileAndLine()
+    public void Fms040_KeyBeforeAnySection_IsValid()
     {
+        // Factorio puts such keys in no section, used as {"stray"}; flib's dictionary.cfg starts with locale-identifier=...
         using var mod = Mod(("locale/en/a.cfg", "; header comment\n\nstray=value\n[item-name]\nx=X\n"));
-        var issue = Assert.Single(Of(Validate(mod), "FMS040"));
-        Assert.Equal(Severity.Error, issue.Severity);
-        Assert.Contains("a.cfg", issue.File);
-        Assert.Equal(3, issue.Line);
+        AssertNone(Validate(mod), "FMS040");
     }
 
     [Fact]
@@ -477,6 +475,44 @@ public class LocaleCheckTests
     // ---------------------------------------------------------------- FMS043
 
     private const string MyLocale = "[my-section]\npresent=Here\nother=Other\n";
+
+    [Fact]
+    public void Fms043_KeyOfTheGamesCoreSection_IsNotWarned()
+    {
+        // RecipeBook: {"description.fuel-value"} from the game's core locale, next to a few [description] keys of its own.
+        using var mod = Mod(("locale/en/a.cfg", "[description]\nmy-extra=Extra\n"),
+            ("control.lua", "local s = {\"description.fuel-value\"}\n"));
+        AssertNone(Validate(mod), "FMS043");
+    }
+
+    [Fact]
+    public void Fms042_ItemPlacingEquipment_FallsBackToTheEquipmentName()
+    {
+        // bobequipment: the item has no item-name, the equipment it places has an equipment-name.
+        using var mod = Mod(("locale/en/a.cfg", "[equipment-name]\nmy-antenna=Antenna\n"),
+            ("data.lua", Proto("item", "my-antenna", ", place_as_equipment_result = \"my-antenna\"")));
+        AssertNone(Validate(mod), "FMS042");
+    }
+
+    [Fact]
+    public void Fms042_LevelOfAGameTechnology_IsNotWarned_ButALevelOfAnOwnOneIs()
+    {
+        // bobassembly's "automation-4" is named after the game's "automation"; "my-tech-2" belongs to this mod's "my-tech".
+        using var mod = Mod(("locale/en/a.cfg", "[technology-name]\nother=Other\n"),
+            ("data.lua", Proto("technology", "automation-4") + Proto("technology", "my-tech") + Proto("technology", "my-tech-2")));
+        var names = Of(Validate(mod), "FMS042").Select(i => i.Message).ToList();
+        Assert.DoesNotContain(names, m => m.Contains("\"automation-4\""));
+        Assert.Contains(names, m => m.Contains("\"my-tech-2\""));
+    }
+
+    [Fact]
+    public void Fms043_KeyOfTheGameInAStandardSection_IsNotWarned()
+    {
+        // bobplates: {"fluid-name.water"} while its own locale also has a [fluid-name] section.
+        using var mod = Mod(("locale/en/a.cfg", "[fluid-name]\nbob-hydrogen=Hydrogen\n"),
+            ("data.lua", "local name = {\"fluid-name.water\"}\n"));
+        AssertNone(Validate(mod), "FMS043");
+    }
 
     [Fact]
     public void Fms043_MissingKeyInOwnSection_IsWarned_WithFileAndLine()

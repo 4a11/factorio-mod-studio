@@ -84,6 +84,14 @@ internal static class LocaleChecker
         "asteroid-chunk-name", "named-noise-expression-name", "noise-layer-name", "burner-usage"
     };
 
+    // Sections of the game's own core locale that mods read keys from ({"description.fuel-value"}, {"gui.confirm"}); a mod
+    // that adds a few keys of its own to one of them still uses the game's other keys, so FMS043 cannot judge them.
+    private static readonly HashSet<string> GameSections = new(StringComparer.Ordinal)
+    {
+        "description", "entity-status", "gui", "gui-control-behavior", "gui-control-behavior-modes", "tooltip-category", "item-limitation",
+        "gui-alert-tooltip", "gui-train", "gui-technology-preview", "gui-mod-info", "gui-map-generator", "gui-logistic"
+    };
+
     private static readonly Regex NumberedPlaceholder = new(@"__([1-9])__", RegexOptions.Compiled);
 
     // __ENTITY__name__, __CONTROL__name__, __ALT_CONTROL__1__name__ ...: removed before comparing numbered placeholders.
@@ -195,11 +203,9 @@ internal static class LocaleChecker
                 continue;
             }
 
-            if (section is null)
-            {
-                malformed?.Invoke(file, lineNo, "Key=value line before any [section] header.");
-                continue;
-            }
+            // Valid Factorio: keys before any [section] have no section and are used as {"key"} (flib's dictionary.cfg,
+            // locale-identifier=...). The studio does not check or edit them; the editor keeps such lines untouched too.
+            if (section is null) continue;
 
             entries.Add(new LocaleEntry(section, key.ToString(), line[(eq + 1)..].Trim().ToString(), file, lineNo));
         }
@@ -234,7 +240,8 @@ internal static class LocaleChecker
 
     // ------------------------------------------------------------------ validation
 
-    public static void Check(ValidationResult result, string modDirectory)
+    /// <param name="runtimeOnly">Scripts only the runtime stage loads (<see cref="ModReferenceReport.RuntimeOnly"/>); their tables are not prototypes.</param>
+    public static void Check(ValidationResult result, string modDirectory, IReadOnlySet<string>? runtimeOnly = null)
     {
         var languages = ReadAll(modDirectory, (file, line, reason) =>
             result.Add(Severity.Error, "FMS040", $"Malformed locale line: {reason}", file, line));
@@ -295,7 +302,7 @@ internal static class LocaleChecker
             }
         }
 
-        CheckLua(result, modDirectory, def);
+        CheckLua(result, modDirectory, def, runtimeOnly);
     }
 
     private static string Examples(List<LocaleEntry> entries)
@@ -318,7 +325,7 @@ internal static class LocaleChecker
 
     private sealed record ProtoSite(RawPrototype Proto, string File, bool FileAssignsLocalisedName);
 
-    private static void CheckLua(ValidationResult result, string modDirectory, LocaleLanguage def)
+    private static void CheckLua(ValidationResult result, string modDirectory, LocaleLanguage def, IReadOnlySet<string>? runtimeOnly)
     {
         var defSections = new HashSet<string>(def.First.Values.Select(e => e.Section), StringComparer.Ordinal);
         var references = new HashSet<string>(StringComparer.Ordinal);
@@ -369,6 +376,9 @@ internal static class LocaleChecker
                     var section = text[..dot];
                     var key = text[(dot + 1)..];
                     if (!defSections.Contains(section) || key.AsSpan().IndexOfAny(" \t\r\n") >= 0) continue;
+                    // {"fluid-name.water"}, {"entity-name.stone-furnace"}: keys of the standard sections come from the game or any
+                    // dependency as well, which this check cannot see; only a mod's own sections are known in full.
+                    if (StandardSections.Contains(section) || GameSections.Contains(section)) continue;
                     if (!def.First.ContainsKey(LocaleLanguage.Id(section, key)))
                         result.Add(Severity.Warning, "FMS043",
                             $"Locale key \"{section}.{key}\" is used here but not defined in the \"{def.Name}\" locale of this mod.",
@@ -376,7 +386,7 @@ internal static class LocaleChecker
                 }
             }
 
-            if (IsPrototypeFile(file))
+            if (IsPrototypeFile(file) && runtimeOnly?.Contains(file) != true)
             {
                 var scan = PrototypeScanner.Scan(tokens);
                 foreach (var proto in scan.Prototypes) sites.Add(new ProtoSite(proto, file, assignsLocalisedName));
@@ -387,7 +397,8 @@ internal static class LocaleChecker
         CheckUnusedKeys(result, def, references, dynamicSections);
     }
 
-    // control.lua tables such as { type = "item", name = ... } can be GUI/runtime data, so only data-stage style files are inspected.
+    // control.lua tables such as { type = "item", name = ... } can be GUI/runtime data, so only data-stage style files are inspected
+    // (files that only control.lua requires are left out by the caller through runtimeOnly).
     private static bool IsPrototypeFile(string file) =>
         !file.Equals("control.lua", StringComparison.OrdinalIgnoreCase)
         && !file.StartsWith("migrations/", StringComparison.OrdinalIgnoreCase)
@@ -400,6 +411,8 @@ internal static class LocaleChecker
         // Names of mod prototypes that set localised_name themselves (fallback targets we must not second-guess).
         var withLocalisedName = new HashSet<string>(
             sites.Where(s => s.Proto.Table.Fields.ContainsKey("localised_name")).Select(s => s.Proto.Name), StringComparer.Ordinal);
+
+        var ownTechnologies = new HashSet<string>(sites.Where(s => s.Proto.Type == "technology").Select(s => s.Proto.Name), StringComparer.Ordinal);
 
         // entity name -> names of mod items that place it (an entity falls back to the name of its placing item)
         var placers = new Dictionary<string, List<string>>(StringComparer.Ordinal);
@@ -425,7 +438,7 @@ internal static class LocaleChecker
                 section = "item-name";
                 // An item may fall back to the thing it places; unresolvable targets make us stay silent.
                 var unsure = false;
-                foreach (var (field, fallbackSection) in new[] { ("place_result", "entity-name"), ("placed_as_equipment_result", "equipment-name"), ("place_as_tile", "tile-name") })
+                foreach (var (field, fallbackSection) in new[] { ("place_result", "entity-name"), ("place_as_equipment_result", "equipment-name"), ("place_as_tile", "tile-name") })
                 {
                     if (!table.Fields.TryGetValue(field, out var value)) continue;
                     if (field == "place_as_tile" && value is LuaTable tileTable) value = tileTable.Fields.GetValueOrDefault("result") ?? value;
@@ -444,6 +457,9 @@ internal static class LocaleChecker
                 // Technology levels ("name-3") are looked up without the numeric suffix.
                 var m = Regex.Match(p.Name, @"^(.+)-\d+$");
                 if (m.Success && Has(section, m.Groups[1].Value)) continue;
+                // A further level of a technology this mod does not define (bob's "automation-4", "toolbelt-2") takes the name of
+                // the game's or another mod's technology, which this check cannot see.
+                if (m.Success && !ownTechnologies.Contains(m.Groups[1].Value)) continue;
             }
             else if (type == "tile") section = "tile-name";
             else if (type == "virtual-signal") section = "virtual-signal-name";

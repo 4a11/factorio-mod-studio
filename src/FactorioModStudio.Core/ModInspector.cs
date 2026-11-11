@@ -57,6 +57,7 @@ public static class ModInspector
         foreach (var file in files.Where(f => f.Category == "script"))
         {
             if (file.Size > MaxLuaFileBytes) { skipped++; continue; }
+            if (references.RuntimeOnly.Contains(file.Path)) continue; // control.lua and what only it requires: no prototypes there
 
             string source;
             try { source = File.ReadAllText(Path.Combine(root, file.Path.Replace('/', Path.DirectorySeparatorChar))); }

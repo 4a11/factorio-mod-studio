@@ -3,7 +3,12 @@ using FactorioModStudio.Core.Lua;
 namespace FactorioModStudio.Core;
 
 /// <param name="Unused">Per file path: true / false for graphics, sound and script files; absent for everything else.</param>
-public sealed record ModReferenceReport(IReadOnlyDictionary<string, bool> Unused, IReadOnlyList<ValidationIssue> Issues);
+/// <param name="RuntimeOnly">
+/// Lua files reached through literal <c>require</c>s from <c>control.lua</c> but from no data or settings stage file. Their tables
+/// such as <c>{ type = "item", name = ... }</c> are runtime data (GUI, remote interfaces, presets for other mods), not prototypes.
+/// </param>
+public sealed record ModReferenceReport(IReadOnlyDictionary<string, bool> Unused, IReadOnlyList<ValidationIssue> Issues,
+    IReadOnlySet<string> RuntimeOnly);
 
 /// <summary>
 /// Static cross-references between the files of a mod: <c>__mod__/path</c> asset literals and <c>require</c> calls in Lua.
@@ -22,6 +27,10 @@ public static class ModReferences
         "settings.lua", "settings-updates.lua", "settings-final-fixes.lua",
         "thumbnail.png", "info.json", "changelog.txt"
     };
+
+    /// <summary>Where the prototype (and settings) stages start; whatever these reach can define prototypes.</summary>
+    private static readonly string[] DataStageRoots =
+        { "data.lua", "data-updates.lua", "data-final-fixes.lua", "settings.lua", "settings-updates.lua", "settings-final-fixes.lua" };
 
     private static readonly string[] EntryFolders = { "locale/", "migrations/", "scenarios/", "campaigns/", "tutorials/" };
 
@@ -48,6 +57,7 @@ public static class ModReferences
         foreach (var f in files) insensitive.TryAdd(f, f);
 
         var referenced = new HashSet<string>(StringComparer.Ordinal); // asset paths and required scripts
+        var requires = new Dictionary<string, List<string>>(StringComparer.Ordinal); // script -> the mod scripts it requires
         var prefixes = new List<string>(); // dynamic asset prefixes
         var assetPrefix = modName is null ? null : $"__{modName}__/";
 
@@ -68,7 +78,12 @@ public static class ModReferences
                 if (RequireArgument(tokens, i) is not { } arg) continue;
                 requireArguments.Add(arg);
                 var target = ResolveRequire(tokens[arg].Text, file, modName, exact, insensitive, out var check);
-                if (target is not null) referenced.Add(target);
+                if (target is not null)
+                {
+                    referenced.Add(target);
+                    if (!requires.TryGetValue(file, out var targets)) requires[file] = targets = new List<string>();
+                    targets.Add(target);
+                }
                 else if (check)
                     issues.Add(new ValidationIssue(Severity.Error, "FMS032",
                         $"require(\"{tokens[arg].Text}\") does not match a .lua file in the mod.", file, tokens[arg].Line));
@@ -82,8 +97,16 @@ public static class ModReferences
                     !token.Text.StartsWith(assetPrefix, StringComparison.Ordinal)) continue;
 
                 var path = token.Text[assetPrefix.Length..];
+                // string.format template ("graphics/icons/ore/%d/%d.png"): only the part before the first % is a real path.
+                if (path.IndexOf('%') is var percent and >= 0)
+                {
+                    prefixes.Add(path[..percent]);
+                    continue;
+                }
                 var concatenated = i + 1 < tokens.Count && tokens[i + 1] is { Kind: TokenKind.Symbol, Text: ".." };
-                if (concatenated || path.Length == 0 || path.EndsWith('/') || Directory.Exists(Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))))
+                // No extension: a prefix completed later through a variable ("tier-badges/tier-badge-", then iconPath .. tier .. ".png").
+                var noExtension = Path.GetExtension(path).Length == 0;
+                if (concatenated || noExtension || path.Length == 0 || path.EndsWith('/') || Directory.Exists(Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))))
                 {
                     prefixes.Add(path);
                     continue;
@@ -114,7 +137,29 @@ public static class ModReferences
             unused[file] = !used;
         }
 
-        return new ModReferenceReport(unused, issues);
+        return new ModReferenceReport(unused, issues, RuntimeOnly(files, requires));
+    }
+
+    /// <summary>Scripts reachable from control.lua minus those reachable from a data or settings stage root.</summary>
+    private static HashSet<string> RuntimeOnly(IReadOnlyList<string> files, Dictionary<string, List<string>> requires)
+    {
+        HashSet<string> Reach(IEnumerable<string> roots)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var queue = new Queue<string>(roots.Select(r => files.FirstOrDefault(f => f.Equals(r, StringComparison.OrdinalIgnoreCase))).OfType<string>());
+            while (queue.Count > 0)
+            {
+                var file = queue.Dequeue();
+                if (!seen.Add(file)) continue;
+                if (requires.TryGetValue(file, out var targets))
+                    foreach (var target in targets) queue.Enqueue(target);
+            }
+            return seen;
+        }
+
+        var runtime = Reach(new[] { "control.lua" });
+        runtime.ExceptWith(Reach(DataStageRoots));
+        return runtime;
     }
 
     /// <summary>True for files that count as used without any reference (entry points, locale, migrations, scenarios, ...).</summary>

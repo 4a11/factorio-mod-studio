@@ -74,10 +74,11 @@ public static class ModValidator
 
         // FMS030 / FMS031 / FMS032: broken __mod__/ asset paths and requires. ModReferences is the single implementation; the
         // overview uses the same analysis for its "unused" flags.
-        foreach (var issue in ModReferences.Analyze(modDirectory, result.Info.Name, ModFiles.Enumerate(modDirectory)).Issues)
+        var references = ModReferences.Analyze(modDirectory, result.Info.Name, ModFiles.Enumerate(modDirectory));
+        foreach (var issue in references.Issues)
             result.Add(issue.Severity, issue.Code, issue.Message, issue.File, issue.Line);
 
-        try { LocaleChecker.Check(result, modDirectory); }
+        try { LocaleChecker.Check(result, modDirectory, references.RuntimeOnly); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { /* unreadable tree: skip locale checks */ }
 
         return result;
