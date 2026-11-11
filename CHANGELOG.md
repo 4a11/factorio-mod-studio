@@ -30,6 +30,9 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   fresh test map: lab tiles, always day, no enemies, cheat mode, the mod's recipes unlocked and a stack of every item the mod
   adds in the inventory (plus energy interfaces and poles to power its machines). It runs in the profile's own mods folder
   like *Run*; a small helper mod with the test scenario is added there only. For mods made for Factorio 2.0 and later.
+
+  ![Quick try in the Build tab](https://raw.githubusercontent.com/4a11/factorio-mod-studio/main/docs/images/quick-try-studio.png)
+  ![The test map: the mod's items in the inventory, its recipes unlocked, crafting free in cheat mode](https://raw.githubusercontent.com/4a11/factorio-mod-studio/main/docs/images/quick-try-game.png)
 - **Icons of your own for a block**: the Blocks tab shows each icon of the block (the main one, the ammo, the underground
   belt...) with *Replace...*, or a PNG dropped on it. Any PNG works (palette, grey, 16-bit too): a square picture is scaled to
   64×64, a wider one is read as an icon with mipmaps and its left square is used. *Back to the original* puts the recoloured
