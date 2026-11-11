@@ -694,13 +694,13 @@ Limits: 5000 changes and 2 MB per request, 65536 characters per value. Not inclu
 | FMS015 | error | depends on a DLC mod (`space-age`, `quality`, `elevated-rails`) while `factorio_version` is below 2.0 |
 | FMS016 | info | `factorio_version` is well-formed but not one of 1.0, 1.1, 2.0, 2.1 |
 | FMS049 | error | the `base` dependency cannot be met by any release of `factorio_version` (e.g. `factorio_version` 1.1 with `base >= 2.0.0`): the game would refuse to load the mod |
-| FMS030 | error | Lua references `__your-mod__/path` that does not exist |
+| FMS030 | error | Lua references `__your-mod__/path` that does not exist (a path joined with `..`, a `string.format` template such as `ore/%d.png` or one without a file extension is taken as a prefix, not checked) |
 | FMS031 | error | referenced file exists only with different letter case (works on Windows, breaks in the zip and on Linux) |
 | FMS032 | error | `require("a.b")` / `require "a/b"` matches no `.lua` file of the mod (looked up next to the requiring file, then at the mod root; other mods and Factorio's lualib modules such as `util` are ignored) |
-| FMS040 | error | malformed `locale/**/*.cfg` line (key before any section, line without `=`, bad section header, empty key) |
+| FMS040 | error | malformed `locale/**/*.cfg` line (line without `=`, bad section header, empty key); keys before the first section are valid Factorio (used as `{"key"}`) and are not checked |
 | FMS041 | warning | duplicate key in the same language and section (reported at the later one) |
 | FMS042 | warning | prototype of this mod has no localised name in `locale/en` |
-| FMS043 | warning | `{"section.key"}` in Lua uses a section the mod's `en` locale defines, but the key is missing |
+| FMS043 | warning | `{"section.key"}` in Lua uses a section of the mod's own that its `en` locale defines, but the key is missing (standard sections such as `item-name` and the game's own such as `description` or `gui` are skipped: their keys may come from the game or a dependency) |
 | FMS044 / FMS045 | warning / info | a language lacks keys the default language has / has keys the default does not (one issue per language) |
 | FMS046 | warning | numbered placeholders (`__1__`..`__9__`) differ from the default language's value |
 | FMS047 | info | key in a non-standard section that no Lua file references (at most 30 listed, then a summary) |
@@ -709,12 +709,14 @@ Limits: 5000 changes and 2 MB per request, 65536 characters per value. Not inclu
 Warnings and info issues never change the exit code of `fmstudio validate`; only errors (including FMS040) make it exit with 1.
 
 The locale checks are static heuristics, written from knowledge of Factorio's behaviour and not verified against the game. The default
-language is `en`. FMS042 only looks at prototypes found statically in data-stage Lua files (not `control.lua`, `settings*.lua` or
-migrations), skips tables that set `localised_name`, accepts `item-name.<x>` for entities (Factorio falls back to the placing item) and
-ignores unknown prototype types. FMS043 and FMS047 only see literal strings: dynamically built keys (`"section." .. name`) are not
-resolved (a section used like that is excluded from FMS047), keys of the base game or other mods are not known (so FMS043 can warn about
-a base-game key if the mod also defines the same section), and `__ENTITY__x__`-style references are neither checked nor compared. The
-Localization tab of the UI shows per-language progress with missing and extra keys.
+language is `en`. FMS042 only looks at prototypes found statically in data-stage Lua files (not `control.lua` or the files only it
+`require`s, `settings*.lua` or migrations; the Prototypes tab leaves out the same files), skips tables that set `localised_name`,
+accepts `item-name.<x>` for entities (Factorio falls back to the placing item) and the equipment or tile name for items with
+`place_as_equipment_result` / `place_as_tile`, stays silent for further levels (`automation-4`) of a technology the mod does not
+define, and ignores unknown prototype types. FMS043 and FMS047 only see literal strings: dynamically built keys (`"section." .. name`)
+are not resolved (a section used like that is excluded from FMS047), keys of the base game or other mods are not known (FMS043 therefore
+only checks the mod's own sections), and `__ENTITY__x__`-style references are neither checked nor compared. The Localization tab of
+the UI shows per-language progress with missing and extra keys.
 
 ## Translating the interface
 
