@@ -6,7 +6,7 @@
 bevor das Spiel es tut, sie übersetzen, ein sauberes Release packen und sie mit einem isolierten Mod-Satz testen: in einem eigenen
 Programmfenster, auf der Kommandozeile oder im Browser. Alles läuft auf Ihrem Rechner, neben Ihrem gewohnten Code-Editor.
 
-> **Frühe Version (0.2).** Die Logik ist durch Tests abgedeckt; `smoke` ist mit Factorio 1.1, 2.0 und 2.1 unter Linux (CI) geprüft, `run` mit 2.1
+> **Frühe Version (0.3).** Die Logik ist durch Tests abgedeckt; `smoke` ist mit Factorio 1.1, 2.0 und 2.1 unter Linux (CI) geprüft, `run` mit 2.1
 > unter Windows. macOS wurde noch nicht ausprobiert. Rückmeldungen und Fehlerberichte sind sehr willkommen.
 > Die Desktop-App läuft unter Windows; für Linux und macOS ist sie gebaut, aber noch nicht ausprobiert.
 > Inoffizielles Community-Projekt, nicht mit Wube Software verbunden. „Factorio“ ist eine Marke der Wube Software Ltd.
@@ -25,6 +25,7 @@ Programmfenster, auf der Kommandozeile oder im Browser. Alles läuft auf Ihrem R
 
 ## Was es kann
 
+- **Inhalte, ohne sie von Grund auf zu schreiben.** 20 Bausteine (Rüstung, Gegner, Förderband-Stufen, Maschinen, Fahrzeuge…) als Kopien der Originale des Spiels: Farbe per Schieberegler, Werte im Eigenschaften-Panel, eigene Symbole, sicher umbenennen oder entfernen, und mit einem Klick auf einer Testkarte im Spiel ausprobieren.
 - **Eine Mod in Sekunden.** Vorlagen (leer, Gegenstand + Rezept, Entität, Laufzeit-Skript) für Factorio 2.0 und 2.1 (alle außer der Entität auch für 1.1), die sofort jede Prüfung bestehen.
 - **Fehler früh finden.** `info.json`, Changelog, Vorschaubild, kaputte `__mod__/`-Pfade und `require`s, fehlende oder fehlerhafte Übersetzungen: alles mit Datei und Zeile.
 - **In jede Mod hineinsehen.** Das Studio, im eigenen Fenster oder im Browser, mit Dateibaum, einem Lua-Editor mit Live-Prüfungen, den Prototypen und Rezepten der Mod, ihren Grafiken und Sounds und den Dateien, die nichts verwendet.
@@ -41,7 +42,7 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 
 **0.1.** Die Kommandozeile (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) und das Studio, im eigenen Fenster oder im Browser, in 8 Oberflächensprachen: die Tabs Übersicht, Dateien, Prototypen, Ressourcen, Lokalisierung, Probleme und Build; 20 Bausteine (Rüstung, Gegner, Förderband-Stufen, Maschinen, Fahrzeuge…) als umgefärbte Kopien der Originale, in Factorio 2.1 geprüft; ganze Mod-Ordner werden vor dem Hinzufügen geprüft.
 
-**0.2: jetzt, bereit für alle**
+**0.2: bereit für alle**
 - [x] die Desktop-App überall: in den Release-Archiven für Windows, Linux und macOS, jeweils mit etwas zum Doppelklicken, und ein Programm zusammen mit der Kommandozeile (ein Doppelklick öffnet das Fenster); *unter Windows ausprobiert; für Linux und macOS gebaut, Rückmeldungen willkommen*
 - [x] `run` und `smoke` mit Factorio 1.1, 2.0 und 2.1 geprüft, einschließlich Headless-Server; *`run` mit 2.1 unter Windows, `smoke` auf dem Linux-Headless-Server für 1.1, 2.0 und 2.1 in der CI; macOS noch nicht ausprobiert*
 - [x] nach einem Start oder Smoke-Test auch `factorio-current.log` lesen und seine Fehler unter Probleme und Ausgabe zeigen
@@ -49,17 +50,17 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 - [x] Installation in einer Zeile: das Werkzeug auf NuGet veröffentlicht (`dotnet tool install -g FactorioModStudio.Cli`), kein Klonen nötig; *veröffentlicht: 0.2.0*
 - [x] Factorio-Versionen installiert das Studio selbst: `fmstudio factorio install 2.0` lädt den kostenlosen Headless-Server (Linux, WSL, CI), wo `smoke` ihn findet, auch aus dem Build-Tab; *der echte Download für 1.1, 2.0 und 2.1 in der CI mit Smoke-Tests geprüft*
 
-**0.3: Inhalte sehen und bearbeiten**
+**0.3: jetzt, Inhalte sehen und bearbeiten**
 - [x] der Prototypen-Tab aus den Daten des Spiels selbst (`--dump-data`): was der Mod wirklich anlegt und ändert, mit allen Werten, auch für Kopien per `table.deepcopy`; „Welcher Mod hat diesen Gegenstand geändert, und wie?“; *in 0.2.1 (Vorschau)*
 - [x] ein Eigenschaften-Panel für Bausteine: Lebenspunkte, Tempo, Inventar, Schaden… als Felder „Original → Ihr Wert“, die zurück ins Lua des Bausteins geschrieben werden; *in 0.2.1 (Vorschau)*
-- [ ] schnell im Spiel ausprobieren: ein Knopf startet Factorio auf einer Testkarte, das Neue liegt schon im Inventar
+- [x] schnell im Spiel ausprobieren: ein Knopf startet Factorio auf einer Testkarte, das Neue liegt schon im Inventar; *in 0.3.0*
 - [x] Bausteine sicher umbenennen oder entfernen: Datei, require, Übersetzungsschlüssel, Symbole und alle Verweise ändern sich gemeinsam; *in 0.2.1 (Vorschau)*
-- [ ] die Farbe eines Bausteins per Schieberegler, mit Vorschau des umgefärbten Symbols vor dem Hinzufügen
-- [ ] Übersetzungen neuer Bausteine: ihre Schlüssel kommen in alle Sprachen des Mods, im Lokalisierungs-Tab als unübersetzt markiert
+- [x] die Farbe eines Bausteins per Schieberegler, mit Vorschau des umgefärbten Symbols vor dem Hinzufügen; *in 0.3.0, dazu eigene Symbole*
+- [x] Übersetzungen neuer Bausteine: ihre Schlüssel kommen in alle Sprachen des Mods, im Lokalisierungs-Tab als unübersetzt markiert; *in 0.3.0*
 
 **0.4: ein komfortabler Editor**
 - [ ] Lua-Hilfen im Editor: Vervollständigung, Dokumentation beim Überfahren und Parameterhilfe für die Factorio-API (`data.raw`, Prototyp-Felder, `game`, `script`, `defines`, Ereignisse), gelesen aus der API-Beschreibung, die das installierte Spiel mitbringt (`doc-html/*-api.json`), also passend zu dessen Version
-- [ ] Probleme im neuen Stil: nach Datei und Regel gruppiert, sichere Schnellkorrekturen (fehlenden Übersetzungsschlüssel anlegen, Groß-/Kleinschreibung eines Pfads korrigieren)
+- [ ] Probleme im neuen Stil: nach Datei und Regel gruppiert (*erledigt in 0.3.0*), sichere Schnellkorrekturen (fehlenden Übersetzungsschlüssel anlegen, Groß-/Kleinschreibung eines Pfads korrigieren)
 - [ ] Symbole für Zutaten und Ergebnisse aus dem Basisspiel oder einer Abhängigkeit
 - [ ] Abhängigkeiten auf einen Blick: erforderlich, optional, inkompatibel, und welche davon in `modsSource` verfügbar sind
 - [ ] ein Editor für Rezepte und Technologien: Zutaten mit ihren Symbolen aus dem Spiel und den Abhängigkeiten, dazu die Technologie, die das Rezept freischaltet

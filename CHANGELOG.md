@@ -5,6 +5,12 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-11
+
+See and edit content: building blocks with a colour slider, icons of your own and their names in every language, a quick try
+in the game with one click, the full game from factorio.com, and the Problems and Build tabs redesigned. Includes everything from
+the 0.2.1 preview.
+
 ### Changed
 - **The Problems tab, redesigned** in the style of the Files tab: a filter (text, code or file), Errors / Warnings / Info
   toggles with counts, grouping by rule, by file or as one list (remembered), collapsible groups that show 20 rows and
@@ -179,6 +185,8 @@ The first release.
   tool on NuGet.
 - README translations of the introduction in the 7 other interface languages.
 
+[Unreleased]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/4a11/factorio-mod-studio/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/4a11/factorio-mod-studio/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/4a11/factorio-mod-studio/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/4a11/factorio-mod-studio/compare/v0.1.0...v0.1.1

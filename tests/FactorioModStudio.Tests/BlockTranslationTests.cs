@@ -45,7 +45,7 @@ public class BlockTranslationTests
         var ru = Read(mod, "locale/ru/my-mod.cfg");
         Assert.Contains("thing=Штука", ru);
         Assert.DoesNotContain("thing=Thing", ru);
-        Assert.DoesNotContain($"{Marked}thing=", ru);
+        Assert.Contains("[item-name]\nthing=Штука", ru); // no mark above it (the description is new, so it is marked)
     }
 
     [Fact]
@@ -77,8 +77,7 @@ public class BlockTranslationTests
         var result = LocaleEditor.Apply(mod.Path, "ru", new[] { new LocaleChange("item-name", "thing", "Штука") }, table.Revision);
         Assert.Equal(1, result.Updated);
         var ru = Read(mod, "locale/ru/my-mod.cfg");
-        Assert.Contains("thing=Штука", ru);
-        Assert.DoesNotContain(LocaleEditor.UntranslatedMark, ru);
+        Assert.Contains("[item-name]\nthing=Штука", ru); // the mark above it is gone; the description keeps its own
         var again = LocaleEditor.Build(mod.Path, "ru").Rows.Single(r => r.Key == "thing" && r.Section == "item-name");
         Assert.Equal(LocaleRowStatus.Translated, again.Status);
         Assert.False(again.Marked);
@@ -94,7 +93,7 @@ public class BlockTranslationTests
         var result = LocaleEditor.Apply(mod.Path, "ru", new[] { new LocaleChange("item-name", "thing", "Thing") }, table.Revision);
 
         Assert.Equal(1, result.Updated);
-        Assert.DoesNotContain(LocaleEditor.UntranslatedMark, Read(mod, "locale/ru/my-mod.cfg"));
+        Assert.Contains("[item-name]\nthing=Thing", Read(mod, "locale/ru/my-mod.cfg"));
         Assert.True(LocaleEditor.Build(mod.Path, "ru").Rows.Single(r => r.Key == "thing" && r.Section == "item-name").Identical);
     }
 

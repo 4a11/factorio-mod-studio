@@ -6,7 +6,7 @@
 traduisez-le, empaquetez une version propre et testez-le avec un ensemble de mods isolé : dans sa propre fenêtre, en ligne de commande
 ou dans votre navigateur. Tout tourne sur votre machine, à côté de votre éditeur de code habituel.
 
-> **Version précoce (0.2).** La logique est couverte par des tests ; `smoke` est vérifié avec Factorio 1.1, 2.0 et 2.1 sous Linux (CI), et `run` avec 2.1
+> **Version précoce (0.3).** La logique est couverte par des tests ; `smoke` est vérifié avec Factorio 1.1, 2.0 et 2.1 sous Linux (CI), et `run` avec 2.1
 > sous Windows. macOS n'a pas encore été essayé. Vos retours et rapports de bugs sont les bienvenus.
 > L'application de bureau fonctionne sous Windows ; pour Linux et macOS, elle est compilée mais pas encore essayée.
 > Projet communautaire non officiel, sans lien avec Wube Software. « Factorio » est une marque de Wube Software Ltd.
@@ -25,6 +25,7 @@ ou dans votre navigateur. Tout tourne sur votre machine, à côté de votre édi
 
 ## Ce qu'il fait
 
+- **Du contenu sans partir de zéro.** 20 blocs (armure, ennemis, niveaux de convoyeurs, machines, véhicules…) copiés de ceux du jeu : la couleur au curseur, les valeurs dans un panneau de propriétés, vos propres icônes, renommer ou supprimer sans risque, et un essai en jeu sur une carte de test en un clic.
 - **Un mod en quelques secondes.** Des modèles (vide, objet + recette, entité, script d'exécution) pour Factorio 2.0 et 2.1 (tous sauf l'entité aussi pour 1.1), qui passent toutes les vérifications d'emblée.
 - **Les erreurs avant le jeu.** `info.json`, changelog, miniature, chemins `__mod__/` et `require` cassés, traductions manquantes ou incorrectes : tout avec le fichier et la ligne.
 - **Voir l'intérieur de n'importe quel mod.** Le studio, dans sa propre fenêtre ou dans le navigateur, avec l'arborescence des fichiers, un éditeur Lua avec vérifications en direct, les prototypes et recettes du mod, ses graphismes et sons, et les fichiers que rien n'utilise.
@@ -41,7 +42,7 @@ Où en est le projet et ce qui vient ensuite. Les versions sont des objectifs, p
 
 **0.1.** La ligne de commande (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) et le studio, dans sa propre fenêtre ou dans le navigateur, en 8 langues d'interface : onglets Aperçu, Fichiers, Prototypes, Ressources, Localisation, Problèmes et Compilation ; 20 blocs (armure, ennemis, niveaux de convoyeurs, machines, véhicules…) en copies recolorées des originaux, vérifiés dans Factorio 2.1 ; des dossiers entiers de mods ajoutés après vérification.
 
-**0.2 : maintenant, prêt pour tout le monde**
+**0.2 : prêt pour tout le monde**
 - [x] l'application de bureau partout : dans les archives de version pour Windows, Linux et macOS, chacune avec de quoi double-cliquer, et un seul programme avec la ligne de commande (un double-clic ouvre la fenêtre) ; *essayée sous Windows ; compilée pour Linux et macOS, vos retours sont les bienvenus*
 - [x] `run` et `smoke` vérifiés avec Factorio 1.1, 2.0 et 2.1, y compris le serveur sans interface ; *`run` avec 2.1 sous Windows, `smoke` sur le serveur sans interface Linux pour 1.1, 2.0 et 2.1 en CI ; macOS pas encore essayé*
 - [x] après un lancement ou un test de fumée, lire aussi `factorio-current.log` et afficher ses erreurs dans Problèmes et Sortie
@@ -49,17 +50,17 @@ Où en est le projet et ce qui vient ensuite. Les versions sont des objectifs, p
 - [x] installation en une ligne : l'outil publié sur NuGet (`dotnet tool install -g FactorioModStudio.Cli`), sans clonage; *publié : 0.2.0*
 - [x] des versions de Factorio installées par le studio : `fmstudio factorio install 2.0` télécharge le serveur sans interface gratuit (Linux, WSL, CI), où `smoke` le trouve, aussi depuis l'onglet Compilation ; *le vrai téléchargement de 1.1, 2.0 et 2.1 vérifié par des tests de fumée en CI*
 
-**0.3 : voir et modifier le contenu**
+**0.3 : maintenant, voir et modifier le contenu**
 - [x] l'onglet Prototypes d'après les données du jeu lui-même (`--dump-data`) : ce que le mod crée et modifie vraiment, avec toutes les valeurs, y compris les copies faites avec `table.deepcopy` ; « quel mod a modifié cet objet, et en quoi ? »; *dans 0.2.1 (préversion)*
 - [x] un panneau de propriétés pour les blocs : vie, vitesse, inventaire, dégâts… en champs « original → votre valeur », réécrits dans le Lua du bloc; *dans 0.2.1 (préversion)*
-- [ ] un essai rapide en jeu : un bouton lance Factorio sur une carte de test avec les nouveautés déjà dans l'inventaire
+- [x] un essai rapide en jeu : un bouton lance Factorio sur une carte de test avec les nouveautés déjà dans l'inventaire ; *dans 0.3.0*
 - [x] renommer ou retirer un bloc en toute sécurité : le fichier, le require, les clés de traduction, les icônes et toutes les références changent ensemble; *dans 0.2.1 (préversion)*
-- [ ] la couleur d'un bloc choisie avec un curseur, avec l'aperçu de l'icône recolorée avant l'ajout
-- [ ] traductions des nouveaux blocs : leurs clés ajoutées à toutes les langues du mod, marquées non traduites dans l'onglet Localisation
+- [x] la couleur d'un bloc choisie avec un curseur, avec l'aperçu de l'icône recolorée avant l'ajout ; *dans 0.3.0, ainsi que des icônes personnelles*
+- [x] traductions des nouveaux blocs : leurs clés ajoutées à toutes les langues du mod, marquées non traduites dans l'onglet Localisation ; *dans 0.3.0*
 
 **0.4 : un éditeur confortable**
 - [ ] aides Lua dans l'éditeur : complétion, documentation au survol et aide sur les paramètres pour l'API de Factorio (`data.raw`, champs des prototypes, `game`, `script`, `defines`, événements), lues dans la description de l'API fournie avec le jeu installé (`doc-html/*-api.json`), donc conformes à sa version
-- [ ] Problèmes dans le nouveau style : regroupés par fichier et par règle, corrections rapides sûres (ajouter une clé de traduction manquante, corriger la casse d'un chemin)
+- [ ] Problèmes dans le nouveau style : regroupés par fichier et par règle (*fait dans 0.3.0*), corrections rapides sûres (ajouter une clé de traduction manquante, corriger la casse d'un chemin)
 - [ ] icônes des ingrédients et résultats issus du jeu de base ou d'une dépendance
 - [ ] les dépendances d'un coup d'œil : requises, optionnelles, incompatibles, et lesquelles sont disponibles dans `modsSource`
 - [ ] un éditeur de recettes et de technologies : ingrédients choisis avec leurs icônes du jeu et des dépendances, et la technologie qui débloque la recette

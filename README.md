@@ -6,7 +6,7 @@
 translate it, pack a clean release and test-run it with an isolated set of mods: in a desktop window of its own, from the
 command line or in your browser. It runs entirely on your machine and works next to your usual code editor.
 
-> **Early version (0.2).** The logic is covered by tests; `smoke` is checked against Factorio 1.1, 2.0 and 2.1 on Linux (CI), `run` with 2.1
+> **Early version (0.3).** The logic is covered by tests; `smoke` is checked against Factorio 1.1, 2.0 and 2.1 on Linux (CI), `run` with 2.1
 > on Windows. macOS has not been tried yet. Feedback and bug reports are very welcome.
 > The desktop app works on Windows; for Linux and macOS it is built but not tried yet.
 > Unofficial community project, not affiliated with Wube Software. "Factorio" is a trademark of Wube Software Ltd.
@@ -23,6 +23,7 @@ command line or in your browser. It runs entirely on your machine and works next
 
 ## What it does
 
+- **Add content without writing it from scratch.** 20 building blocks (armor, enemies, belt tiers, machines, vehicles...) as copies of the game's own: pick the colour with a slider, change their numbers in a properties panel, use icons of your own, rename or remove them safely, and try them in the game on a test map with one click.
 - **Start a mod in seconds.** Templates (empty, item + recipe, entity, runtime script) for Factorio 2.0 and 2.1 (all but the entity one also for 1.1) that pass every check out of the box.
 - **Catch mistakes early.** `info.json`, changelog, thumbnail, broken `__mod__/` paths and `require`s, missing or broken translations: all with file and line.
 - **See inside any mod.** The studio, in a window of its own or in the browser, with the file tree, a Lua editor with live checks, the prototypes and recipes the mod defines, its graphics and sounds, and the files nothing uses.
@@ -39,7 +40,7 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 
 **0.1.** The CLI (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) and the studio, in a desktop window or in the browser, in 8 interface languages: Overview, Files, Prototypes, Resources, Localization, Problems and Build tabs; 20 building blocks (armor, enemies, belt tiers, machines, vehicles...) as recoloured copies of the originals, checked in Factorio 2.1; whole folders of mods added with a check first.
 
-**0.2: now, ready for people**
+**0.2: ready for people**
 - [x] the desktop app everywhere: in the release archives for Windows, Linux and macOS, each with something to double-click, and one program with the CLI (a double click opens the window); *tried on Windows; built for Linux and macOS, reports welcome*
 - [x] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1, including the headless server; *`run` with 2.1 on Windows, `smoke` on the Linux headless server for 1.1, 2.0 and 2.1 in CI; macOS not tried yet*
 - [x] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
@@ -47,17 +48,17 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 - [x] one-line install: the tool published to NuGet (`dotnet tool install -g FactorioModStudio.Cli`), no clone needed; *published: 0.2.0*
 - [x] Factorio versions installed by the studio: `fmstudio factorio install 2.0` downloads the free headless server (Linux, WSL, CI), where `smoke` finds it, also from the Build tab; *the real download for 1.1, 2.0 and 2.1 smoke-tested in CI*
 
-**0.3: see and edit content**
+**0.3: now, see and edit content**
 - [x] the Prototypes tab from the game's own data (`--dump-data`): what the mod really creates and changes, with every value, also for copies made with `table.deepcopy`; "which mod changed this item, and to what?"; *in 0.2.1 (preview)*
 - [x] a properties panel for building blocks: health, speed, inventory, damage... as fields showing "original → yours", written back into the block's Lua; *in 0.2.1 (preview)*
-- [ ] a quick try in the game: one button starts Factorio on a test map with the new items already in the inventory
+- [x] a quick try in the game: one button starts Factorio on a test map with the new items already in the inventory; *in 0.3.0*
 - [x] rename or remove a block safely: its file, the require, the locale keys, the icons and every reference change together; *in 0.2.1 (preview)*
-- [ ] the colour of a block chosen with a slider, with the recoloured icon previewed before it is added
-- [ ] translations of new blocks: their keys added to every language of the mod, marked as untranslated in the Localization tab
+- [x] the colour of a block chosen with a slider, with the recoloured icon previewed before it is added; *in 0.3.0, and icons of your own*
+- [x] translations of new blocks: their keys added to every language of the mod, marked as untranslated in the Localization tab; *in 0.3.0*
 
 **0.4: a comfortable editor**
 - [ ] Lua hints in the editor: completion, hover documentation and parameter help for the Factorio API (`data.raw`, prototype fields, `game`, `script`, `defines`, events), read from the API description the installed game ships (`doc-html/*-api.json`), so they match its version
-- [ ] Problems in the new style: grouped by file and rule, safe quick fixes (add a missing locale key, fix the letter case of a path)
+- [ ] Problems in the new style: grouped by file and rule (*done in 0.3.0*), safe quick fixes (add a missing locale key, fix the letter case of a path)
 - [ ] icons for ingredients and results that come from the base game or a dependency
 - [ ] dependencies at a glance: required, optional, incompatible, and which of them are available in `modsSource`
 - [ ] a recipe and technology editor: ingredients picked with their icons from the game and the dependencies, and the technology that unlocks the recipe
@@ -150,10 +151,11 @@ or run it without installing: `dotnet run --project src/FactorioModStudio.Cli --
 | --- | --- |
 | `fmstudio init` | Creates `fmstudio.json` (optional configuration) in the project folder. |
 | `fmstudio new <name>` | Creates a new mod from a template (see "Creating a mod"). |
+| `fmstudio add <block> [name] [--title T] [--color #rrggbb] [--dry-run]` | Adds a building block to the project's mod (`add --list` shows them; see "Blocks tab"). `--color` sets its colour; the icons are recoloured to it when a Factorio installation is found. |
 | `fmstudio validate [mod-dir]` | Static checks of `info.json`, `changelog.txt`, the thumbnail and file references in Lua. |
 | `fmstudio pack [--out dir] [--force]` | Validates, then builds `NAME_VERSION.zip` with the correct top-level folder. Output goes to `dist/`. |
 | `fmstudio prepare [profile]` | Builds an isolated mods folder for a profile (your mod, its dependencies and `mod-list.json`). |
-| `fmstudio run [profile]` | Prepares the profile and starts Factorio with `--mod-directory` pointing at it. |
+| `fmstudio run [profile] [--try]` | Prepares the profile and starts Factorio with `--mod-directory` pointing at it. `--try`: a quick try on a test map (see "Build tab"). |
 | `fmstudio log <file>` | Summarizes errors and warnings of a Factorio log: location, merged duplicates, hints. |
 | `fmstudio smoke [profile]` | Headless test: generates a map (or loads the profile's save), simulates N ticks, fails on any log error. |
 | `fmstudio factorio [--json]` | Lists the Factorio installations found (id, version, where each came from) and the one chosen for the project's mod. |
@@ -472,6 +474,7 @@ The *Build* tab of a mod runs the same operations as the CLI and streams the out
 | *Pack* | `fmstudio pack` | Writes `NAME_VERSION.zip` to `<project>/dist` and offers it as a download. *Pack even with errors* is `--force`. |
 | *Smoke test* | `fmstudio smoke` | Validates first (errors stop it before Factorio starts), then loads the mod headless for *Ticks* ticks with the given *Seed*. Shows the verdict and the diagnostics from the Factorio log. |
 | *Run in Factorio* | `fmstudio run` | Prepares the profile and starts the game; the job stays *running* until Factorio exits. |
+| *Quick try* | `fmstudio run --try` | Like *Run*, on a fresh test map instead of the profile's save: lab tiles, always day, no enemies, cheat mode, the mod's recipes unlocked and a stack of every item it adds in the inventory (plus energy interfaces and poles for its machines). For mods made for Factorio 2.0 and later. |
 
 Pack, smoke test and run need an editable mod (the project mod or an unpacked mod in the workspace); Smoke test and Run also need
 a Factorio installation. The *Factorio to use* selector is *Automatic* (the installation matching the mod's `factorio_version`) or one
@@ -481,8 +484,14 @@ and remove your own and rescan. The first log line of a smoke test or run is `Us
 *Cancel* stops the running job and kills Factorio together with its child processes. The jobs of the last runs are listed under
 *Recent jobs*; click one to see its log and result again. A job that is still running is picked up again after a page reload.
 
+![Quick try: the test map with the mod's items in the inventory](docs/images/quick-try-game.png)
+
 Behaviour worth knowing:
 
+* *Quick try* adds a small helper mod, `fms-quick-try`, with the test scenario to the profile's mods folder only (Factorio starts with
+  `--load-scenario fms-quick-try/quick-try`); the game prints the items it put into the inventory in the chat.
+* A Factorio from a Steam library is started with its Steam app id (`SteamAppId=427520`), as Steam itself does: otherwise the game
+  would ask Steam to start it again and exit at once, and the studio would lose it (no log, no Cancel). It still uses a running Steam.
 * Mods run from the browser use their own profile `ui-<mod name>-<MAJOR.MINOR>` (the mod's `factorio_version`) under
   `.fmstudio/profiles/`, using `mods`, `args` and `save` of your `default` profile, so a run from the browser never touches the profiles
   you use on the command line.
@@ -523,11 +532,52 @@ API (JSON, `X-FMS-Token` required for POST, DELETE and the folder listing):
 | `DELETE /api/factorio/installations/{id}` | the list; `404` unknown or not added in the UI |
 | `POST /api/factorio/installations/rescan` | the list, freshly discovered |
 | `GET /api/fs/list?path=<absolute folder>` | `{ "path", "parent", "separator", "entries": [ { "name", "type": "dir\|file", "factorio" } ], "truncated" }`; no `path` lists the drives / `/` and the home folder; `400` bad path, `403` unreadable or a link, `404` missing |
-| `POST /api/mods/{id}/jobs` `{ "kind": "validate\|pack\|smoke\|run", "ticks"?, "seed"?, "timeoutMinutes"?, "force"?, "installation"?: "<id>" }` | `202` with the job (`factorio`: `{ id, path, version, mode, reason }` for smoke and run); a smoke / run without a usable installation fails with the reason as `error`; `400` bad request, `403` read-only mod, `404` unknown mod, `409` busy (`jobId` of the active job), `413` body over 4 KB |
+| `POST /api/mods/{id}/jobs` `{ "kind": "validate\|pack\|smoke\|run\|try", "ticks"?, "seed"?, "timeoutMinutes"?, "force"?, "installation"?: "<id>" }` | `202` with the job (`factorio`: `{ id, path, version, mode, reason }` for smoke, run and try); a smoke / run without a usable installation fails with the reason as `error`; `400` bad request, `403` read-only mod, `404` unknown mod, `409` busy (`jobId` of the active job), `413` body over 4 KB |
 | `GET /api/jobs/{jobId}?after=N` | the job with the log lines numbered above `N` (`state`: `queued`, `running`, `succeeded`, `failed`, `cancelled`) |
 | `GET /api/jobs?modId=ID` | recent jobs, newest first, without log lines |
 | `POST /api/jobs/{jobId}/cancel` | the cancelled job; `409` if it had already finished |
 | `GET /api/downloads/{file}` | a packed archive from `dist` |
+
+### Blocks tab: the mod's building blocks
+
+Building blocks are copies of the game's own prototypes (armor, a gun with ammo, a turret, a wall, a biter, belt tiers, inserters,
+pipes, poles, machines, an ore, solar panels, a car, a train...) that `fmstudio add` and the studio's *+ Add* button put into a mod: a
+file `prototypes/<name>.lua` (a `table.deepcopy` of the original with its own name and numbers), its `require` in `data.lua`, the
+names in the locale files and icon files recoloured from the game's pictures. Written for Factorio 2.0 and 2.1.
+
+*Add to mod* picks the block by category, takes the prototype name and the display name, and has a **colour slider** with the block's
+icons recoloured as they will be written (from the installed game; without one the colour still goes into the block's
+`local tint` and the game tints the icons). A dry run lists the files that will be created and changed before anything is written.
+The names go into **every language of the mod**: the English text with a `; fms: untranslated` line above each key in the other
+languages, so the game shows English until someone translates them and the Localization tab lists them as untranslated
+(*English for now*); saving a translation removes the line.
+
+The *Blocks* tab lists the mod's blocks (icon, name, what it is) next to an editor for the chosen one:
+
+* **Properties.** Each number the block sets (health, speed, inventory size, damage...) as *original / yours / in the game*: the
+  original from the game's data, yours from the Lua, the last column from the mod's game data (`--dump-data`, started by itself the
+  first time). Changed fields are saved back into the block's Lua.
+* **Colour.** The same slider, with *Apply the colour*: the `local tint` line changes and the icon and sprite files are recoloured again.
+  Icons of your own keep their colours.
+* **Icons.** One tile per icon of the block (the gun and its ammo, the belt, its underground and splitter...). *Replace...* or a PNG
+  dropped on the tile makes it the icon: any PNG (palette, grey, 16-bit too) up to 4 MB, a square one scaled to 64×64, a wider one
+  read as an icon with mipmaps (its left square is used). *Back to the original* puts the recoloured original back.
+* **Rename, remove, upgrade.** The name is edited in the header and checked as it is typed: the prototypes, the file, the `require`,
+  the locale keys in every language, the icon files and every Lua string of the mod with the old names change together (plus a
+  migration so saves keep their entities). *Remove* takes all of that out. An old block whose icons are only tinted in the game gets
+  icon files of its own with *Give it icons of its own*.
+
+A change of colour or icon, a rename, a removal and an upgrade can be undone from the message that reports it.
+
+| Request | Result |
+| --- | --- |
+| `GET /api/content/blocks` | the blocks: `id`, `category`, `defaultName`, `supportedVersions`, `color` (`#rrggbb`), `icons` (suffixes) |
+| `GET /api/content/blocks/{block}/icon?suffix=&color=%23rrggbb` | that icon recoloured, as a PNG; `404` without a game to take it from |
+| `POST /api/mods/{id}/content` `{ "block", "name", "title"?, "color"?, "dryRun"? }` | adds a block (`201`) or says what it would do; `409` a file is taken, `422` wrong `factorio_version` |
+| `GET /api/mods/{id}/blocks?file=prototypes/x.lua` | the block's properties, `kind`, `color`, `iconFiles` (`suffix`, `prototype`, `path`, `custom`) |
+| `POST /api/mods/{id}/blocks` `{ "file", "version", "values" }` | saves changed numbers; `409` the file changed since it was read |
+| `POST /api/mods/{id}/blocks/{rename\|remove\|upgrade\|recolor\|icon}` `{ "file", "name"?, "migration"?, "color"?, "suffix"?, "png"?: base64, "dryRun"? }` | the plan (files written and deleted, warnings) and an `undoId` |
+| `POST /api/mods/{id}/blocks/undo/{undoId}` | puts the files back (`204`) |
 
 ### Files tab
 
@@ -612,6 +662,8 @@ language. Every language is a chip with its progress (percent and a small bar; t
   `locale/de/main.cfg`), after the last key of their section. If the files change on disk while you hold unsaved edits (or the
   save is refused because they changed), a banner offers *Reload* (which discards your edits); without unsaved edits the table
   just refreshes. Extra keys (not present in the source language) have a *Remove* button.
+* **New blocks.** Keys a building block wrote in English into this language (a `; fms: untranslated` line above the key) count
+  as untranslated and are marked *English for now*; saving a translation for them removes that line.
 * **New language.** *New language…* creates `locale/<code>/` with an empty stub file (one comment line) for every file of the source
   language. Installed mods, zips and the game's data are shown read-only.
 

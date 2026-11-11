@@ -6,7 +6,7 @@
 przetłumacz go, spakuj czyste wydanie i uruchom z odizolowanym zestawem modów: we własnym oknie aplikacji, z wiersza poleceń albo w przeglądarce.
 Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 
-> **Wczesna wersja (0.2).** Logika jest pokryta testami; `smoke` sprawdzono z Factorio 1.1, 2.0 i 2.1 na Linuksie (CI), a `run` z 2.1 na Windows.
+> **Wczesna wersja (0.3).** Logika jest pokryta testami; `smoke` sprawdzono z Factorio 1.1, 2.0 i 2.1 na Linuksie (CI), a `run` z 2.1 na Windows.
 > macOS nie został jeszcze sprawdzony. Opinie i zgłoszenia błędów są bardzo mile widziane.
 > Aplikacja okienkowa działa na Windows; dla Linuksa i macOS jest zbudowana, ale jeszcze niesprawdzona.
 > Nieoficjalny projekt społeczności, niezwiązany z Wube Software. „Factorio” jest znakiem towarowym Wube Software Ltd.
@@ -25,6 +25,7 @@ Wszystko działa na Twoim komputerze, obok Twojego ulubionego edytora kodu.
 
 ## Co potrafi
 
+- **Zawartość bez pisania od zera.** 20 bloków (pancerz, wrogowie, poziomy taśmociągów, maszyny, pojazdy…) jako kopie oryginałów z gry: kolor wybierany suwakiem, wartości w panelu właściwości, własne ikony, bezpieczna zmiana nazwy i usuwanie, a jednym kliknięciem próba w grze na mapie testowej.
 - **Mod w kilka sekund.** Szablony (pusty, przedmiot + receptura, obiekt, skrypt czasu działania) dla Factorio 2.0 i 2.1 (wszystkie poza obiektem także dla 1.1), które od razu przechodzą każdą kontrolę.
 - **Błędy wcześniej niż w grze.** `info.json`, changelog, miniatura, zepsute ścieżki `__mod__/` i `require`, brakujące lub błędne tłumaczenia: wszystko z plikiem i wierszem.
 - **Wgląd w dowolny mod.** Studio we własnym oknie lub w przeglądarce, z drzewem plików, edytorem Lua ze sprawdzaniem na bieżąco, prototypami i recepturami moda, jego grafiką i dźwiękami oraz plikami, których nic nie używa.
@@ -41,7 +42,7 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 
 **0.1.** Wiersz poleceń (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) i studio — we własnym oknie lub w przeglądarce, w 8 językach interfejsu: zakładki Przegląd, Pliki, Prototypy, Zasoby, Lokalizacja, Problemy i Budowanie; 20 bloków (pancerz, wrogowie, poziomy taśmociągów, maszyny, pojazdy…) jako przemalowane kopie oryginałów, sprawdzone w Factorio 2.1; całe foldery modów dodawane po wcześniejszym sprawdzeniu.
 
-**0.2: teraz, gotowe dla ludzi**
+**0.2: gotowe dla ludzi**
 - [x] aplikacja okienkowa wszędzie: w archiwach wydania dla Windows, Linux i macOS, w każdym z czymś do podwójnego kliknięcia, oraz jeden program razem z wierszem poleceń (podwójne kliknięcie otwiera okno); *sprawdzona na Windows; zbudowana dla Linuksa i macOS, opinie mile widziane*
 - [x] `run` i `smoke` sprawdzone z Factorio 1.1, 2.0 i 2.1, łącznie z serwerem bez interfejsu; *`run` z 2.1 na Windows, `smoke` na linuksowym serwerze bez interfejsu dla 1.1, 2.0 i 2.1 w CI; macOS jeszcze niesprawdzony*
 - [x] po uruchomieniu lub teście dymnym odczytywany jest także `factorio-current.log`, a jego błędy widać w zakładkach Problemy i Wyjście
@@ -49,17 +50,17 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 - [x] instalacja jednym poleceniem: narzędzie opublikowane w NuGet (`dotnet tool install -g FactorioModStudio.Cli`), bez klonowania; *opublikowano: 0.2.0*
 - [x] wersje Factorio instalowane przez studio: `fmstudio factorio install 2.0` pobiera darmowy serwer bez interfejsu (Linux, WSL, CI), gdzie znajdzie go `smoke`, także z zakładki Budowanie; *prawdziwe pobieranie 1.1, 2.0 i 2.1 sprawdzone testami dymnymi w CI*
 
-**0.3: widzieć i edytować zawartość**
+**0.3: teraz, widzieć i edytować zawartość**
 - [x] zakładka Prototypy na podstawie danych samej gry (`--dump-data`): co mod naprawdę tworzy i zmienia, ze wszystkimi wartościami, także dla kopii przez `table.deepcopy`; „który mod zmienił ten przedmiot i na co?”; *w 0.2.1 (wersja zapoznawcza)*
 - [x] panel właściwości bloku: zdrowie, prędkość, ekwipunek, obrażenia… jako pola „oryginał → twoja wartość”, zapisywane z powrotem w Lua bloku; *w 0.2.1 (wersja zapoznawcza)*
-- [ ] szybka próba w grze: jeden przycisk uruchamia Factorio na mapie testowej, a nowości są już w ekwipunku
+- [x] szybka próba w grze: jeden przycisk uruchamia Factorio na mapie testowej, a nowości są już w ekwipunku; *w 0.3.0*
 - [x] bezpieczna zmiana nazwy i usuwanie bloku: plik, require, klucze tłumaczeń, ikony i wszystkie odwołania zmieniają się razem; *w 0.2.1 (wersja zapoznawcza)*
-- [ ] kolor bloku wybierany suwakiem, z podglądem przemalowanej ikony przed dodaniem
-- [ ] tłumaczenia nowych bloków: ich klucze trafiają do wszystkich języków moda, oznaczone jako nieprzetłumaczone w zakładce Lokalizacja
+- [x] kolor bloku wybierany suwakiem, z podglądem przemalowanej ikony przed dodaniem; *w 0.3.0, a także własne ikony*
+- [x] tłumaczenia nowych bloków: ich klucze trafiają do wszystkich języków moda, oznaczone jako nieprzetłumaczone w zakładce Lokalizacja; *w 0.3.0*
 
 **0.4: wygodny edytor**
 - [ ] podpowiedzi Lua w edytorze: uzupełnianie, dokumentacja po najechaniu i pomoc dla parametrów API Factorio (`data.raw`, pola prototypów, `game`, `script`, `defines`, zdarzenia), czytane z opisu API dołączonego do zainstalowanej gry (`doc-html/*-api.json`), więc zgodne z jej wersją
-- [ ] Problemy w nowym stylu: grupowanie według pliku i reguły, bezpieczne szybkie poprawki (dodanie brakującego klucza tłumaczenia, poprawienie wielkości liter w ścieżce)
+- [ ] Problemy w nowym stylu: grupowanie według pliku i reguły (*zrobione w 0.3.0*), bezpieczne szybkie poprawki (dodanie brakującego klucza tłumaczenia, poprawienie wielkości liter w ścieżce)
 - [ ] ikony składników i produktów pochodzących z gry podstawowej lub zależności
 - [ ] zależności w jednym miejscu: wymagane, opcjonalne, niezgodne i które z nich są dostępne w `modsSource`
 - [ ] edytor receptur i technologii: składniki wybierane z ikonami z gry i zależności oraz technologia odblokowująca recepturę
