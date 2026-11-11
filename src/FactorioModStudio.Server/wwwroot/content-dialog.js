@@ -3,6 +3,8 @@
 // shows which files a dry run would create and change before anything is written. The New mod dialog reuses the block list.
 
 import { t } from '/i18n.js';
+import { createColourField } from '/colour-field.js';
+import { sameHue } from '/colour-logic.js';
 
 export const CATEGORIES = ['combat', 'logistics', 'production', 'vehicles'];
 const NAME = /^[A-Za-z0-9_-]{1,200}$/;
@@ -41,6 +43,7 @@ export function createContentDialog({ el, api, onAdded }) {
   const name = el('input', { id: 'cd-name', type: 'text', maxlength: '200', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', 'data-testid': 'content-name' });
   const titleLabel = el('label', { for: 'cd-title' });
   const title = el('input', { id: 'cd-title', type: 'text', maxlength: '100', autocomplete: 'off', 'data-testid': 'content-title' });
+  const colour = createColourField({ el, id: 'cd-colour', testid: 'content-colour', onChange: schedulePreview });
   const preview = el('div', { class: 'cd-preview small', role: 'status', 'aria-live': 'polite', 'data-testid': 'content-preview' });
   const cancel = el('button', { type: 'button', 'data-testid': 'content-cancel', onclick: () => dialog.close() });
   const add = el('button', { type: 'button', class: 'primary', 'data-testid': 'content-add', onclick: () => submit() });
@@ -49,6 +52,7 @@ export function createContentDialog({ el, api, onAdded }) {
     el('div', { class: 'cd-fields' },
       el('div', { class: 'nm-field' }, nameLabel, name),
       el('div', { class: 'nm-field' }, titleLabel, title)),
+    colour.element,
     preview,
     el('div', { class: 'nm-actions' }, cancel, add));
   document.body.append(dialog);
@@ -83,10 +87,12 @@ export function createContentDialog({ el, api, onAdded }) {
 
     title.placeholder = NAME.test(name.value.trim()) ? humanize(name.value.trim()) : '';
     name.disabled = title.disabled = unsupported();
+    colour.element.hidden = !s.block;
     renderPreview();
   }
 
   function choose(block) {
+    if (s.block !== block) colour.set({ block: block.id, icons: block.icons || [], colour: block.color, original: block.color, previews: true });
     s.block = block;
     if (!s.nameTouched || !name.value.trim()) { name.value = defaultName(block); s.nameTouched = false; }
     render();
@@ -108,12 +114,15 @@ export function createContentDialog({ el, api, onAdded }) {
   }
 
   function request(dryRun) {
-    const body = { block: s.block.id, name: name.value.trim(), title: title.value.trim() || null, dryRun };
+    // The colour is sent only when it was changed: the block's own colour needs no rewriting of its Lua.
+    const picked = colour.value();
+    const body = { block: s.block.id, name: name.value.trim(), title: title.value.trim() || null, color: sameHue(picked, s.block.color) ? null : picked, dryRun };
     return api(`/api/mods/${encodeURIComponent(s.mod.id)}/content`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }
 
   const errorOf = (error) => error?.body?.error || error?.message || t('content.failed');
 
+  // A function declaration: the colour field above calls it before this line runs.
   function schedulePreview() {
     clearTimeout(s.timer);
     s.preview = null;

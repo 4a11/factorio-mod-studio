@@ -11,7 +11,7 @@ public sealed record BlockFileChange(string Path, byte[]? Content)
     public bool Delete => Content is null;
 }
 
-/// <param name="Operation">"rename", "remove" or "upgrade".</param>
+/// <param name="Operation">"rename", "remove", "upgrade" or "recolor".</param>
 /// <param name="Renamed">For a rename: old prototype name to new one.</param>
 /// <param name="Warnings">What the studio could not change by itself (references it cannot see, a missing game data folder...).</param>
 public sealed record BlockPlan(string Operation, string File, IReadOnlyList<BlockFileChange> Changes,
@@ -248,6 +248,55 @@ public static class BlockOperations
 
         return new BlockPlan("upgrade", file, Order(changes), new Dictionary<string, string>(), warnings.Distinct().ToList());
     }
+
+    // ------------------------------------------------------------------ recolour
+
+    /// <summary>
+    /// Gives the block another colour: the numbers of its <c>local tint</c> line, and its icon and sprite files recoloured again from
+    /// the game's pictures in <paramref name="gameDataDirectory"/>. An old block (icons only tinted in the game) is upgraded first.
+    /// </summary>
+    public static BlockPlan PlanRecolor(string modDirectory, string file, BlockColor color, string? gameDataDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(color);
+        var block = Load(modDirectory, file);
+        if (NeedsUpgrade(block.Source)) throw new FmsException($"{file} is an old block: give it icons of its own first, then change its colour.");
+        if (TintOf(block.Source) is null) throw new FmsException($"{file} has no `local tint` line to change.");
+        var kind = IdentifyBlock(block.Source, block.Id) ?? throw new FmsException($"{file} does not match any building block the studio knows.");
+        var changes = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
+        var warnings = new List<string>();
+        var modName = ModNameOf(block.Root);
+
+        // The files the block registered: copy.use_icons { [prototype] = path }, copy.use_sprites { [original] = path }.
+        Dictionary<string, string> Registered(Regex use)
+        {
+            var map = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (use.Match(block.Source) is { Success: true } m)
+                foreach (Match entry in Regex.Matches(m.Groups["body"].Value, @"\[\s*""(?<key>[^""]+)""\s*\]\s*=\s*""__(?<mod>[^""]+?)__/(?<path>[^""]+)"""))
+                    if (entry.Groups["mod"].Value == modName) map[entry.Groups["key"].Value] = entry.Groups["path"].Value;
+            return map;
+        }
+
+        void Redo(string? path, string vanilla, string what)
+        {
+            if (path is null) return;
+            if (gameDataDirectory is null) { warnings.Add("No Factorio installation was found: the colour changes in the game, but the icon files keep the old one."); return; }
+            if (ModContent.RecoloredIcon(gameDataDirectory, vanilla, color.Tuple) is { } png) changes[path] = png;
+            else warnings.Add($"The game's picture {vanilla} was not found; {what} keeps its old colour.");
+        }
+
+        var icons = Registered(UseIcons);
+        foreach (var icon in kind.Icons)
+            Redo(icons.GetValueOrDefault(block.Id + icon.Suffix), $"graphics/icons/{icon.Vanilla}.png", block.Id + icon.Suffix);
+        var sprites = Registered(UseSprites);
+        foreach (var sprite in kind.Sprites)
+            Redo(sprites.GetValueOrDefault($"__base__/{sprite.Vanilla}"), sprite.Vanilla, sprite.Vanilla.Split('/')[^1]);
+
+        changes[file] = Utf8(ModContent.WithTint(block.Source, color));
+        return new BlockPlan("recolor", file, Order(changes), new Dictionary<string, string>(), warnings.Distinct().ToList());
+    }
+
+    /// <summary>The block's colour from its <c>local tint</c> line, or null.</summary>
+    public static BlockColor? ColorOf(string source) => TintOf(source) is { } tint ? BlockColor.FromTuple(tint) : null;
 
     /// <summary>The block's name from its first line ("-- Title (id), added by ..."); the file's name when the line is missing.</summary>
     public static string IdOf(string source, string file)

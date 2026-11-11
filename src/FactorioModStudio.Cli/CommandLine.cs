@@ -7,7 +7,7 @@ internal sealed class CommandLine
     private static readonly HashSet<string> ValuedOptions = new(StringComparer.Ordinal)
     {
         "--project", "-p", "--out", "-o", "--factorio", "--ticks", "--timeout", "--seed", "--port", "--mods", "--workspace",
-        "--template", "--title", "--author", "--description", "--factorio-version", "--content"
+        "--template", "--title", "--author", "--description", "--factorio-version", "--content", "--color"
     };
 
     private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);

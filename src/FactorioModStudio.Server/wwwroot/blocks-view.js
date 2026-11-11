@@ -1,11 +1,14 @@
 // The Blocks tab: the building blocks of a mod in a list, the chosen one in an editor next to it. The editor shows each number the
 // block sets as "original / yours / in the game" (GET /api/mods/{id}/blocks), saves changed numbers into the block's Lua (POST),
-// renames the block in its header, and removes or upgrades it from its "⋯" menu (POST /blocks/{operation}, each with Undo).
+// renames the block in its header, changes its colour with a slider (icons previewed, POST /blocks/recolor), and removes or
+// upgrades it from its "⋯" menu (POST /blocks/{operation}, each with Undo).
 // The originals come from the game: when the mod has no game data yet, a dump job (the Prototypes tab's "In the game") starts by
 // itself the first time a block is opened, and the editor fills in when it is done.
 
 import { t, formatNumber } from '/i18n.js';
 import { fieldLabel, shownValue, resetText } from '/block-props.js';
+import { createColourField } from '/colour-field.js';
+import { sameHue } from '/colour-logic.js';
 
 const POLL_MS = 1000;
 const TOAST_MS = 10000;
@@ -82,11 +85,67 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
   });
   document.addEventListener('pointerdown', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu(false); });
 
+  // ------------------------------------------------------------ colour: one field kept across renders, so a drag is not cut off
+
+  const colourField = createColourField({ el, id: 'bv-colour', testid: 'blocks-colour', onChange: (colour) => {
+    const s = stateOf(current.modId);
+    const data = s.details.get(s.selected);
+    s.colourEdit = data?.color && !sameHue(colour, data.color) ? colour : null;
+    paintColourBar(s);
+  } });
+  const colourApply = el('button', { type: 'button', class: 'primary', 'data-testid': 'blocks-colour-apply', onclick: () => applyColour() });
+  const colourCancel = el('button', { type: 'button', 'data-testid': 'blocks-colour-cancel', onclick: () => {
+    const s = stateOf(current.modId);
+    s.colourEdit = null;
+    colourBound = null;
+    render();
+  } });
+  const colourBar = el('span', { class: 'bv-colour-bar' }, colourCancel, colourApply);
+  let colourBound = null; // "<file>|<colour>" the field was last set for
+
+  function paintColourBar(s) {
+    colourApply.textContent = t('colour.apply');
+    colourCancel.textContent = t('files.dialog.cancel');
+    colourBar.hidden = !s.colourEdit;
+  }
+
+  function colourSection(s, summary, data) {
+    if (!data.color || !data.kind) return null;
+    const key = `${summary.file}|${data.color}`;
+    const editable = current.editable && data.editable && !data.needsUpgrade;
+    if (colourBound !== key) {
+      colourBound = key;
+      colourField.set({ block: data.kind, icons: data.iconSuffixes || [], colour: s.colourEdit ?? data.color, original: data.color, previews: data.icons, disabled: !editable });
+    } else colourField.set({ disabled: !editable });
+    paintColourBar(s);
+    return el('div', { class: 'bv-colour' }, colourField.element,
+      data.needsUpgrade && current.editable && el('span', { class: 'small muted', text: t('colour.oldBlock') }),
+      colourBar);
+  }
+
+  async function applyColour() {
+    const { modId } = current;
+    const s = stateOf(modId);
+    const summary = blocksOf(current.overview).find((b) => b.file === s.selected);
+    if (!summary || !s.colourEdit) return;
+    try {
+      const done = await post(modId, 'recolor', { file: summary.file, color: s.colourEdit });
+      s.colourEdit = null;
+      colourBound = null;
+      s.iconStamp = Date.now();
+      showToast([t('colour.applied', { name: summary.title || idOf(summary) }), ...(done.warnings || [])].join(' '),
+        [undoButton(modId, [done.undoId])], (done.warnings || []).length > 0);
+      await loadDetail(modId, summary.file);
+    } catch (error) { showToast(failText(error), [], true); }
+  }
+
   // ------------------------------------------------------------ data
 
   const blocksOf = (o) => [...(o.blocks || [])].sort((a, b) => (a.title || a.id || a.file).localeCompare(b.title || b.id || b.file));
   const idOf = (b) => b.id || b.file.split('/').pop().replace(/\.lua$/i, '');
   const iconOf = (o, b) => o.prototypes.find((p) => p.name === idOf(b) && p.icon)?.icon;
+  // After a colour change the icon files keep their names: a stamp makes the browser read them again.
+  const iconSrc = (path) => { const stamp = current && stateOf(current.modId).iconStamp; return stamp ? `${fileUrl(path)}&v=${stamp}` : fileUrl(path); };
   const kindTitle = (b) => {
     if (!b.kind) return null;
     const key = `content.block.${b.kind}.title`;
@@ -168,6 +227,7 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
     s.selected = file;
     s.edits.clear();
     s.rename = null;
+    s.colourEdit = null;
     render();
     if (!s.details.has(file)) loadDetail(current.modId, file);
   }
@@ -199,6 +259,8 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
       try {
         for (const id of [...undoIds].reverse()) await api(`/api/mods/${enc(modId)}/blocks/undo/${enc(id)}`, { method: 'POST' });
         stateOf(modId).details.clear();
+        stateOf(modId).iconStamp = Date.now(); // the icon files may be back to what they were
+        colourBound = null;
         showToast(t('blockops.undone'));
       } catch (error) { showToast(t('blockops.undoFailed', { message: failText(error) }), [], true); }
     } });
@@ -319,7 +381,7 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
             type: 'button', class: 'bv-item', role: 'option', 'aria-selected': b.file === s.selected ? 'true' : 'false', 'data-testid': 'blocks-item', title: b.file,
             onclick: () => select(b.file),
           },
-          icon ? el('img', { class: 'bv-icon', alt: '', loading: 'lazy', src: fileUrl(icon) }) : el('span', { class: 'bv-icon bv-gear', 'aria-hidden': 'true', text: '⚙' }),
+          icon ? el('img', { class: 'bv-icon', alt: '', loading: 'lazy', src: iconSrc(icon) }) : el('span', { class: 'bv-icon bv-gear', 'aria-hidden': 'true', text: '⚙' }),
           el('span', { class: 'bv-names' },
             el('span', { class: 'bv-title', text: b.title || idOf(b) }),
             el('span', { class: 'muted small mono', text: idOf(b) })),
@@ -364,7 +426,7 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
         current.editable && el('button', { type: 'button', class: 'linklike small', 'data-testid': 'blocks-rename', title: t('blocks.renameHint'), onclick: () => startRename(summary), text: t('blocks.rename') }));
 
     return el('div', { class: 'bv-head' },
-      icon ? el('img', { class: 'bv-head-icon', alt: '', src: fileUrl(icon) }) : el('span', { class: 'bv-head-icon bv-gear', 'aria-hidden': 'true', text: '⚙' }),
+      icon ? el('img', { class: 'bv-head-icon', alt: '', src: iconSrc(icon) }) : el('span', { class: 'bv-head-icon bv-gear', 'aria-hidden': 'true', text: '⚙' }),
       el('div', { class: 'bv-head-text' },
         el('h2', { text: summary.title || idOf(summary) }),
         nameLine,
@@ -455,6 +517,7 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
     return el('section', { class: 'bv-detail', 'aria-label': summary.title || idOf(summary) },
       header(o, s, summary, data),
       renameDetails(s),
+      colourSection(s, summary, data),
       originalsStatus(s, data),
       table(s, data),
       prototypesLine(o, summary),
@@ -494,7 +557,7 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
       return root;
     },
     /** Opens a block (from the Prototypes tab); the tab itself is switched to by the host. */
-    select(modId, file) { const s = stateOf(modId); if (s.selected !== file) { s.selected = file; s.edits.clear(); s.rename = null; } },
+    select(modId, file) { const s = stateOf(modId); if (s.selected !== file) { s.selected = file; s.edits.clear(); s.rename = null; s.colourEdit = null; } },
     hasUnsaved(modId) { return (mods.get(modId)?.edits.size ?? 0) > 0; },
   };
 }

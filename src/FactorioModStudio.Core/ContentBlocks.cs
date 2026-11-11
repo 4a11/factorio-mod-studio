@@ -3,7 +3,43 @@ namespace FactorioModStudio.Core;
 /// <param name="Category">"combat", "logistics", "production" or "vehicles".</param>
 /// <param name="DefaultName">Suggested prototype name; hosts usually put the mod's name in front of it.</param>
 /// <param name="SupportedVersions">Factorio versions (MAJOR.MINOR) the generated Lua is written for.</param>
-public sealed record ContentBlockInfo(string Id, string Category, string DefaultName, IReadOnlyList<string> SupportedVersions);
+public sealed record ContentBlockInfo(string Id, string Category, string DefaultName, IReadOnlyList<string> SupportedVersions)
+{
+    /// <summary>The colour the block comes in (its <c>local tint</c>), as "#rrggbb".</summary>
+    public string Color { get; init; } = "#ffffff";
+
+    /// <summary>The icon files the block recolours, by what is appended to the prototype name ("" for the main one, "-ammo"...).</summary>
+    public IReadOnlyList<string> Icons { get; init; } = Array.Empty<string>();
+}
+
+/// <summary>A block's colour, each part 0..1 as in Lua's <c>{ r = 0.3, g = 0.8, b = 1.0 }</c>.</summary>
+public sealed record BlockColor(double R, double G, double B)
+{
+    private static readonly System.Text.RegularExpressions.Regex HexPattern = new("^#?([0-9a-fA-F]{6})$");
+
+    public static BlockColor FromTuple((double R, double G, double B) tint) => new(tint.R, tint.G, tint.B);
+
+    public (double R, double G, double B) Tuple => (R, G, B);
+
+    /// <summary>"#rrggbb".</summary>
+    public string Hex => $"#{Byte(R):x2}{Byte(G):x2}{Byte(B):x2}";
+
+    /// <summary>"#rrggbb" or "rrggbb"; null for anything else. Parts are rounded to two decimals, as the Lua line keeps them.</summary>
+    public static BlockColor? FromHex(string? text)
+    {
+        var m = HexPattern.Match(text?.Trim() ?? "");
+        if (!m.Success) return null;
+        var value = Convert.ToInt32(m.Groups[1].Value, 16);
+        return new BlockColor(Round((value >> 16 & 255) / 255.0), Round((value >> 8 & 255) / 255.0), Round((value & 255) / 255.0));
+    }
+
+    /// <summary>The numbers as the Lua line writes them: "r = 0.3, g = 0.8, b = 1.0".</summary>
+    public string LuaParts => $"r = {Number(R)}, g = {Number(G)}, b = {Number(B)}";
+
+    private static int Byte(double part) => (int)Math.Round(Math.Clamp(part, 0, 1) * 255, MidpointRounding.AwayFromZero);
+    private static double Round(double part) => Math.Round(part, 2);
+    private static string Number(double part) => Math.Round(Math.Clamp(part, 0, 1), 2).ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture);
+}
 
 /// <summary>One locale line the block needs; Key and Value may contain the @@id@@ and @@title@@ tokens.</summary>
 internal sealed record BlockLocale(string Section, string Key, string Value);
@@ -68,8 +104,14 @@ internal static class ContentBlocks
         var m = TintLine.Match(lua);
         if (!m.Success) throw new InvalidOperationException($"Block {id} has no `local tint` line.");
         double Part(int i) => double.Parse(m.Groups[i].Value, System.Globalization.CultureInfo.InvariantCulture);
-        return new(new ContentBlockInfo(id, category, defaultName, Modern), lua, locale, (Part(1), Part(2), Part(3)),
-            IconMap.TryGetValue(id, out var icons) ? icons : Array.Empty<BlockIcon>(),
+        var tint = (Part(1), Part(2), Part(3));
+        var icons = IconMap.TryGetValue(id, out var known) ? known : Array.Empty<BlockIcon>();
+        var info = new ContentBlockInfo(id, category, defaultName, Modern)
+        {
+            Color = BlockColor.FromTuple(tint).Hex,
+            Icons = icons.Select(i => i.Suffix).ToList()
+        };
+        return new(info, lua, locale, tint, icons,
             SpriteMap.TryGetValue(id, out var sprites) ? sprites : Array.Empty<BlockSprite>());
     }
 

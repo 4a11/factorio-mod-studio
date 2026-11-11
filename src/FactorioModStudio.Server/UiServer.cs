@@ -86,7 +86,7 @@ public static class UiServer
     [
         "lua-highlight.js", "locale-placeholders.js", "locale-view.js", "build-view.js", "i18n.js",
         "theme-init.js", "theme.js", "ui-state.js", "palette-logic.js", "palette.js", "editor-tabs.js",
-        "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js", "problems-logic.js", "problems-view.js", "prototypes-view.js", "resources-view.js",
+        "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js", "problems-logic.js", "problems-view.js", "colour-logic.js", "colour-field.js", "prototypes-view.js", "resources-view.js",
         "import-logic.js", "content-dialog.js", "update-view.js", "mod-menu.js", "game-data-view.js", "block-props.js", "blocks-view.js"
     ];
 
@@ -639,6 +639,17 @@ public static class UiServer
 
         app.MapGet("/api/content/blocks", () => ModContent.Blocks);
 
+        // The icon a block would get in a colour: ?suffix=-ammo&color=%23rrggbb -> PNG (the original recoloured, mipmaps included).
+        // 404 when no game is found (the icons are then only tinted in the game) or the block has no such icon.
+        app.MapGet("/api/content/blocks/{block}/icon", (HttpContext http, string block, string? suffix, string? color) =>
+        {
+            if (BlockColor.FromHex(color) is not { } wanted) return Error(StatusCodes.Status400BadRequest, "\"color\" must be #rrggbb.");
+            if (ModContent.PreviewIcon(catalog.GameDataDirectory, block, suffix ?? "", wanted) is not { } png)
+                return Error(StatusCodes.Status404NotFound, "No icon to preview: the block or its picture in the game is not known.");
+            http.Response.Headers.CacheControl = "private, max-age=600";
+            return Results.File(png, "image/png");
+        });
+
         // { block, name, title?, dryRun? } -> what was (or would be) created and changed. Never overwrites a file.
         app.MapPost("/api/mods/{id}/content", async (HttpContext http, string id) =>
         {
@@ -660,7 +671,9 @@ public static class UiServer
                 string? Text(string field) =>
                     !root.TryGetProperty(field, out var value) || value.ValueKind == JsonValueKind.Null ? null
                     : value.ValueKind == JsonValueKind.String ? value.GetString() : throw new FormatException($"\"{field}\" must be a string.");
-                request = new ContentRequest(Text("block") ?? "", Text("name") ?? "", Text("title"));
+                var colorText = Text("color");
+                var color = colorText is null ? null : BlockColor.FromHex(colorText) ?? throw new FormatException("\"color\" must be #rrggbb.");
+                request = new ContentRequest(Text("block") ?? "", Text("name") ?? "", Text("title"), color);
                 dryRun = root.TryGetProperty("dryRun", out var d) && d.ValueKind == JsonValueKind.True;
             }
             catch (Exception ex) when (ex is JsonException or FormatException)

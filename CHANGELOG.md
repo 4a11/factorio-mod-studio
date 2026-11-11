@@ -21,6 +21,11 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   exactly that one). An installation chosen by hand is kept, with a note about the mismatch.
 
 ### Added
+- **The colour of a building block, with a slider**: the *Add to mod* dialog and the Blocks tab editor have a hue slider with
+  the block's icons recoloured as they will be written (from the installed game's pictures; without a game the colour still
+  goes into the Lua and the game tints the icons). Adding writes the block in that colour; in the Blocks tab *Apply the colour*
+  changes its `local tint` and recolours its icon and sprite files again, with Undo. Old blocks get icons of their own first.
+  From the command line: `fmstudio add <block> [name] --color #rrggbb`.
 - **The full game from factorio.com**: besides the headless server, the studio installs Factorio with graphics (Windows x64 and
   Linux x64) into its own folder, where Run and the smoke tests find it. It needs a factorio.com account that owns the game:
   the installations dialog in the Build tab saves a username and token (on Windows the token is encrypted for your Windows user;

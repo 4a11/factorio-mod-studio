@@ -180,12 +180,14 @@ public static class Program
             }
 
             if (cmd.Positional.Count is 0 or > 2)
-                throw new FmsException("Usage: fmstudio add <block> [name] [--title T] [--dry-run] [--json]  (see `fmstudio add --list`)");
+                throw new FmsException("Usage: fmstudio add <block> [name] [--title T] [--color #rrggbb] [--dry-run] [--json]  (see `fmstudio add --list`)");
 
             var modDirectory = LoadProject(cmd).ModDirectory;
             var blockId = cmd.Positional[0];
             var name = cmd.Positional.Count == 2 ? cmd.Positional[1] : DefaultContentName(modDirectory, blockId);
-            var request = new ContentRequest(blockId, name, cmd.Get("--title"));
+            var colorText = cmd.Get("--color");
+            var color = colorText is null ? null : BlockColor.FromHex(colorText) ?? throw new FmsException($"--color takes #rrggbb (for example #4cc3ff), not \"{colorText}\".");
+            var request = new ContentRequest(blockId, name, cmd.Get("--title"), color);
             var dryRun = cmd.Has("--dry-run");
             var gameData = GameData(cmd);
             var plan = dryRun ? ModContent.Plan(modDirectory, request, gameData) : ModContent.Apply(modDirectory, request, gameData);
@@ -806,7 +808,7 @@ public static class Program
                                  [--content block,block: building blocks to add right away (Factorio 2.0+)]
                                  [--out <folder, default: the workspace>] [--json]   `new --list` shows the templates
           add <block> [name]     Add a building block (armor, enemy, belt tier, assembler, car, ...) to the project mod
-                                 [--title T] [--dry-run] [--json]   `add --list` shows the blocks; name: <mod>-<block>
+                                 [--title T] [--color #rrggbb] [--dry-run] [--json]   `add --list` shows the blocks; name: <mod>-<block>
                                  Writes prototypes/<name>.lua and appends to data.lua and locale/en; never overwrites
           factorio               List the Factorio installations found and the one chosen for the project's mod  [--json]
           factorio available     Factorio's headless server releases (Linux x64)  [--all] [--json]

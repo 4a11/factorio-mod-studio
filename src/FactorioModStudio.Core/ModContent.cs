@@ -7,7 +7,8 @@ namespace FactorioModStudio.Core;
 /// <param name="Block">Id of one of <see cref="ModContent.Blocks"/>.</param>
 /// <param name="Name">Prototype name: letters, digits, "_" and "-" (like mod names, which it usually starts with).</param>
 /// <param name="Title">Optional display name; defaults to the humanized name.</param>
-public sealed record ContentRequest(string Block, string Name, string? Title = null);
+/// <param name="Color">Optional colour; defaults to the block's own. The icons are recoloured to it and it is the block's <c>local tint</c>.</param>
+public sealed record ContentRequest(string Block, string Name, string? Title = null, BlockColor? Color = null);
 
 /// <param name="Create">Files the block adds (relative, '/'-separated).</param>
 /// <param name="Change">Existing files the block appends to (data.lua, the English locale file).</param>
@@ -82,6 +83,7 @@ public static class ModContent
             throw new ContentException(ContentError.InvalidName,
                 $"A prototype name has 1-{MaxNameLength} letters, digits, \"_\" or \"-\".");
         var title = CleanTitle(request.Title) ?? ModScaffolder.Humanize(name);
+        var tint = request.Color?.Tuple ?? block.Tint;
 
         var infoPath = Path.Combine(root, "info.json");
         if (!File.Exists(infoPath)) throw new ContentException(ContentError.NotAMod, "There is no info.json in the mod folder.");
@@ -110,7 +112,7 @@ public static class ModContent
             var prototype = name + icon.Suffix;
             var iconPath = $"graphics/icons/{prototype}.png";
             if (FindCaseInsensitive(root, iconPath) is { } existing) iconPath = existing;
-            else if (Recolored(gameDataDirectory, $"graphics/icons/{icon.Vanilla}.png", block.Tint) is { } png)
+            else if (Recolored(gameDataDirectory, $"graphics/icons/{icon.Vanilla}.png", tint) is { } png)
             {
                 files[iconPath] = png;
                 create.Add(iconPath);
@@ -124,7 +126,7 @@ public static class ModContent
         {
             var spritePath = $"graphics/entity/{name}{sprite.Suffix}.png";
             if (FindCaseInsensitive(root, spritePath) is { } existing) spritePath = existing;
-            else if (Recolored(gameDataDirectory, sprite.Vanilla, block.Tint) is { } png)
+            else if (Recolored(gameDataDirectory, sprite.Vanilla, tint) is { } png)
             {
                 files[spritePath] = png;
                 create.Add(spritePath);
@@ -137,7 +139,9 @@ public static class ModContent
         {
             ["id"] = name, ["title"] = title, ["icons"] = string.Join(",", iconEntries), ["sprites"] = string.Join(",", spriteEntries)
         };
-        files[prototypePath] = Utf8(Render(block.Lua, values));
+        var lua = Render(block.Lua, values);
+        if (request.Color is { } color) lua = WithTint(lua, color);
+        files[prototypePath] = Utf8(lua);
         create.Insert(0, prototypePath);
 
         if (FindCaseInsensitive(root, HelperPath) is null)
@@ -193,6 +197,24 @@ public static class ModContent
     }
 
     private static byte[] Utf8(string text) => new UTF8Encoding(false).GetBytes(text);
+
+    private static readonly Regex TintNumbers = new(@"(local tint = \{ )r = [0-9.]+, g = [0-9.]+, b = [0-9.]+", RegexOptions.Compiled);
+
+    /// <summary><paramref name="lua"/> with the numbers of its first <c>local tint</c> line set to <paramref name="color"/>
+    /// (an alpha part after them stays).</summary>
+    internal static string WithTint(string lua, BlockColor color) =>
+        TintNumbers.Replace(lua, m => m.Groups[1].Value + color.LuaParts, 1);
+
+    /// <summary>
+    /// The icon of <paramref name="blockId"/> (the one for <paramref name="suffix"/>: "" is the main prototype, "-ammo"...) recoloured
+    /// to <paramref name="color"/>, as adding the block would write it; null when the block, the suffix or the game's picture is unknown.
+    /// </summary>
+    public static byte[]? PreviewIcon(string? gameDataDirectory, string blockId, string suffix, BlockColor color)
+    {
+        var block = ContentBlocks.All.FirstOrDefault(b => b.Info.Id == blockId);
+        var icon = block?.Icons.FirstOrDefault(i => i.Suffix == suffix);
+        return icon is null ? null : Recolored(gameDataDirectory, $"graphics/icons/{icon.Vanilla}.png", color.Tuple);
+    }
 
     /// <summary>The same recolouring for <see cref="BlockOperations.PlanUpgrade"/>: an old block gets the icon files a new one has.</summary>
     internal static byte[]? RecoloredIcon(string? gameDataDirectory, string relative, (double R, double G, double B) tint) =>
