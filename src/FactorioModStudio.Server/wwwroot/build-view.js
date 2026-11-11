@@ -8,6 +8,8 @@
 // "Install a missing Factorio": when no installation matches the mod's factorio_version, a button installs the headless server
 // (Factorio without graphics: enough for smoke tests, not for playing) through /api/factorio/install; the installations dialog
 // offers any branch. One install runs at a time for the whole studio, so its state lives outside the per-mod state.
+// The full game (with graphics) can be installed the same way with a factorio.com account that owns Factorio: the dialog saves a
+// username and token (the token is sent to the studio once and never comes back) or uses the account the game is signed in to.
 
 import { t, getLanguage } from '/i18n.js';
 
@@ -589,14 +591,16 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
       el('strong', { text: invalid ? t('build.install.missing') : (item.version || unknownVersion()) }),
       name ? el('span', { class: 'build-install-name', text: name }) : null,
       ...sources.map((source) => el('span', { class: 'badge', 'data-source': source, text: t(`build.path.source.${source}`) })),
-      !invalid && item.headless === true ? el('span', { class: 'badge build-get-badge', title: t('build.get.why'), text: t('build.get.headlessBadge') }) : null);
+      !invalid && item.headless === true ? el('span', { class: 'badge build-get-badge', title: t('build.get.why'), text: t('build.get.headlessBadge') }) : null,
+      !invalid && item.managedGame === true ? el('span', { class: 'badge build-get-badge', text: t('build.game.badge') }) : null);
     const body = el('div', { class: 'build-install-body' }, head, el('div', { class: 'mono build-install-path', text: item.path }),
       invalid && item.error ? el('div', { class: 'small build-install-problem', text: item.error }) : null);
-    const removable = invalid || item.removable === true || item.headless === true;
+    const managed = !invalid && (item.headless === true || item.managedGame === true);
+    const removable = invalid || item.removable === true || managed;
     const remove = removable
       ? el('button', { type: 'button', class: 'small', 'data-testid': 'build-install-remove', 'aria-label': t('build.install.removeLabel', { name: name || item.path }), text: t('build.install.remove') })
       : null;
-    if (remove) remove.addEventListener('click', () => (item.headless === true && !invalid ? removeManaged(item) : removeInstall(item)));
+    if (remove) remove.addEventListener('click', () => (managed ? removeManaged(item) : removeInstall(item)));
     row.append(body, ...(remove ? [remove] : []));
     return row;
   }
@@ -750,11 +754,11 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     renderGet();
   }
 
-  async function startInstall(spec) {
+  async function startInstall(spec, game = false) {
     if (installing()) return;
     get.startError = null;
     try {
-      const answer = await api('/api/factorio/install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: spec }) });
+      const answer = await api('/api/factorio/install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: spec, game }) });
       get.install = answer?.install ?? null;
     } catch (error) {
       if (error.status === 409 && error.body?.install) get.install = error.body.install; // another install is running: follow it
@@ -790,12 +794,71 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
 
   async function removeManaged(item) {
     if (!item.version) return;
-    const result = await installCall(`/api/factorio/install/${enc(item.version)}`, { method: 'DELETE' }, 'build.get.removeError');
+    const query = item.managedGame === true ? '?game=true' : '';
+    const result = await installCall(`/api/factorio/install/${enc(item.version)}${query}`, { method: 'DELETE' }, 'build.get.removeError');
     if (!result) return;
     get.available = null;
     const list = await installCall('/api/factorio/installations/rescan', { method: 'POST' }, 'build.install.loadError');
     if (list) await changed(list);
     loadAvailable();
+  }
+
+  // ------------------------------------------------------------ the factorio.com account for the full game
+
+  const account = () => get.available?.game?.account ?? null;
+  const gameProblem = () => get.available?.game?.platformProblem ?? null;
+  const hasAccount = () => !!account()?.source;
+  const acc = { busy: false, error: null };
+  const accUser = el('input', { type: 'text', id: 'build-account-user', 'data-testid': 'build-account-user', maxlength: '100', autocomplete: 'off', spellcheck: 'false' });
+  const accToken = el('input', { type: 'password', id: 'build-account-token', 'data-testid': 'build-account-token', maxlength: '128', autocomplete: 'off', spellcheck: 'false' });
+
+  async function saveAccount(body) {
+    if (acc.busy) return;
+    acc.busy = true;
+    acc.error = null;
+    renderGet();
+    try {
+      const answer = await api('/api/factorio/account', { method: body ? 'PUT' : 'DELETE', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      if (get.available?.game) get.available.game.account = answer?.account ?? null;
+      accToken.value = ''; // the token is not kept in the page once it is saved
+    } catch (error) {
+      acc.error = error.message;
+    }
+    acc.busy = false;
+    renderGet();
+  }
+
+  function accountSourceText(a) {
+    return a.source === 'env' ? t('build.game.sourceEnv') : a.source === 'game' ? t('build.game.sourceGame') : t('build.game.sourceStudio');
+  }
+
+  /** The account line, or the form that sets one, in the installations dialog. */
+  function accountBox() {
+    const a = account();
+    if (!a) return [];
+    if (a.source) {
+      return [el('div', { class: 'build-get-row', 'data-testid': 'build-account' },
+        el('span', { text: t('build.game.account', { name: a.username, source: accountSourceText(a) }) }),
+        a.source !== 'env' && el('button', { type: 'button', class: 'small', 'data-testid': 'build-account-forget', disabled: acc.busy ? true : null,
+          onclick: () => saveAccount(null), text: t('build.game.forget') })),
+        acc.error && el('p', { class: 'small build-get-error', text: acc.error })];
+    }
+    const submit = (event) => {
+      event.preventDefault();
+      if (accUser.value.trim() && accToken.value.trim()) saveAccount({ username: accUser.value.trim(), token: accToken.value.trim() });
+    };
+    return [
+      el('p', { class: 'muted small', text: t('build.game.needAccount') }),
+      a.gameUsername && el('div', { class: 'build-get-row' },
+        el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-account-use-game', disabled: acc.busy ? true : null,
+          onclick: () => saveAccount({ useGame: true }), text: t('build.game.useGame', { name: a.gameUsername }) })),
+      el('form', { class: 'build-account-form', 'data-testid': 'build-account-form', novalidate: true, autocomplete: 'off', onsubmit: submit },
+        el('label', { for: 'build-account-user', text: t('build.game.username') }), accUser,
+        el('label', { for: 'build-account-token', text: t('build.game.token') }), accToken,
+        el('button', { type: 'submit', class: 'small', 'data-testid': 'build-account-save', disabled: acc.busy ? true : null, text: t('build.game.save') })),
+      el('p', { class: 'muted small', text: t('build.game.tokenHint') }),
+      acc.error && el('p', { class: 'small build-get-error', text: acc.error }),
+    ];
   }
 
   /** Progress, result or error of the current install, for both places it is shown. */
@@ -848,15 +911,21 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
       return [progress, !installing() && branch ? el('button', { type: 'button', class: 'small', onclick: () => startInstall(spec), text: t('build.get.retry') }) : null];
     }
     const problem = availabilityProblem();
-    if (problem) return problem;
+    const gameOk = !!get.available && !gameProblem();
+    if (problem && !gameOk) return problem;
     if (!get.available || !branch) return [];
     const release = (get.available.branches || []).find((b) => b.branch === branch);
     if (!release) return [el('p', { class: 'small', text: t('build.get.noRelease', { branch }) })];
+    const version = spec === branch ? release.newest : spec;
+    const headlessOk = !get.available.platformProblem;
     return [
       el('div', { class: 'build-get-row' },
-        el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-get-install', onclick: () => startInstall(spec) },
-          el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: '↓' }), el('span', { text: t('build.get.install', { version: spec === branch ? release.newest : spec }) }))),
-      el('p', { class: 'muted small', text: t('build.get.why') }),
+        headlessOk && el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-get-install', onclick: () => startInstall(spec) },
+          el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: '↓' }), el('span', { text: t('build.get.install', { version }) })),
+        gameOk && hasAccount() && el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-get-install-game', onclick: () => startInstall(spec, true) },
+          el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: '↓' }), el('span', { text: t('build.game.install', { version }) })),
+        gameOk && !hasAccount() && el('button', { type: 'button', class: 'files-btn', 'data-testid': 'build-get-account', onclick: openInstallDialog, text: t('build.game.setUp') })),
+      el('p', { class: 'muted small', text: headlessOk ? t('build.get.why') : t('build.game.why') }),
       get.startError && el('p', { class: 'small build-get-error', text: t('build.get.startError', { message: get.startError }) }),
     ];
   }
@@ -864,26 +933,35 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
   function dialogBox() {
     const problem = availabilityProblem();
     const progress = installView();
-    if (problem) return [...problem, progress];
+    const gameOk = !!get.available && !gameProblem();
+    if (problem && !gameOk) return [...problem, gameProblem() && el('p', { class: 'muted small', text: gameProblem() }), progress];
     if (!get.available) return [progress];
+    const headlessOk = !get.available.platformProblem;
+    const games = new Set(get.available.game?.installed || []);
     const installed = new Set(get.available.installed || []);
     const branches = get.available.branches || [];
     const previous = refs.getSelect.value;
     refs.getSelect.replaceChildren(...branches.map((b) => {
       const marks = [b.newest === get.available.stable && t('build.get.stable'), b.newest === get.available.experimental && t('build.get.experimental'),
-        installed.has(b.newest) && t('build.get.installedMark')].filter(Boolean);
+        installed.has(b.newest) && t('build.get.installedMark'), games.has(b.newest) && t('build.game.installedMark')].filter(Boolean);
       return el('option', { value: b.branch, text: `${b.branch}: ${b.newest}${marks.length ? ` (${marks.join(', ')})` : ''}` });
     }));
     const branch = wantedBranch();
     refs.getSelect.value = branches.some((b) => b.branch === previous) ? previous : branches.some((b) => b.branch === branch) ? branch : (branches[0]?.branch ?? '');
     return [
-      el('p', { class: 'muted small', text: t('build.get.why') }),
+      el('p', { class: 'muted small', text: headlessOk ? t('build.get.why') : get.available.platformProblem }),
       el('div', { class: 'build-get-row' },
         el('label', { for: 'build-get-select', text: t('build.get.branchLabel') }), refs.getSelect,
-        el('button', { type: 'button', class: 'primary', 'data-testid': 'build-get-install-selected', disabled: installing() || !branches.length ? true : null,
-          onclick: () => startInstall(refs.getSelect.value), text: t('build.get.installSelected') })),
+        headlessOk && el('button', { type: 'button', class: 'primary', 'data-testid': 'build-get-install-selected', disabled: installing() || !branches.length ? true : null,
+          onclick: () => startInstall(refs.getSelect.value), text: t('build.get.installSelected') }),
+        gameOk && el('button', { type: 'button', class: headlessOk ? null : 'primary', 'data-testid': 'build-get-install-game-selected',
+          disabled: installing() || !branches.length || !hasAccount() ? true : null,
+          onclick: () => startInstall(refs.getSelect.value, true), text: t('build.game.installSelected') })),
       get.startError && el('p', { class: 'small build-get-error', text: t('build.get.startError', { message: get.startError }) }),
       progress,
+      gameOk && el('h4', { class: 'build-get-subheading', text: t('build.game.heading') }),
+      gameOk && el('p', { class: 'muted small', text: t('build.game.why') }),
+      ...(gameOk ? accountBox() : [gameProblem() && el('p', { class: 'muted small', text: gameProblem() })]),
     ];
   }
 

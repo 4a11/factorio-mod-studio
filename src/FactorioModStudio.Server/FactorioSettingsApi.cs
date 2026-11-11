@@ -116,7 +116,8 @@ internal static class FactorioSettingsApi
             {
                 id = c.Id, path = c.Path, version = c.Version, label = c.Label, sources = c.Sources,
                 valid = true, removable = c.Sources.Contains("ui"),
-                headless = FactorioDownloads.IsHeadlessInstall(c.Path) // installed by the studio; removed through /api/factorio/install/{version}
+                headless = FactorioDownloads.IsHeadlessInstall(c.Path), // installed by the studio; removed through /api/factorio/install/{version}
+                managedGame = FactorioDownloads.IsGameInstall(c.Path) // the full game installed by the studio; removed with ?game=true
             }).ToList(),
             invalid = jobs.GetInvalid(candidates).Select(i => new { id = FactorioInstallations.IdOf(i.Path), path = i.Path, label = i.Label, error = i.Error }).ToList()
         };

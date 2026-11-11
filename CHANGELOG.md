@@ -12,6 +12,12 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   exactly that one). An installation chosen by hand is kept, with a note about the mismatch.
 
 ### Added
+- **The full game from factorio.com**: besides the headless server, the studio installs Factorio with graphics (Windows x64 and
+  Linux x64) into its own folder, where Run and the smoke tests find it. It needs a factorio.com account that owns the game:
+  the installations dialog in the Build tab saves a username and token (on Windows the token is encrypted for your Windows user;
+  it is only ever sent to factorio.com and never shown again) or uses the account Factorio itself is signed in to, read from its
+  player-data.json each time. From the command line: `fmstudio factorio install 2.0 --game` with that account or with
+  `FACTORIO_USERNAME` and `FACTORIO_TOKEN`; `fmstudio factorio remove <version> --game` deletes it.
 - **FMS049**: an error when the `base` dependency cannot be met by any release of the `factorio_version` the mod targets
   (`factorio_version` 1.1 with `base >= 2.0.0`): the game would refuse to load the mod.
 

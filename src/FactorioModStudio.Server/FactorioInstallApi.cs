@@ -6,11 +6,12 @@ using Microsoft.AspNetCore.Http;
 
 namespace FactorioModStudio.Server;
 
-/// <summary>Where an install is: "downloading", "unpacking", "succeeded", "failed" or "cancelled".</summary>
-internal sealed record InstallSnapshot(string Version, string State, long Received, long? Total, string? Error, string? Path, bool AlreadyInstalled);
+/// <summary>Where an install is: "downloading", "unpacking", "succeeded", "failed" or "cancelled". <paramref name="Game"/>: the full game.</summary>
+internal sealed record InstallSnapshot(string Version, string State, long Received, long? Total, string? Error, string? Path, bool AlreadyInstalled, bool Game = false);
 
 /// <summary>
-/// The Build tab's "install a missing Factorio": one headless install at a time, run in the background and polled by the page.
+/// The Build tab's "install a missing Factorio": one install at a time (the headless server, or the full game with a factorio.com
+/// account), run in the background and polled by the page.
 /// The work itself is <see cref="FactorioDownloads"/> (Core); this class only keeps its progress and lets it be cancelled.
 /// </summary>
 internal sealed class FactorioInstalls
@@ -26,11 +27,22 @@ internal sealed class FactorioInstalls
 
     /// <param name="create">Makes the downloader (tests pass one with a fake HTTP client and tar).</param>
     /// <param name="changed">Called after an install or removal, so the installation lists are scanned again.</param>
-    public FactorioInstalls(Func<FactorioDownloads> create, Action changed)
+    /// <param name="playerDataFile">The game's player-data.json; null is the real one (<see cref="FactorioAccount.GamePlayerDataPath"/>).</param>
+    /// <param name="accountFile">The studio's saved account; null is <see cref="FactorioAccount.StorePath"/>.</param>
+    public FactorioInstalls(Func<FactorioDownloads> create, Action changed, string? playerDataFile = null, string? accountFile = null)
     {
         _create = create;
         _changed = changed;
+        PlayerDataFile = playerDataFile;
+        AccountFile = accountFile ?? FactorioAccount.StorePath();
     }
+
+    public string? PlayerDataFile { get; }
+    public string AccountFile { get; }
+
+    public FactorioAccountStatus AccountStatus() => FactorioAccount.Status(AccountFile, PlayerDataFile);
+
+    public FactorioCredentials? Credentials() => FactorioAccount.Resolve(AccountFile, PlayerDataFile);
 
     public FactorioDownloads Downloads() => _create();
 
@@ -47,15 +59,17 @@ internal sealed class FactorioInstalls
     }
 
     /// <summary>Starts installing <paramref name="version"/>; null when another install is still running.</summary>
-    public InstallSnapshot? Start(string version)
+    /// <param name="credentials">Given: the full game with this account; null: the headless server.</param>
+    public InstallSnapshot? Start(string version, FactorioCredentials? credentials = null)
     {
+        var game = credentials is not null;
         CancellationTokenSource cancel;
         lock (_gate)
         {
             if (_current is { State: "downloading" or "unpacking" }) return null;
             _cancel?.Dispose();
             _cancel = cancel = new CancellationTokenSource();
-            _current = new InstallSnapshot(version, "downloading", 0, null, null, null, false);
+            _current = new InstallSnapshot(version, "downloading", 0, null, null, null, false, game);
         }
 
         var downloads = _create();
@@ -72,7 +86,9 @@ internal sealed class FactorioInstalls
             InstallSnapshot done;
             try
             {
-                var result = await downloads.InstallHeadlessAsync(version, progress, cancel.Token).ConfigureAwait(false);
+                var result = credentials is not null
+                    ? await downloads.InstallGameAsync(version, credentials, progress, cancel.Token).ConfigureAwait(false)
+                    : await downloads.InstallHeadlessAsync(version, progress, cancel.Token).ConfigureAwait(false);
                 done = Snapshot(version) with { State = "succeeded", Path = result.Path, AlreadyInstalled = result.AlreadyInstalled };
             }
             catch (OperationCanceledException) when (cancel.IsCancellationRequested)
@@ -107,12 +123,12 @@ internal sealed class FactorioInstalls
         }
     }
 
-    public bool Remove(string version)
+    public bool Remove(string version, bool game = false)
     {
         lock (_gate)
-            if (_current is { State: "downloading" or "unpacking" } c && c.Version == version)
+            if (_current is { State: "downloading" or "unpacking" } c && c.Version == version && c.Game == game)
                 throw new FmsException($"Factorio {version} is being installed right now.");
-        var removed = _create().Remove(version);
+        var removed = game ? _create().RemoveGame(version) : _create().Remove(version);
         if (removed) _changed();
         return removed;
     }
@@ -124,7 +140,8 @@ internal sealed class FactorioInstalls
 }
 
 /// <summary>
-/// <c>/api/factorio/available</c>, <c>/api/factorio/install</c> (start, progress, cancel) and removing an install. Writes pass the
+/// <c>/api/factorio/available</c>, <c>/api/factorio/install</c> (start, progress, cancel), removing an install and
+/// <c>/api/factorio/account</c> (the factorio.com account for the full game; the token goes in, never out). Writes pass the
 /// session-token and same-origin check in <c>UiServer.MapSecurity</c> like every other write; versions are accepted only as
 /// MAJOR.MINOR or MAJOR.MINOR.PATCH and resolved against Factorio's own list before anything is downloaded.
 /// </summary>
@@ -139,7 +156,26 @@ internal static class FactorioInstallApi
     private static IResult Error(int status, string message) => Json(new { error = message }, status);
 
     private static object? Inner(InstallSnapshot? s) => s is null ? null :
-        new { version = s.Version, state = s.State, received = s.Received, total = s.Total, error = s.Error, path = s.Path, alreadyInstalled = s.AlreadyInstalled };
+        new { version = s.Version, state = s.State, received = s.Received, total = s.Total, error = s.Error, path = s.Path, alreadyInstalled = s.AlreadyInstalled, game = s.Game };
+
+    /// <summary><c>{ source, username, gameUsername, useGame }</c>: which account a full-game download uses; never the token.</summary>
+    private static object Account(FactorioAccountStatus a) => new { source = a.Source, username = a.Username, gameUsername = a.GameUsername, useGame = a.UseGame };
+
+    private static async Task<(JsonDocument? Body, IResult? Error)> ReadBody(HttpContext http, long limit)
+    {
+        if (http.Request.ContentLength > limit) return (null, Error(StatusCodes.Status413PayloadTooLarge, $"The request is too large (limit {limit} bytes)."));
+        byte[] body;
+        try { body = await BuildApi.ReadLimited(http.Request.Body, limit, http.RequestAborted); }
+        catch (InvalidDataException) { return (null, Error(StatusCodes.Status413PayloadTooLarge, $"The request is too large (limit {limit} bytes).")); }
+        try
+        {
+            var document = JsonDocument.Parse(body);
+            if (document.RootElement.ValueKind == JsonValueKind.Object) return (document, null);
+            document.Dispose();
+        }
+        catch (JsonException) { return (null, Error(StatusCodes.Status400BadRequest, "The body is not valid JSON.")); }
+        return (null, Error(StatusCodes.Status400BadRequest, "The body must be a JSON object."));
+    }
 
     /// <summary><c>{ "install": { version, state, received, total, error, path, alreadyInstalled } | null }</c></summary>
     private static object Describe(InstallSnapshot? s) => new { install = Inner(s) };
@@ -151,9 +187,16 @@ internal static class FactorioInstallApi
             http.Response.Headers.CacheControl = "no-store";
             var downloads = installs.Downloads();
             var installed = downloads.Installed().Select(i => i.Version).ToList();
-            // Where the headless server cannot run there is nothing to offer, and no reason to ask Factorio's servers.
-            if (downloads.PlatformProblem is { } problem)
-                return Json(new { platformProblem = problem, stable = (string?)null, experimental = (string?)null, branches = Array.Empty<object>(), installed });
+            var gameProblem = downloads.GamePlatformProblem;
+            var game = new
+            {
+                platformProblem = gameProblem,
+                installed = downloads.InstalledGames().Select(i => i.Version).ToList(),
+                account = Account(installs.AccountStatus())
+            };
+            // Where neither the headless server nor the game can be installed there is nothing to offer, and no reason to ask Factorio's servers.
+            if (downloads.PlatformProblem is { } problem && gameProblem is not null)
+                return Json(new { platformProblem = problem, stable = (string?)null, experimental = (string?)null, branches = Array.Empty<object>(), installed, game });
 
             AvailableReleases releases;
             try
@@ -169,7 +212,7 @@ internal static class FactorioInstallApi
                 .GroupBy(v => string.Join('.', v.Split('.').Take(2)))
                 .Select(g => new { branch = g.Key, newest = g.First(), count = g.Count() })
                 .ToList();
-            return Json(new { platformProblem = (string?)null, releases.Stable, releases.Experimental, branches, installed });
+            return Json(new { platformProblem = downloads.PlatformProblem, releases.Stable, releases.Experimental, branches, installed, game });
         });
 
         app.MapGet("/api/factorio/install", (HttpContext http) =>
@@ -187,6 +230,7 @@ internal static class FactorioInstallApi
             catch (InvalidDataException) { return Error(StatusCodes.Status413PayloadTooLarge, "The request is too large (limit 1 KB)."); }
 
             string? spec;
+            var game = false;
             try
             {
                 using var document = JsonDocument.Parse(body);
@@ -194,13 +238,26 @@ internal static class FactorioInstallApi
                     !document.RootElement.TryGetProperty("version", out var value) || value.ValueKind != JsonValueKind.String)
                     return Error(StatusCodes.Status400BadRequest, "The body must be an object with a \"version\" string (MAJOR.MINOR or MAJOR.MINOR.PATCH).");
                 spec = value.GetString();
+                if (document.RootElement.TryGetProperty("game", out var kind))
+                {
+                    if (kind.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return Error(StatusCodes.Status400BadRequest, "\"game\" must be true or false.");
+                    game = kind.GetBoolean();
+                }
             }
             catch (JsonException) { return Error(StatusCodes.Status400BadRequest, "The body is not valid JSON."); }
 
             if (!FactorioDownloads.IsVersionSpec(spec))
                 return Error(StatusCodes.Status400BadRequest, "The version must be MAJOR.MINOR (newest release of that branch), MAJOR.MINOR.PATCH, \"stable\" or \"latest\".");
             var downloads = installs.Downloads();
-            if (downloads.PlatformProblem is { } problem) return Error(StatusCodes.Status400BadRequest, problem);
+            FactorioCredentials? credentials = null;
+            if (game)
+            {
+                if (downloads.GamePlatformProblem is { } gameProblem) return Error(StatusCodes.Status400BadRequest, gameProblem);
+                credentials = installs.Credentials();
+                if (credentials is null)
+                    return Error(StatusCodes.Status400BadRequest, "No factorio.com account is set: enter your username and token, or use the account Factorio is signed in to.");
+            }
+            else if (downloads.PlatformProblem is { } problem) return Error(StatusCodes.Status400BadRequest, problem);
 
             string? version;
             try
@@ -211,9 +268,9 @@ internal static class FactorioInstallApi
             }
             catch (FmsException ex) { return Error(StatusCodes.Status502BadGateway, ex.Message); }
             catch (OperationCanceledException) { return Error(StatusCodes.Status504GatewayTimeout, "Factorio's updater did not answer within 30 seconds."); }
-            if (version is null) return Error(StatusCodes.Status404NotFound, $"Factorio has no headless release matching \"{spec}\".");
+            if (version is null) return Error(StatusCodes.Status404NotFound, $"Factorio has no release matching \"{spec}\".");
 
-            var started = installs.Start(version);
+            var started = installs.Start(version, credentials);
             if (started is null) return Json(new { error = "Another Factorio install is still running.", install = Inner(installs.Current) }, StatusCodes.Status409Conflict);
             return Json(Describe(started), StatusCodes.Status202Accepted);
         });
@@ -228,14 +285,58 @@ internal static class FactorioInstallApi
         {
             http.Response.Headers.CacheControl = "no-store";
             if (!FactorioDownloads.IsVersion(version)) return Error(StatusCodes.Status400BadRequest, "The version must be MAJOR.MINOR.PATCH.");
+            var game = http.Request.Query["game"] == "true";
             try
             {
-                return installs.Remove(version)
-                    ? Json(new { removed = version })
+                return installs.Remove(version, game)
+                    ? Json(new { removed = version, game })
                     : Error(StatusCodes.Status404NotFound, $"Factorio {version} was not installed by the studio.");
             }
             catch (FmsException ex) { return Error(StatusCodes.Status409Conflict, ex.Message); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return Error(StatusCodes.Status500InternalServerError, "Could not remove it: " + ex.Message); }
+        });
+
+        app.MapGet("/api/factorio/account", (HttpContext http) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            return Json(new { account = Account(installs.AccountStatus()) });
+        });
+
+        // { "username": "...", "token": "..." } saves an account; { "useGame": true } uses the one the installed game is signed in to.
+        app.MapPut("/api/factorio/account", async (HttpContext http) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            var (document, error) = await ReadBody(http, MaxBodyBytes);
+            if (error is not null) return error;
+            using (document)
+            {
+                var root = document!.RootElement;
+                try
+                {
+                    if (root.TryGetProperty("useGame", out var useGame) && useGame.ValueKind == JsonValueKind.True)
+                    {
+                        if (FactorioAccount.FromGame(installs.PlayerDataFile) is null)
+                            return Error(StatusCodes.Status409Conflict, "Factorio is not signed in to a factorio.com account on this computer (its player-data.json has no token).");
+                        FactorioAccount.SaveUseGame(installs.AccountFile);
+                    }
+                    else if (root.TryGetProperty("username", out var user) && user.ValueKind == JsonValueKind.String
+                             && root.TryGetProperty("token", out var token) && token.ValueKind == JsonValueKind.String)
+                        FactorioAccount.Save(user.GetString()!.Trim(), token.GetString()!.Trim(), installs.AccountFile);
+                    else
+                        return Error(StatusCodes.Status400BadRequest, "Send { \"username\", \"token\" } or { \"useGame\": true }.");
+                }
+                catch (FmsException ex) { return Error(StatusCodes.Status400BadRequest, ex.Message); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return Error(StatusCodes.Status500InternalServerError, "Could not save the account: " + ex.Message); }
+            }
+            return Json(new { account = Account(installs.AccountStatus()) });
+        });
+
+        app.MapDelete("/api/factorio/account", (HttpContext http) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            try { FactorioAccount.Forget(installs.AccountFile); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return Error(StatusCodes.Status500InternalServerError, "Could not forget the account: " + ex.Message); }
+            return Json(new { account = Account(installs.AccountStatus()) });
         });
     }
 }

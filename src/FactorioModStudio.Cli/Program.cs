@@ -492,18 +492,33 @@ public static class Program
             if (!cmd.Has("--json")) output.WriteLine($"The project's mod needs Factorio {spec}.");
         }
 
+        // The full game needs a factorio.com account: FACTORIO_USERNAME + FACTORIO_TOKEN, the one saved in the studio, or the game's own.
+        var game = cmd.Has("--game");
+        FactorioCredentials? credentials = null;
+        if (game)
+        {
+            if (downloads.GamePlatformProblem is { } gameProblem) throw new FmsException(gameProblem);
+            credentials = FactorioAccount.Resolve()
+                ?? throw new FmsException($"The full game needs a factorio.com account that owns Factorio. Set {FactorioAccount.UsernameVariable} and {FactorioAccount.TokenVariable}, save the account in the studio's Build tab, or sign in to factorio.com in the game.");
+        }
         // Check the platform before going to the network: on Windows and macOS nothing could be installed anyway.
-        if (downloads.PlatformProblem is { } problem) throw new FmsException(problem);
+        else if (downloads.PlatformProblem is { } problem) throw new FmsException(problem);
 
         var releases = FetchReleases(downloads);
         var version = FactorioDownloads.Resolve(releases, spec)
                       ?? throw new FmsException($"Factorio has no headless release matching \"{spec}\". See `fmstudio factorio available`.");
 
         var json = cmd.Has("--json");
-        var result = InstallWithProgress(downloads, version, json ? null : output);
+        var result = InstallWithProgress(downloads, version, json ? null : output, credentials);
         if (json)
         {
-            output.WriteLine(JsonSerializer.Serialize(new { result.Version, result.Path, result.Executable, result.AlreadyInstalled }, NewJson));
+            output.WriteLine(JsonSerializer.Serialize(new { result.Version, result.Path, result.Executable, result.AlreadyInstalled, result.Game }, NewJson));
+            return ExitOk;
+        }
+        if (game)
+        {
+            output.WriteLine($"  {result.Path}");
+            output.WriteLine($"run and smoke now use it for mods with factorio_version {string.Join('.', version.Split('.').Take(2))} (see `fmstudio factorio`).");
             return ExitOk;
         }
 
@@ -512,8 +527,9 @@ public static class Program
         return ExitOk;
     }
 
-    /// <summary>Installs one headless release, writing "Factorio 2.0.72 (headless): 10% 20% ... done." to <paramref name="log"/>.</summary>
-    private static ManagedInstallation InstallWithProgress(FactorioDownloads downloads, string version, TextWriter? log)
+    /// <summary>Installs one release, writing "Factorio 2.0.72 (headless): 10% 20% ... done." to <paramref name="log"/>.</summary>
+    /// <param name="credentials">Given: the full game with this factorio.com account; null: the headless server.</param>
+    private static ManagedInstallation InstallWithProgress(FactorioDownloads downloads, string version, TextWriter? log, FactorioCredentials? credentials = null)
     {
         var lastStep = -1;
         var progress = new SyncProgress<(long Received, long? Total)>(p =>
@@ -525,8 +541,10 @@ public static class Program
             log.Write(p.Total is > 0 ? $" {step * 10}%" : $" {p.Received / (1024 * 1024)} MB");
         });
 
-        log?.Write($"Factorio {version} (headless):");
-        var result = downloads.InstallHeadlessAsync(version, progress).GetAwaiter().GetResult();
+        log?.Write(credentials is null ? $"Factorio {version} (headless):" : $"Factorio {version} (full game, account {credentials.Username}):");
+        var result = credentials is null
+            ? downloads.InstallHeadlessAsync(version, progress).GetAwaiter().GetResult()
+            : downloads.InstallGameAsync(version, credentials, progress).GetAwaiter().GetResult();
         log?.WriteLine(result.AlreadyInstalled ? " already installed." : " done.");
         return result;
     }
@@ -621,17 +639,18 @@ public static class Program
         return InstallWithProgress(downloads, version, log).Executable;
     }
 
-    /// <summary><c>fmstudio factorio remove &lt;MAJOR.MINOR.PATCH&gt;</c>: only installations the studio made itself.</summary>
+    /// <summary><c>fmstudio factorio remove &lt;MAJOR.MINOR.PATCH&gt; [--game]</c>: only installations the studio made itself.</summary>
     private static int FactorioRemove(CommandLine cmd, TextWriter output, FactorioDownloads downloads)
     {
         var version = cmd.Positional.Skip(1).FirstOrDefault()
-                      ?? throw new FmsException("Usage: fmstudio factorio remove <MAJOR.MINOR.PATCH>. Only versions installed with `fmstudio factorio install` can be removed.");
-        if (!downloads.Remove(version))
+                      ?? throw new FmsException("Usage: fmstudio factorio remove <MAJOR.MINOR.PATCH> [--game]. Only versions installed with `fmstudio factorio install` can be removed.");
+        var game = cmd.Has("--game");
+        if (!(game ? downloads.RemoveGame(version) : downloads.Remove(version)))
         {
-            output.WriteLine($"Factorio {version} was not installed by the studio (nothing in {downloads.Directory}).");
+            output.WriteLine($"Factorio {version}{(game ? " (full game)" : "")} was not installed by the studio (nothing in {downloads.Directory}).");
             return ExitProblemsFound;
         }
-        output.WriteLine($"Removed Factorio {version} (headless).");
+        output.WriteLine($"Removed Factorio {version} ({(game ? "full game" : "headless")}).");
         return ExitOk;
     }
 
@@ -794,7 +813,9 @@ public static class Program
           factorio install [v]   Download a headless server release into the studio's folder, where smoke finds it
                                  v: MAJOR.MINOR (newest of the branch), MAJOR.MINOR.PATCH, stable or latest;
                                  without v: the project mod's factorio_version   [--json]
-          factorio remove <v>    Delete a release installed with `factorio install`
+                                 --game: the full game instead (needs a factorio.com account that owns Factorio:
+                                 FACTORIO_USERNAME + FACTORIO_TOKEN, the one saved in the studio, or the game's own)
+          factorio remove <v>    Delete a release installed with `factorio install`   [--game]
           validate [mod-dir]     Check info.json, changelog, thumbnail and file references
           pack                   Validate and build NAME_VERSION.zip   [--out dir] [--force]
           prepare [profile]      Build the isolated mods folder for a profile

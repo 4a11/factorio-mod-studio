@@ -24,6 +24,8 @@ namespace FactorioModStudio.Server;
 /// <param name="WorkspaceDirectory">Overrides the project's workspace folder. Mods inside it can be edited from the UI.</param>
 /// <param name="FileManager">Opens the OS file manager for "Reveal"; null starts the real one. Tests pass a fake.</param>
 /// <param name="FactorioDownloads">Makes the downloader for "install a missing Factorio"; null uses Factorio's servers. Tests pass a fake.</param>
+/// <param name="PlayerDataFile">The game's player-data.json (its factorio.com account); null is the real one. Tests pass their own.</param>
+/// <param name="FactorioAccountFile">Where the studio keeps a saved factorio.com account; null is <see cref="FactorioAccount.StorePath"/>.</param>
 public sealed record UiOptions(
     int Port = 5757,
     IReadOnlyList<string>? ExtraModFolders = null,
@@ -32,7 +34,9 @@ public sealed record UiOptions(
     FileManagerLauncher? FileManager = null,
     Func<FactorioDownloads>? FactorioDownloads = null,
     StudioUpdates? Updates = null,
-    Action? Restart = null);
+    Action? Restart = null,
+    string? PlayerDataFile = null,
+    string? FactorioAccountFile = null);
 
 public sealed class RunningUi : IAsyncDisposable
 {
@@ -138,7 +142,7 @@ public static class UiServer
         BlocksApi.Map(app, catalog, jobs, context);
         FilesApi.Map(app, catalog, context, options.FileManager);
         FactorioSettingsApi.Map(app, jobs, token);
-        FactorioInstallApi.Map(app, new FactorioInstalls(options.FactorioDownloads ?? DefaultDownloads, () => jobs.InvalidateEnvironment()));
+        FactorioInstallApi.Map(app, new FactorioInstalls(options.FactorioDownloads ?? DefaultDownloads, () => jobs.InvalidateEnvironment(), options.PlayerDataFile, options.FactorioAccountFile));
         UpdateApi.Map(app, new StudioUpdater(options.Updates ?? new StudioUpdates(DownloadClient.Value, new ProcessRunner())), options.Restart);
 
         try

@@ -1100,3 +1100,7 @@ button.res-user:hover { color: var(--accent); border-color: var(--accent); }
 @keyframes build-get-busy { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 @media (prefers-reduced-motion: reduce) { .build-get-bar.busy .build-get-fill { animation: none; width: 100% !important; opacity: .5; } }
 .build-get-badge { color: var(--muted); }
+.build-get-subheading { margin: 8px 0 0; font-size: inherit; }
+.build-path-dialog .build-account-form { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px 8px; max-width: 460px; }
+.build-account-form button { grid-column: 2; justify-self: start; }
+.build-account-form input { width: 100%; padding: 6px 10px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
