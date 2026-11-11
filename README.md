@@ -157,7 +157,7 @@ or run it without installing: `dotnet run --project src/FactorioModStudio.Cli --
 | `fmstudio log <file>` | Summarizes errors and warnings of a Factorio log: location, merged duplicates, hints. |
 | `fmstudio smoke [profile]` | Headless test: generates a map (or loads the profile's save), simulates N ticks, fails on any log error. |
 | `fmstudio factorio [--json]` | Lists the Factorio installations found (id, version, where each came from) and the one chosen for the project's mod. |
-| `fmstudio factorio available` / `install [version]` / `remove <version>` | Factorio's headless server releases; download one into the studio's folder (Linux only); delete it again. See "Several Factorio versions". |
+| `fmstudio factorio available` / `install [version]` / `remove <version>` | Factorio's headless server releases; download one into the studio's folder (Linux only); delete it again. `--game` installs or removes the full game instead (Windows x64, Linux x64; needs a factorio.com account that owns Factorio). See "Several Factorio versions". |
 | `fmstudio ui` | Opens the graphical mod browser in your web browser (see below). |
 
 Common options: `--project <dir>` (default: current directory), `--factorio <path>`, `--json` (for `validate`, `log`, `smoke`, `factorio`).
@@ -186,7 +186,9 @@ The generated code is written from the documentation and has not been verified i
 
 A mod targets one game version (`factorio_version` in `info.json`, e.g. `1.1`, `2.0`, `2.1`); keep one branch per version. `run`,
 `smoke` and the UI's Build tab choose the installed Factorio whose `MAJOR.MINOR` equals the mod's, the newest patch release if there
-are several. Candidates (merged by executable path) come from:
+are several. When the mod's `base` dependency names a version (`base >= 2.0.20`, `base = 2.0.20`, `base < 2.1.0`), installations
+that do not satisfy it are passed over, and the reason says so ("Factorio 2.0.10 matches the mod's factorio_version 2.0, but the
+mod needs base >= 2.0.20"); an installation of unknown version never satisfies it. Candidates (merged by executable path) come from:
 
 1. installations added in the UI (stored in `.fmstudio/settings.json`; the CLI reads them too),
 2. the `FACTORIO_PATH` variable,
@@ -196,8 +198,9 @@ are several. Candidates (merged by executable path) come from:
    (`FMS_DATA_DIR` replaces `<user data dir>/FactorioModStudio`). Only direct children are inspected, links are not followed.
 
 The version is read from `data/base/info.json`; the executable is never started to find it out. `--factorio <path>` is used exactly as
-given (a mismatch with the mod only prints a warning). Without a matching installation the command fails and names the versions it
-found. `fmstudio factorio` shows the candidates and the pick; the UI's version selector can override the pick for one mod.
+given (a mismatch with the mod's `factorio_version` or its `base` dependency only prints a warning). Without a matching installation
+the command fails and names the versions it found. `fmstudio factorio` shows the candidates and the pick; the UI's version selector
+can override the pick for one mod (a mismatch is then noted, not refused).
 
 **Installing a version.** The studio can download Factorio's *headless server* (the game without graphics, made for servers: free,
 no account and much smaller than the game; enough for `smoke`, not for playing) into its own folder, where the discovery above finds it:
@@ -216,27 +219,60 @@ with the system's `tar` into `<user data dir>/FactorioModStudio/factorio/<versio
 MAJOR.MINOR.PATCH; the unpacked game has to report that version in `data/base/info.json` before it is moved into place, and a failed
 or interrupted install leaves nothing behind. Installing a version that is already there downloads nothing.
 
-**A missing version.** When no installed Factorio matches the mod's `factorio_version`, `fmstudio smoke --install` downloads the newest
-headless release of that branch and goes on with the test (handy in CI); without `--install` the error names the command to run.
+**The full game.** With a factorio.com account that owns Factorio, the studio also installs the game with graphics, for `run` and
+for trying the mod by hand:
+
+```sh
+fmstudio factorio install 2.0 --game   # the newest 2.0 release of the full game
+fmstudio factorio remove 2.0.72 --game
+```
+
+It works on Windows x64 (the `win64-manual` zip, no installer) and Linux x64 (`linux64`); macOS gets a disk image, so there the
+command says to install the game yourself and add it in the UI. The archive comes from
+`factorio.com/get-download/<version>/alpha/<package>` with the account's username and token (HTTPS only, at most 8 GB), is unpacked
+into `<user data dir>/FactorioModStudio/factorio/<version>-game/` and checked the same way as the headless server. The account is
+taken from, in this order:
+
+1. the `FACTORIO_USERNAME` and `FACTORIO_TOKEN` variables (CI);
+2. the account saved in the Build tab, in `<user data dir>/FactorioModStudio/factorio-account.json`, outside every workspace: on
+   Windows the token is encrypted for the current Windows user (DPAPI), elsewhere the file is readable by its owner only;
+3. when chosen in the Build tab, the account the installed game is signed in to: its `player-data.json` (`service-username`,
+   `service-token`) is read each time and nothing is copied from it.
+
+The token is sent only to factorio.com and appears in no message, log line or API answer. When factorio.com does not accept it (or
+the account does not own the game) the install fails with that reason and leaves nothing behind. The token is on your profile page
+at factorio.com.
+
+**A missing version.** When no installed Factorio matches the mod's `factorio_version` (and its `base` dependency),
+`fmstudio smoke --install` downloads the newest headless release of that branch, or the exact release a `base = x` / `base <= x`
+dependency pins, and goes on with the test (handy in CI); without `--install` the error names the command to run. `fmstudio factorio
+install` without a version picks the same release.
 `run` starts the game itself, so it never picks one of these headless servers (and refuses `--install`); the Build tab's *Run in
 Factorio* skips them in the same way, while *Smoke test* may use them.
 
 **In the Build tab.** When no installation matches the mod, a box under the version line offers *Install Factorio 2.0.76 (headless)*
-for the mod's branch, with a progress bar and *Cancel*; afterwards the installation is picked automatically and *Smoke test* is
-enabled. *Manage installations...* has *Install a Factorio version* for any branch, marks the studio's installs as *headless* and
-removes them. Where the headless server cannot run (Windows, macOS) the box says so instead of offering a download. One install
-runs at a time for the whole studio; reloading the page picks it up again.
+for the mod's branch (a release that satisfies its `base` dependency), with a progress bar and *Cancel*; afterwards the installation
+is picked automatically and *Smoke test* is enabled. With a factorio.com account the box also offers *Install Factorio 2.0.76 (full
+game)*; where the headless server cannot run (Windows) it offers only that, or a button that opens the account form. *Manage
+installations...* has *Install a Factorio version* for any branch (*Install* for the headless server, *Install full game*), marks
+the studio's installs as *headless* or *full game* and removes them. Its *Full game* part sets the account: a username and token,
+or *Use &lt;name&gt; (signed in to Factorio on this computer)* when the game's `player-data.json` has one; *Forget* deletes the saved
+account. Where neither can be installed (macOS) the box says so instead of offering a download. One install runs at a time for
+the whole studio; reloading the page picks it up again.
 
 | Request | Result |
 | --- | --- |
-| `GET /api/factorio/available` | `{ platformProblem, stable, experimental, branches: [ { branch, newest, count } ], installed: [versions] }`; with a `platformProblem` nothing is asked from Factorio and `branches` is empty. The release list is kept for 10 minutes |
-| `POST /api/factorio/install` `{ "version": "2.0" \| "2.0.76" \| "stable" \| "latest" }` | `202` `{ install }` and the install runs in the background; `400` bad version or unsupported platform, `404` no such release, `409` `{ error, install }` another install runs, `502` / `504` Factorio's updater failed or did not answer |
-| `GET /api/factorio/install` | `{ install: { version, state, received, total, error, path, alreadyInstalled } \| null }`; `state`: `downloading`, `unpacking`, `succeeded`, `failed`, `cancelled` |
+| `GET /api/factorio/available` | `{ platformProblem, stable, experimental, branches: [ { branch, newest, count } ], installed: [versions], game: { platformProblem, installed: [versions], account } }`; `platformProblem` is about the headless server, `game.platformProblem` about the full game; when both are set nothing is asked from Factorio and `branches` is empty. The release list is kept for 10 minutes |
+| `POST /api/factorio/install` `{ "version": "2.0" \| "2.0.76" \| "stable" \| "latest", "game"?: true }` | `202` `{ install }` and the install runs in the background; `400` bad version, unsupported platform or (with `game`) no account, `404` no such release, `409` `{ error, install }` another install runs, `502` / `504` Factorio's updater failed or did not answer |
+| `GET /api/factorio/install` | `{ install: { version, state, received, total, error, path, alreadyInstalled, game } \| null }`; `state`: `downloading`, `unpacking`, `succeeded`, `failed`, `cancelled` |
 | `POST /api/factorio/install/cancel` | the install; `409` nothing runs |
-| `DELETE /api/factorio/install/{MAJOR.MINOR.PATCH}` | `{ removed }`; `400` not a version, `404` not installed by the studio, `409` being installed |
+| `DELETE /api/factorio/install/{MAJOR.MINOR.PATCH}[?game=true]` | `{ removed, game }`; `400` not a version, `404` not installed by the studio, `409` being installed |
+| `GET /api/factorio/account` | `{ account: { source, username, gameUsername, useGame } }`; `source`: `env`, `studio`, `game` or null. The token is never returned |
+| `PUT /api/factorio/account` `{ "username", "token" }` or `{ "useGame": true }` | saves the account, answers like `GET`; `400` not a username / token, `409` (`useGame`) the game is not signed in |
+| `DELETE /api/factorio/account` | forgets the saved account, answers like `GET` |
 
 The writes need the session token and pass the same-origin check like every other write. `GET /api/factorio/installations` marks
-these installs with `"headless": true`.
+these installs with `"headless": true` or `"managedGame": true`.
 
 ```sh
 fmstudio new --list
@@ -594,6 +630,7 @@ Limits: 5000 changes and 2 MB per request, 65536 characters per value. Not inclu
 | FMS013 / FMS014 | warning | changelog does not match `info.json` version / malformed changelog |
 | FMS015 | error | depends on a DLC mod (`space-age`, `quality`, `elevated-rails`) while `factorio_version` is below 2.0 |
 | FMS016 | info | `factorio_version` is well-formed but not one of 1.0, 1.1, 2.0, 2.1 |
+| FMS049 | error | the `base` dependency cannot be met by any release of `factorio_version` (e.g. `factorio_version` 1.1 with `base >= 2.0.0`): the game would refuse to load the mod |
 | FMS030 | error | Lua references `__your-mod__/path` that does not exist |
 | FMS031 | error | referenced file exists only with different letter case (works on Windows, breaks in the zip and on Linux) |
 | FMS032 | error | `require("a.b")` / `require "a/b"` matches no `.lua` file of the mod (looked up next to the requiring file, then at the mod root; other mods and Factorio's lualib modules such as `util` are ignored) |
