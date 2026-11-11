@@ -577,7 +577,7 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
       [...groups.values()].map((g) => el('tbody', {},
         el('tr', { class: 'bv-group' }, el('th', { colspan: '4', scope: 'colgroup' },
           el('span', { class: 'bv-group-line' },
-            el('span', { class: 'mono', text: g.name }), el('span', { class: 'chip proto-type mono', text: g.type }),
+            el('span', { class: 'mono', text: g.name }), el('span', { class: 'chip proto-type mono', title: g.type, text: g.type }),
             g.copyOf && el('span', { class: 'muted small', text: t('prototypes.copyOf', { name: g.copyOf }) })))),
         g.items.map(row))));
   }

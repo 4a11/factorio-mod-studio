@@ -1072,14 +1072,15 @@ button.proto-chip:disabled { opacity: .45; cursor: default; }
 .proto-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .proto-row .fi-icon { margin: 0 4px; }
 .proto-thumb { width: 24px; height: 24px; flex: none; }
-.proto-names { display: flex; flex-direction: column; align-items: flex-start; flex: 1; min-width: 0; }
+/* In a narrow column the file path gives way first and a very long type is cut at a third of the row, so the name stays readable. */
+.proto-names { display: flex; flex-direction: column; align-items: flex-start; flex: 1; min-width: 35%; }
 .proto-name { font-size: 12.5px; overflow-wrap: anywhere; }
 .proto-noname { margin-top: 2px; text-transform: none; letter-spacing: 0; }
 /* What a recipe crafts, under its name: ingredients → results · category · time */
 .proto-recipe { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; }
 .proto-item { font-family: var(--mono); font-size: 11px; padding: 0 7px; }
 .proto-arrow { color: var(--muted); }
-.proto-type { flex: none; font-size: 11px; padding: 0 7px; color: var(--muted); }
+.proto-type { display: block; flex: none; min-width: 0; max-width: 35%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; padding: 0 7px; color: var(--muted); }
 .proto-type-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
 button.proto-type { cursor: pointer; }
 /* Prototypes tab, "In the game" mode (game-data-view.js): status and actions, filter, rows that open the values */
@@ -1153,7 +1154,7 @@ button.bp-danger { color: var(--error); }
 @media (max-width: 700px) { .bp-row { grid-template-columns: minmax(0, 1fr); } .files-dialog .bp-input { font-size: 16px; } }
 
 button.proto-type:hover { color: var(--accent); border-color: var(--accent); }
-.proto-where { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proto-where { flex: 0 1 auto; min-width: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .proto-row:hover .ov-row-go { color: var(--accent); }
 @media (max-width: 700px) { .proto-where { display: none; } .proto-bar .proto-filter { font-size: 16px; } }
 

@@ -177,7 +177,7 @@ export function createGameDataView({ api, el, openFile, fileUrl, installation, o
           el('span', { class: 'mono proto-name', text: item.name }),
           note && el('span', { class: 'muted small', text: note })),
         el('span', { class: 'badge gd-change', 'data-change': item.change, text: t(`gamedata.filter.${item.change}`) }),
-        el('span', { class: 'chip proto-type mono', text: item.type }),
+        el('span', { class: 'chip proto-type mono', title: item.type, text: item.type }),
         el('span', { class: 'ov-row-go', 'aria-hidden': 'true', text: open ? '▾' : '›' })),
       open && details(item, s));
   }
@@ -212,7 +212,8 @@ export function createGameDataView({ api, el, openFile, fileUrl, installation, o
 
     if (!s.loaded) parts.push(el('p', { class: 'muted small', text: t('gamedata.loadingItem') }));
     else if (!data?.exists) {
-      if (!running) parts.push(el('div', { class: 'gd-intro' }, el('h3', { text: t('gamedata.introTitle') }), el('p', { class: 'muted', text: t('gamedata.intro') })));
+      // The intro promises a load; a read-only mod only gets the note above that it cannot be loaded.
+      if (!running && editable) parts.push(el('div', { class: 'gd-intro' }, el('h3', { text: t('gamedata.introTitle') }), el('p', { class: 'muted', text: t('gamedata.intro') })));
     } else {
       parts.push(...list(data, s));
     }

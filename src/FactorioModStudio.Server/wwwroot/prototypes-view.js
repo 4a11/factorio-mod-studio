@@ -180,7 +180,7 @@ export function renderPrototypes(o, { el, state, openFile, fileUrl, rerender, ga
   const where = (p) => el('span', { class: 'muted small mono proto-where', text: `${p.file}:${p.line}` });
 
   const typeRow = (p) => el('button', { type: 'button', class: 'proto-row', 'data-testid': 'proto-row', title: t('readiness.action.open', { file: `${p.file}:${p.line}` }), onclick: () => openFile(p.file, p.line) },
-    icon(p), nameBlock(p), el('span', { class: 'chip proto-type mono', text: p.type }), where(p),
+    icon(p), nameBlock(p), el('span', { class: 'chip proto-type mono', title: p.type, text: p.type }), where(p),
     el('span', { class: 'ov-row-go', 'aria-hidden': 'true', text: '›' }));
 
   // By name: the row opens the first definition; every type chip opens its own.

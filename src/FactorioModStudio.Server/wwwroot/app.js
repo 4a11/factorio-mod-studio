@@ -426,7 +426,8 @@ function renderReadiness(checks, o) {
 function coverage(cov) {
   if (!cov || cov.length < 2 || !(cov[0].keys > 0)) return { text: '', title: null };
   const total = cov[0].keys;
-  const langs = cov.slice(1).map((c) => ({ lang: c.language, pct: Math.max(0, Math.round(((total - c.missing) / total) * 100)) }));
+  // Rounded down like the Localization tab, so 1515 of 1519 is 99%, not a "complete" 100%.
+  const langs = cov.slice(1).map((c) => ({ lang: c.language, pct: Math.max(0, Math.floor(((total - c.missing) * 100) / total)) }));
   const fmt = (l) => `${l.lang} ${l.pct}%`;
   const all = langs.map(fmt).join(' · ');
   if (langs.length <= 3) return { text: all, title: null };
@@ -473,7 +474,8 @@ function renderOverview(o, counts) {
   const touchedChips = [...touchedTypes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
   return el('div', { class: 'overview' },
-    renderReadiness(o.readiness, o),
+    // A read-only mod (the game's own, an installed one) is never packed or released from here.
+    currentMod()?.editable ? renderReadiness(o.readiness, o) : null,
     o.notes.map((n) => el('p', { class: 'note', text: n })),
     el('div', { class: 'cards' },
       card(counts.script, t('overview.scripts'), 'fi-file cat-script', toTab('files')),
