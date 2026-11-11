@@ -16,6 +16,7 @@ import { createGameDataView } from '/game-data-view.js';
 import { createBlocksView } from '/blocks-view.js';
 import { createPalette } from '/palette.js';
 import { createFilesView } from '/files-view.js';
+import { createProblemsView } from '/problems-view.js';
 import { findMods, readInfo, zipIdentity, assess, MAX_IMPORT_FILES } from '/import-logic.js';
 import { createContentDialog, loadBlocks, blockTitle, blockDescription, supportsVersion, CATEGORIES } from '/content-dialog.js';
 import { renderPrototypes as renderPrototypesView } from '/prototypes-view.js';
@@ -546,21 +547,8 @@ function renderResources(o) {
   return renderResourcesView(o, { el, state, openFile, fileUrl, formatSize });
 }
 
-function severityLabel(severity) {
-  const label = t(`severity.${severity}`);
-  return label === `severity.${severity}` ? severity : label;
-}
-
 function renderProblems(o) {
-  if (!o.issues.length) return el('p', { class: 'muted', text: t('problems.none') });
-
-  return el('table', {},
-    el('thead', {}, el('tr', {}, el('th', { text: t('table.level') }), el('th', { text: t('table.code') }), el('th', { text: t('table.message') }), el('th', { text: t('table.where') }))),
-    el('tbody', {}, o.issues.map((i) => el('tr', {},
-      el('td', {}, el('span', { class: `badge ${i.severity}`, text: severityLabel(i.severity) })),
-      el('td', { class: 'mono', text: i.code }),
-      el('td', { text: i.message }),
-      el('td', {}, i.file && el('button', { class: 'link', type: 'button', onclick: () => openFile(i.file, i.line), text: i.line ? `${i.file}:${i.line}` : i.file }))))));
+  return problemsView.show(o);
 }
 
 // ---------------------------------------------------------------- file viewer / editor (tabs live in editor-tabs.js)
@@ -574,6 +562,9 @@ const editorTabs = createEditorTabs({
 });
 
 const closeViewer = (force = false) => editorTabs.closeViewer(force);
+
+// The Problems tab (problems-view.js): filter, severity toggles, grouping by rule / file, copy for bug reports.
+const problemsView = createProblemsView({ el, getModId: () => state.currentId, openFile: (path, line) => openFile(path, line) });
 
 const filesView = createFilesView({
   api, el, editorTabs, formatSize,

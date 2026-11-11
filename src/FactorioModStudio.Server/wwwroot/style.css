@@ -858,6 +858,42 @@ details .files-tree { border: 0; border-top: 1px solid var(--border); border-rad
 .files-row:hover .files-more, .files-row:focus-within .files-more, .files-row[aria-selected="true"] .files-more { visibility: visible; }
 .files-more:hover { color: var(--text); background: var(--surface); }
 @media (hover: none) { .files-more { visibility: visible; } }
+/* Problems tab: the Files-tab toolbar, then groups (by rule / by file) of rows. */
+.problems-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 0; }
+.problems-group { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font: inherit; text-align: left; color: var(--text); background: var(--surface-2); border: 0; border-top: 1px solid var(--border); border-radius: 0; cursor: pointer; }
+.problems-group:first-child { border-top: 0; }
+.problems-group:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.problems-chevron { flex: none; width: 12px; color: var(--muted); }
+.problems-sample, .problems-file { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.problems-sample { font-size: 12px; }
+.problems-group-counts { display: inline-flex; gap: 4px; margin-left: auto; flex: none; }
+.problems-count.error { color: var(--error); }
+.problems-count.warning { color: var(--warning); }
+.problems-count.info { color: var(--info); }
+.problems-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--info); }
+.problems-dot.error { background: var(--error); }
+.problems-dot.warning { background: var(--warning); }
+.problems-row { display: flex; align-items: baseline; gap: 8px; min-height: 28px; padding: 5px 10px 5px 30px; cursor: pointer; }
+.problems-list.flat .problems-row { padding-left: 10px; }
+.problems-row:hover { background: var(--surface-2); }
+.problems-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.problems-row.no-file { cursor: default; }
+.problems-row .badge, .problems-code { flex: none; }
+.problems-code { font-size: 12px; }
+.problems-message { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.problems-where { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--accent); }
+.problems-row:hover .files-more, .problems-row:focus-within .files-more, .problems-row:focus .files-more { visibility: visible; }
+.problems-more-rows { display: block; margin: 2px 0 6px 30px; }
+.problems-list.flat .problems-more-rows { margin-left: 10px; }
+.problems-empty { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.problems-empty p { margin: 0; }
+.problems-ok { font-weight: 600; color: var(--ok); }
+.problems-ok::before { content: "✓ "; }
+.problems-panel .files-toolbar [hidden], .problems-panel .files-actions[hidden], .problems-panel .files-viewbar[hidden] { display: none; }
+@media (max-width: 600px) {
+  .problems-row { flex-wrap: wrap; padding-left: 10px; }
+  .problems-where { max-width: 100%; }
+}
 .files-menu { position: fixed; z-index: 200; min-width: 180px; padding: 4px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); }
 .files-menu[hidden] { display: none; }
 .files-menu button { text-align: left; border: 0; background: none; padding: 6px 10px; border-radius: 4px; }

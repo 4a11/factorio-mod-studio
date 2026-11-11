@@ -86,7 +86,7 @@ public static class UiServer
     [
         "lua-highlight.js", "locale-placeholders.js", "locale-view.js", "build-view.js", "i18n.js",
         "theme-init.js", "theme.js", "ui-state.js", "palette-logic.js", "palette.js", "editor-tabs.js",
-        "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js", "prototypes-view.js", "resources-view.js",
+        "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js", "problems-logic.js", "problems-view.js", "prototypes-view.js", "resources-view.js",
         "import-logic.js", "content-dialog.js", "update-view.js", "mod-menu.js", "game-data-view.js", "block-props.js", "blocks-view.js"
     ];
 

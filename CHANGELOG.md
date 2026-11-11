@@ -6,6 +6,10 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 ## [Unreleased]
 
 ### Changed
+- **The Problems tab, redesigned** in the style of the Files tab: a filter (text, code or file), Errors / Warnings / Info
+  toggles with counts, grouping by rule, by file or as one list (remembered), collapsible groups that show 20 rows and
+  "Show N more", *Copy list* for bug reports, and a ⋯ / right-click menu on every problem: open the file, copy the message,
+  show only this rule or this file. Click (or Enter) opens the file at the line; the arrow keys move between problems.
 - **The game version follows the mod's `base` dependency**: a mod that needs `base >= 2.0.20` is no longer given an installed
   Factorio 2.0.10 just because the branch matches. The Build tab, smoke tests, runs and `fmstudio factorio` pass over
   installations that do not satisfy it and say why; the install button offers a release that does (`base = 2.0.20` installs
