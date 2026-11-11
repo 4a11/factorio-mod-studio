@@ -23,6 +23,9 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 - The game's own mods (base, space-age...) and installed mods: no Release readiness card on Overview, and "In the game" no
   longer offers an intro to a load they cannot do.
 - The Overview's translation summary rounds down like the Localization tab: 1515 of 1519 strings is 99%, not "complete".
+- Read-only mods: no "Unused only" filter or "unused" badges on Files and Resources (base showed 998 "unused" files the engine
+  uses) and no "New language..." button; the Build tab says that a game mod is part of the game instead of "the mod has no valid
+  factorio_version".
 
 ## [0.3.0] - 2026-11-11
 

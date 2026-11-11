@@ -546,7 +546,7 @@ function renderPrototypes(o) {
 
 // The Resources tab (graphics and sounds by folder, unused filter, icon users, copy Lua path) lives in resources-view.js.
 function renderResources(o) {
-  return renderResourcesView(o, { el, state, openFile, fileUrl, formatSize });
+  return renderResourcesView(o, { el, state, openFile, fileUrl, formatSize, editable: !!currentMod()?.editable });
 }
 
 function renderProblems(o) {

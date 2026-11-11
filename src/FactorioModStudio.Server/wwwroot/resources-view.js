@@ -28,7 +28,7 @@ export function stopResourceSound() {
  * resExpanded (a Set of opened folders; folders start collapsed) and resAllRows (folders shown without the limit) across redraws.
  * @param {{ el: Function, state: object, openFile: Function, fileUrl: Function, formatSize: (n: number) => string }} host
  */
-export function renderResources(o, { el, state, openFile, fileUrl, formatSize }) {
+export function renderResources(o, { el, state, openFile, fileUrl, formatSize, editable = true }) {
   state.resKind ||= 'graphics';
   state.resSize ||= 'm';
   state.resExpanded ||= new Set();
@@ -37,7 +37,8 @@ export function renderResources(o, { el, state, openFile, fileUrl, formatSize })
 
   const byKind = { graphics: o.files.filter((f) => f.category === 'graphics'), sound: o.files.filter((f) => f.category === 'sound') };
   const list = byKind[state.resKind];
-  const unusedTotal = list.filter((f) => f.unused === true).length;
+  // As on the Files tab: no unused filter or badges on a read-only mod.
+  const unusedTotal = editable ? list.filter((f) => f.unused === true).length : 0;
   if (!unusedTotal) state.resUnusedOnly = false;
   const luaPath = (path) => (o.info?.name ? `__${o.info.name}__/${path}` : path);
 
@@ -84,7 +85,7 @@ export function renderResources(o, { el, state, openFile, fileUrl, formatSize })
     return button;
   };
 
-  const unusedBadge = (f) => f.unused === true && el('span', { class: 'badge files-unused', title: t('files.badge.unusedTitle'), text: t('files.badge.unused') });
+  const unusedBadge = (f) => editable && f.unused === true && el('span', { class: 'badge files-unused', title: t('files.badge.unusedTitle'), text: t('files.badge.unused') });
 
   const tile = (f) => {
     const dims = el('span', { class: 'res-dims muted' });

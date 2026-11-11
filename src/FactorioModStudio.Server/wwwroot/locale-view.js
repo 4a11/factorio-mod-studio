@@ -222,7 +222,7 @@ export function createLocaleView({ api, el }) {
     refs.conflict.hidden = !s.conflict;
 
     // Creating a language needs an existing language to copy the file layout from.
-    refs.newLang.hidden = !hasLocale && !!s.info;
+    refs.newLang.hidden = !s.editable || (!hasLocale && !!s.info); // read-only: the note above says why nothing can be added
     refs.newLang.disabled = !s.editable || !hasLocale;
   }
 

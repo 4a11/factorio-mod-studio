@@ -193,6 +193,9 @@ internal sealed class BuildJobs : IDisposable
         var candidates = GetCandidates();
         var (modVersion, baseRequirement) = ModGameRequirement(entry);
         var pick = Pick(candidates, modVersion, manualId, baseRequirement: baseRequirement);
+        // The game's own mods (base, space-age...) have no factorio_version; "the mod has no valid factorio_version" read like a fault.
+        if (entry?.Source == "game" && pick is { Mode: "auto", Chosen: { } own })
+            pick = pick with { Reason = $"{entry.Name} is part of the game; using the newest installation, Factorio {own.Version ?? "of unknown version"}." };
         var chosen = pick.Chosen;
         var status = chosen is null
             ? new FactorioStatus(false, null, pick.Reason, "none")

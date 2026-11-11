@@ -131,7 +131,9 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
 
   /** Toolbar parts that depend on the file list or the selection. */
   function renderStatus(shown, folderPaths) {
-    const unused = files().filter((f) => f.unused === true).length;
+    // Unused files matter only where they can be removed; for the game's own mods the engine uses many files Lua never names.
+    if (!isEditable()) s.unusedOnly = false;
+    const unused = isEditable() ? files().filter((f) => f.unused === true).length : 0;
     unusedBtn.setAttribute('aria-pressed', s.unusedOnly ? 'true' : 'false');
     unusedBtn.hidden = unused === 0 && !s.unusedOnly;
     unusedCount.textContent = String(unused);
@@ -186,7 +188,7 @@ export function createFilesView({ api, el, getModId, isEditable, openFile, refre
     if (issues?.error) out.push(el('span', { class: 'badge error', 'data-testid': 'files-badge-errors', title: t('files.badge.errors'), text: String(issues.error) }));
     if (issues?.warning) out.push(el('span', { class: 'badge warning', 'data-testid': 'files-badge-warnings', title: t('files.badge.warnings'), text: String(issues.warning) }));
     if (ctx.dirty.has(node.path)) out.push(el('span', { class: 'files-dirty', 'data-testid': 'files-badge-unsaved', title: t('files.badge.unsaved'), 'aria-label': t('files.badge.unsaved'), text: '●' }));
-    if (f.unused === true) out.push(el('span', { class: 'badge files-unused', 'data-testid': 'files-badge-unused', title: t('files.badge.unusedTitle'), text: t('files.badge.unused') }));
+    if (f.unused === true && ctx.editable) out.push(el('span', { class: 'badge files-unused', 'data-testid': 'files-badge-unused', title: t('files.badge.unusedTitle'), text: t('files.badge.unused') }));
     if (f.role) out.push(el('span', { class: 'chip files-role', 'data-testid': 'files-badge-role', title: f.role, text: t('files.badge.role') }));
     out.push(el('span', { class: 'muted small files-size', text: formatSize(f.size) }));
     return out;
