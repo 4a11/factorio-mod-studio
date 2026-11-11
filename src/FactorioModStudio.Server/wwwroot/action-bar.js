@@ -1,4 +1,4 @@
-// Persistent mod header: title / version / target Factorio on the left, Validate / Pack / Smoke test / Run (+ Cancel while a job
+// Persistent mod header: title / version / target Factorio on the left, Validate / Pack / Smoke test / Run / Quick try (+ Cancel while a job
 // of this mod runs), the resolved Factorio installation, the state of the latest job and the problem counter on the right.
 // It is visible on every tab of the mod page. The buttons drive the same job controller as the Build tab (build-view.js), so both
 // views always show the same job; the enable / disable rules are the Build tab's rules.
@@ -6,7 +6,7 @@
 import { t } from '/i18n.js';
 import { formatElapsed } from '/bottom-panel.js';
 
-const KINDS = ['validate', 'pack', 'smoke', 'run'];
+const KINDS = ['validate', 'pack', 'smoke', 'run', 'try'];
 
 /**
  * @param {{ el: Function, mount: HTMLElement, buildView: object, onAddContent: () => void,
@@ -28,7 +28,7 @@ export function createActionBar({ el, mount, buildView, onFactorio, onJob, onPro
   cancel.hidden = true;
   const addContent = el('button', { type: 'button', class: 'ab-add', 'data-testid': 'action-add-content', onclick: () => onAddContent?.() },
     el('span', { class: 'glyph', 'aria-hidden': 'true', text: '+' }), el('span', { class: 'ab-add-label' }));
-  const actions = el('div', { class: 'ab-actions', role: 'group' }, addContent, buttons.validate, buttons.pack, buttons.smoke, buttons.run, cancel);
+  const actions = el('div', { class: 'ab-actions', role: 'group' }, addContent, buttons.validate, buttons.pack, buttons.smoke, buttons.run, buttons.try, cancel);
 
   const factorio = el('button', { type: 'button', class: 'ab-badge', 'data-testid': 'action-factorio', 'data-mode': 'none', onclick: onFactorio });
   const job = el('button', { type: 'button', class: 'ab-job', 'data-testid': 'action-job', 'data-state': 'idle', onclick: onJob });
@@ -69,6 +69,11 @@ export function createActionBar({ el, mount, buildView, onFactorio, onJob, onPro
     set(buttons.pack, busy || !st.editable, !st.editable ? 'build.readonlyShort' : null);
     set(buttons.smoke, busy || !st.editable || !st.factorioFound, !st.editable ? 'build.readonlyShort' : !st.factorioFound ? 'build.env.notFound' : null);
     set(buttons.run, busy || !st.editable || !st.factorioFound, !st.editable ? 'build.readonlyShort' : !st.factorioFound ? 'build.env.notFound' : null);
+    // The test map's script needs Factorio 2.0 (prototypes.get_history).
+    const old = Number(/^(\d+)\./.exec(info.factorioVersion || '')?.[1] ?? 0) < 2;
+    set(buttons.try, busy || !st.editable || !st.factorioFound || old,
+      !st.editable ? 'build.readonlyShort' : !st.factorioFound ? 'build.env.notFound' : old ? 'build.tryOld' : null);
+    if (!buttons.try.disabled) buttons.try.setAttribute('title', t('build.tryTitle'));
     cancel.hidden = !st.running;
     cancel.disabled = st.cancelling;
 

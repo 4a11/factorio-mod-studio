@@ -7,7 +7,8 @@ using FactorioModStudio.Core;
 
 namespace FactorioModStudio.Server;
 
-internal enum JobKind { Validate, Pack, Smoke, Run, Dump }
+/// <summary>Try: Run on a fresh test map with the mod's items in the inventory (<see cref="QuickTry"/>).</summary>
+internal enum JobKind { Validate, Pack, Smoke, Run, Dump, Try }
 
 internal enum JobState { Queued, Running, Succeeded, Failed, Cancelled }
 
@@ -252,9 +253,9 @@ internal sealed class BuildJobs : IDisposable
             var sameMod = _jobs.FirstOrDefault(j => j.IsActive && j.ModId == entry.Id);
             if (sameMod is not null) return (null, sameMod);
 
-            if (request.Kind is JobKind.Smoke or JobKind.Run or JobKind.Dump)
+            if (request.Kind is JobKind.Smoke or JobKind.Run or JobKind.Try or JobKind.Dump)
             {
-                var game = _jobs.FirstOrDefault(j => j.IsActive && j.Kind is JobKind.Smoke or JobKind.Run or JobKind.Dump);
+                var game = _jobs.FirstOrDefault(j => j.IsActive && j.Kind is JobKind.Smoke or JobKind.Run or JobKind.Try or JobKind.Dump);
                 if (game is not null) return (null, game);
             }
 
@@ -263,13 +264,13 @@ internal sealed class BuildJobs : IDisposable
             Evict();
         }
 
-        if (request.Kind is JobKind.Smoke or JobKind.Run or JobKind.Dump)
+        if (request.Kind is JobKind.Smoke or JobKind.Run or JobKind.Try or JobKind.Dump)
         {
             // Decided now (not in the worker) so that the first snapshot already says which Factorio is used.
             try
             {
                 var (modVersion, baseRequirement) = ModGameRequirement(entry);
-                var pick = Pick(GetCandidates(refresh: true), modVersion, request.Installation, play: request.Kind == JobKind.Run, baseRequirement: baseRequirement);
+                var pick = Pick(GetCandidates(refresh: true), modVersion, request.Installation, play: request.Kind is JobKind.Run or JobKind.Try, baseRequirement: baseRequirement);
                 lock (_gate) job.Factorio = new JobFactorio(pick.Chosen, pick.Mode, pick.Reason, modVersion);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -356,6 +357,7 @@ internal sealed class BuildJobs : IDisposable
                 case JobKind.Pack: ExecutePack(job, entry, request); break;
                 case JobKind.Smoke: ExecuteSmoke(job, entry, request, token); break;
                 case JobKind.Run: ExecuteRun(job, entry, token); break;
+                case JobKind.Try: ExecuteRun(job, entry, token, quickTry: true); break;
                 case JobKind.Dump: ExecuteDump(job, entry, request, token); break;
             }
         }
@@ -699,7 +701,7 @@ internal sealed class BuildJobs : IDisposable
         try { File.Delete(path); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
-    private void ExecuteRun(BuildJob job, CatalogEntry entry, CancellationToken token)
+    private void ExecuteRun(BuildJob job, CatalogEntry entry, CancellationToken token, bool quickTry = false)
     {
         string factorio;
         try { factorio = RequireFactorio(job).Path; }
@@ -716,7 +718,21 @@ internal sealed class BuildJobs : IDisposable
         LogPrepared(job, prepared);
 
         var args = new List<string> { "--mod-directory", prepared.ModsDirectory };
-        if (profileConfig.Save is { Length: > 0 } save)
+        if (quickTry)
+        {
+            // A fresh test map instead of the profile's save; the profile's own arguments still apply.
+            var info = ModInfo.Load(Path.Combine(context.ModDirectory, "info.json"));
+            try { QuickTry.Install(prepared, info.Name!, info.FactorioVersion ?? ""); }
+            catch (FmsException ex)
+            {
+                Log(job, "error: " + ex.Message);
+                Complete(job, JobState.Failed, ex.Message, null);
+                return;
+            }
+            Log(job, $"Quick try: a test map with the items of {info.Name} in the inventory.");
+            args.AddRange(QuickTry.Arguments);
+        }
+        else if (profileConfig.Save is { Length: > 0 } save)
         {
             args.Add("--load-game");
             args.Add(context.ResolvePath(save));

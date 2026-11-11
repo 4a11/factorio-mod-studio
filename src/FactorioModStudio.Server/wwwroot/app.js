@@ -801,6 +801,7 @@ function commandList() {
     if (editable && job.factorioFound) {
       add('smoke', t('ui.cmd.smoke'), () => buildView.start('smoke', 'palette'));
       add('run', t('ui.cmd.run'), () => buildView.start('run', 'palette'));
+      add('try', t('ui.cmd.try'), () => buildView.start('try', 'palette'));
     }
   }
   add('new-mod', t('ui.cmd.newMod'), openNewModDialog);

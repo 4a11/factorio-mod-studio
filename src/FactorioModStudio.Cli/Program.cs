@@ -325,7 +325,15 @@ public static class Program
         var startInfo = new ProcessStartInfo(factorio) { UseShellExecute = false };
         startInfo.ArgumentList.Add("--mod-directory");
         startInfo.ArgumentList.Add(prepared.ModsDirectory);
-        if (profileConfig.Save is { Length: > 0 } save)
+        if (cmd.Has("--try"))
+        {
+            // A fresh test map with the mod's items in the inventory instead of the profile's save.
+            var info = ModInfo.Load(Path.Combine(context.ModDirectory, "info.json"));
+            QuickTry.Install(prepared, info.Name!, info.FactorioVersion ?? "");
+            output.WriteLine($"Quick try: a test map with the items of {info.Name} in the inventory.");
+            foreach (var arg in QuickTry.Arguments) startInfo.ArgumentList.Add(arg);
+        }
+        else if (profileConfig.Save is { Length: > 0 } save)
         {
             startInfo.ArgumentList.Add("--load-game");
             startInfo.ArgumentList.Add(context.ResolvePath(save));
@@ -822,6 +830,7 @@ public static class Program
           pack                   Validate and build NAME_VERSION.zip   [--out dir] [--force]
           prepare [profile]      Build the isolated mods folder for a profile
           run [profile]          Prepare a profile and start Factorio with it
+                                 [--try: a test map with the mod's items in the inventory (2.0+)]
           log <file>             Summarize errors/warnings from a Factorio log  [--json] [--verbose]
           smoke [profile]        Headless test: load the mods, simulate ticks, fail on log errors
                                  [--ticks N] [--seed N] [--timeout MINUTES] [--json]

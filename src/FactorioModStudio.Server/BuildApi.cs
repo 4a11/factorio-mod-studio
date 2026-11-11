@@ -193,7 +193,7 @@ internal static class BuildApi
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object) return "The body must be a JSON object.";
 
-            if (!root.TryGetProperty("kind", out var kindValue) || kindValue.ValueKind != JsonValueKind.String) return "\"kind\" must be one of validate, pack, smoke, run, dump.";
+            if (!root.TryGetProperty("kind", out var kindValue) || kindValue.ValueKind != JsonValueKind.String) return "\"kind\" must be one of validate, pack, smoke, run, try, dump.";
             JobKind kind;
             switch (kindValue.GetString())
             {
@@ -201,8 +201,9 @@ internal static class BuildApi
                 case "pack": kind = JobKind.Pack; break;
                 case "smoke": kind = JobKind.Smoke; break;
                 case "run": kind = JobKind.Run; break;
+                case "try": kind = JobKind.Try; break;
                 case "dump": kind = JobKind.Dump; break;
-                default: return "\"kind\" must be one of validate, pack, smoke, run, dump.";
+                default: return "\"kind\" must be one of validate, pack, smoke, run, try, dump.";
             }
 
             string? Integer(string name, int min, int max, int fallback, out int value)

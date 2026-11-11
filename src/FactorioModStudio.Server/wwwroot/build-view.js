@@ -25,7 +25,7 @@ const MAX_TICKS = 216000;
 const ISSUE_PREVIEW = 10; // problems shown under a job before "Show all"
 const enc = encodeURIComponent;
 
-const KINDS = ['validate', 'pack', 'smoke', 'run'];
+const KINDS = ['validate', 'pack', 'smoke', 'run', 'try'];
 const ACTIVE = new Set(['queued', 'running']);
 const SOURCES = new Set(['ui', 'env', 'config', 'auto']);
 const MODES = new Set(['auto', 'manual', 'none']);
@@ -115,7 +115,7 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     el('div', { class: 'build-option-group' }, label(el('span', { class: 'build-option-title' }), 'build.options.pack'),
       el('div', { class: 'build-field' }, refs.force, label(el('label', { for: 'build-force' }), 'build.force'))));
 
-  const ICONS = { validate: '✓', pack: '▣', smoke: '▶', run: '▶', cancel: '■' };
+  const ICONS = { validate: '✓', pack: '▣', smoke: '▶', run: '▶', try: '⚡', cancel: '■' };
   const button = (kind, extra = {}) => {
     const node = el('button', { type: 'button', class: 'files-btn', 'data-testid': `build-${kind}`, ...extra },
       el('span', { class: 'files-btn-icon', 'aria-hidden': 'true', text: ICONS[kind] ?? '' }));
@@ -126,14 +126,16 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
   refs.pack = button('pack');
   refs.smoke = button('smoke');
   refs.run = button('run');
+  refs.try = button('try');
   refs.cancel = button('cancel');
   refs.cancel.hidden = true;
   refs.validate.addEventListener('click', () => start('validate'));
   refs.pack.addEventListener('click', () => start('pack'));
   refs.smoke.addEventListener('click', () => start('smoke'));
   refs.run.addEventListener('click', () => start('run'));
+  refs.try.addEventListener('click', () => start('try'));
   refs.cancel.addEventListener('click', cancel);
-  refs.actions = el('div', { class: 'files-actions build-actions' }, refs.validate, refs.pack, refs.smoke, refs.run, refs.cancel);
+  refs.actions = el('div', { class: 'files-actions build-actions' }, refs.validate, refs.pack, refs.smoke, refs.run, refs.try, refs.cancel);
 
   refs.state = el('span', { class: 'build-state', 'data-testid': 'build-state', 'data-state': 'idle', role: 'status' });
   refs.message = el('span', { class: 'build-message', 'data-testid': 'build-message', role: 'alert' });
@@ -154,7 +156,7 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
   refs.empty = el('div', { class: 'files-empty build-empty', 'data-testid': 'build-empty' },
     label(el('strong'), 'build.empty.title'),
     el('dl', { class: 'build-empty-list' },
-      ...['validate', 'pack', 'smoke', 'run'].flatMap((kind) => [label(el('dt'), `build.${kind}`), label(el('dd', { class: 'muted' }), `build.empty.${kind}`)])));
+      ...['validate', 'pack', 'smoke', 'run', 'try'].flatMap((kind) => [label(el('dt'), `build.${kind}`), label(el('dd', { class: 'muted' }), `build.empty.${kind}`)])));
 
   // Installation picker: "automatic" follows the mod's factorio_version, any other entry is a manual choice for the next jobs.
   refs.resolution = el('div', { class: 'small build-resolution', 'data-testid': 'build-resolution', 'data-mode': 'none', role: 'status' });
@@ -310,6 +312,8 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     setDisabled(refs.pack, busy || !s.editable, !s.editable ? 'build.readonlyShort' : null);
     setDisabled(refs.smoke, busy || !s.editable || !factorio, !s.editable ? 'build.readonlyShort' : !factorio ? 'build.env.notFound' : null);
     setDisabled(refs.run, busy || !s.editable || !factorio, !s.editable ? 'build.readonlyShort' : !factorio ? 'build.env.notFound' : null);
+    setDisabled(refs.try, busy || !s.editable || !factorio, !s.editable ? 'build.readonlyShort' : !factorio ? 'build.env.notFound' : null);
+    if (!refs.try.disabled) refs.try.setAttribute('title', t('build.tryTitle'));
     refs.cancel.hidden = !activeNow();
     refs.cancel.disabled = s.cancelling;
     notify();
@@ -397,7 +401,7 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
         text: result.passed ? t('build.result.smokePassed') : t('build.result.smokeFailed', { reason: result.failureReason || '' }),
       }));
       nodes.push(...gameLog(result));
-    } else if (result && snap.kind === 'run') {
+    } else if (result && (snap.kind === 'run' || snap.kind === 'try')) {
       nodes.push(el('p', { class: 'build-verdict', 'data-ok': result.exitCode === 0 ? 'true' : 'false', 'data-testid': 'build-exit-code', text: t('build.result.runExit', { code: result.exitCode }) }));
       if (Array.isArray(result.diagnostics)) nodes.push(...gameLog(result));
     } else if (result && snap.kind === 'dump') {
@@ -1204,7 +1208,7 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     if (s.starting || activeNow() || !s.modId) return;
     const { body, error } = inputs(kind);
     if (error) { setMessage(error); return; }
-    if ((kind === 'smoke' || kind === 'run') && s.manualId) body.installation = s.manualId;
+    if ((kind === 'smoke' || kind === 'run' || kind === 'try') && s.manualId) body.installation = s.manualId;
 
     const seq = s.seq;
     s.starting = true;
@@ -1325,7 +1329,7 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     /** Problems the game reported in the newest smoke test or run of this mod (empty when it has none or is still running). */
     gameIssues() {
       const newest = s.history[0] ? s.entries.get(s.history[0].id)?.snap ?? s.history[0] : null;
-      return newest && (newest.kind === 'smoke' || newest.kind === 'run') ? gameIssuesOf(newest.result) : [];
+      return newest && (newest.kind === 'smoke' || newest.kind === 'run' || newest.kind === 'try') ? gameIssuesOf(newest.result) : [];
     },
     onChange(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     onStarted(listener) { startedListeners.add(listener); return () => startedListeners.delete(listener); },
