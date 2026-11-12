@@ -150,6 +150,17 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
     }
   }
 
+  function iconPlaceholder() {
+    return el('span', { class: 'bv-icon-none', 'aria-hidden': 'true', text: '⚙' });
+  }
+
+  // A picture that cannot be loaded (a game without graphics, a file that went away) shows the placeholder, not a broken image.
+  function iconImage(src, suffix) {
+    const img = el('img', { alt: '', src, 'data-suffix': suffix });
+    img.addEventListener('error', () => img.replaceWith(iconPlaceholder()), { once: true });
+    return img;
+  }
+
   function iconTiles(s, summary, data, editable) {
     const files = data.iconFiles || [];
     if (!files.length) return null;
@@ -158,7 +169,7 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
       el('div', { class: 'bv-icon-tiles' }, files.map((f) => {
         const src = f.path ? iconSrc(f.path) : (data.icons ? iconUrl(data.kind, f.suffix, data.color) : null);
         const tile = el('div', { class: 'bv-icon-tile', 'data-testid': 'blocks-icon-tile', 'data-suffix': f.suffix, title: editable ? t('icons.dropHint') : null },
-          src ? el('img', { alt: '', src, 'data-suffix': f.suffix }) : el('span', { class: 'bv-icon-none', 'aria-hidden': 'true', text: '⚙' }),
+          src ? iconImage(src, f.suffix) : iconPlaceholder(),
           el('span', { class: 'bv-icon-text' },
             el('span', { class: 'mono small', text: f.prototype }),
             el('span', { class: 'muted small', text: f.custom ? t('icons.own') : f.path ? t('icons.recoloured') : t('icons.tinted') })),

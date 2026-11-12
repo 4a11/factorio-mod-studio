@@ -485,7 +485,7 @@ public static class Program
         {
             var shown = cmd.Has("--all") ? branch.ToList() : new List<string> { branch.First() };
             var text = string.Join(", ", shown.Select(v => v + (installed.Contains(v) ? " (installed)" : "")));
-            output.WriteLine($"  {branch.Key.PadRight(5)} {text}{(cmd.Has("--all") ? "" : $"   ({branch.Count()} releases)")}");
+            output.WriteLine($"  {branch.Key.PadRight(5)} {text}{(cmd.Has("--all") ? "" : $"   ({branch.Count()} release{(branch.Count() == 1 ? "" : "s")})")}");
         }
         output.WriteLine();
         output.WriteLine("Install one with `fmstudio factorio install <MAJOR.MINOR | MAJOR.MINOR.PATCH | stable>`; `--all` lists every release.");
@@ -827,7 +827,7 @@ public static class Program
                                  Writes prototypes/<name>.lua and appends to data.lua and locale/en; never overwrites
           factorio               List the Factorio installations found and the one chosen for the project's mod  [--json]
           factorio available     Factorio's headless server releases (Linux x64)  [--all] [--json]
-          factorio install [v]   Download a headless server release into the studio's folder, where smoke finds it
+          factorio install [v]   Download a headless server release into the studio's data folder (per user), where smoke finds it
                                  v: MAJOR.MINOR (newest of the branch), MAJOR.MINOR.PATCH, stable or latest;
                                  without v: the project mod's factorio_version   [--json]
                                  --game: the full game instead (needs a factorio.com account that owns Factorio:

@@ -8,7 +8,7 @@ ou dans votre navigateur. Tout tourne sur votre machine, à côté de votre édi
 
 > **Version précoce (0.3).** La logique est couverte par des tests ; `smoke` est vérifié avec Factorio 1.1, 2.0 et 2.1 sous Linux (CI), et `run` avec 2.1
 > sous Windows. macOS n'a pas encore été essayé. Vos retours et rapports de bugs sont les bienvenus.
-> L'application de bureau fonctionne sous Windows ; pour Linux et macOS, elle est compilée mais pas encore essayée.
+> L'application de bureau fonctionne sous Windows et Linux (essayée sur Fedora 45 avec KDE Plasma) ; pour macOS, elle est compilée mais pas encore essayée.
 > Projet communautaire non officiel, sans lien avec Wube Software. « Factorio » est une marque de Wube Software Ltd.
 >
 > Ceci est une traduction de la partie d'introduction. La documentation complète est [en anglais](README.md#documentation) ; en cas de divergence, le README anglais fait foi.
@@ -43,7 +43,7 @@ Où en est le projet et ce qui vient ensuite. Les versions sont des objectifs, p
 **0.1.** La ligne de commande (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) et le studio, dans sa propre fenêtre ou dans le navigateur, en 8 langues d'interface : onglets Aperçu, Fichiers, Prototypes, Ressources, Localisation, Problèmes et Compilation ; 20 blocs (armure, ennemis, niveaux de convoyeurs, machines, véhicules…) en copies recolorées des originaux, vérifiés dans Factorio 2.1 ; des dossiers entiers de mods ajoutés après vérification.
 
 **0.2 : prêt pour tout le monde**
-- [x] l'application de bureau partout : dans les archives de version pour Windows, Linux et macOS, chacune avec de quoi double-cliquer, et un seul programme avec la ligne de commande (un double-clic ouvre la fenêtre) ; *essayée sous Windows ; compilée pour Linux et macOS, vos retours sont les bienvenus*
+- [x] l'application de bureau partout : dans les archives de version pour Windows, Linux et macOS, chacune avec de quoi double-cliquer, et un seul programme avec la ligne de commande (un double-clic ouvre la fenêtre) ; *essayée sous Windows et Linux (Fedora 45, KDE Plasma) ; compilée pour macOS, vos retours sont les bienvenus*
 - [x] `run` et `smoke` vérifiés avec Factorio 1.1, 2.0 et 2.1, y compris le serveur sans interface ; *`run` avec 2.1 sous Windows, `smoke` sur le serveur sans interface Linux pour 1.1, 2.0 et 2.1 en CI ; macOS pas encore essayé*
 - [x] après un lancement ou un test de fumée, lire aussi `factorio-current.log` et afficher ses erreurs dans Problèmes et Sortie
 - [x] les prototypes générés par les modèles (entité, script d'exécution) chargés dans le jeu, pas seulement écrits d'après la documentation; *les quatre se chargent dans Factorio 2.1*

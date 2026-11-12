@@ -234,6 +234,17 @@ public static class ModContent
         return icon is null ? null : Recolored(gameDataDirectory, $"graphics/icons/{icon.Vanilla}.png", color.Tuple);
     }
 
+    /// <summary>
+    /// Whether the game's data has the pictures icons are recoloured from. The headless server (the usual Factorio on Linux and
+    /// in CI) has a data folder but no graphics, so a data folder alone is not enough.
+    /// </summary>
+    public static bool HasIconPictures(string? gameDataDirectory)
+    {
+        if (string.IsNullOrEmpty(gameDataDirectory)) return false;
+        var sample = ContentBlocks.All.SelectMany(b => b.Icons).FirstOrDefault();
+        return sample is not null && File.Exists(Path.Combine(gameDataDirectory, "base", "graphics", "icons", sample.Vanilla + ".png"));
+    }
+
     /// <summary>The same recolouring for <see cref="BlockOperations.PlanUpgrade"/>: an old block gets the icon files a new one has.</summary>
     internal static byte[]? RecoloredIcon(string? gameDataDirectory, string relative, (double R, double G, double B) tint) =>
         Recolored(gameDataDirectory, relative, tint);

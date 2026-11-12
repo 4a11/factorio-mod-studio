@@ -19,4 +19,22 @@ internal static class TestSetup
     /// </summary>
     [ModuleInitializer]
     internal static void PreferIPv4() => AppContext.SetSwitch("System.Net.DisableIPv6", true);
+
+    /// <summary>
+    /// The studio's per-user data folder (installed Factorio versions, the saved account, update settings) is a fresh empty
+    /// one for the test run. Otherwise a developer who installed Factorio with the studio got about 20 failures (the tests
+    /// found that Factorio instead of their fake one), and tests could write into the real folder.
+    /// </summary>
+    [ModuleInitializer]
+    internal static void IsolateStudioDataDirectory()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "fmstudio-tests-data-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        Environment.SetEnvironmentVariable(FactorioModStudio.Core.FactorioInstallations.DataDirectoryVariable, directory);
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            try { Directory.Delete(directory, recursive: true); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* the temp folder gets cleaned anyway */ }
+        };
+    }
 }

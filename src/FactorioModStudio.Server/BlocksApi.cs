@@ -54,7 +54,7 @@ internal static class BlocksApi
                     kind = kind?.Id,
                     iconSuffixes = kind?.Icons ?? Array.Empty<string>(),
                     color = BlockOperations.ColorOf(source)?.Hex,
-                    icons = catalog.GameDataDirectory is not null,
+                    icons = ModContent.HasIconPictures(catalog.GameDataDirectory),
                     // Each prototype's icon: the file the block has for it, or null (the original, tinted in the game).
                     iconFiles = SafeIcons(root, file, catalog.GameDataDirectory)
                 },

@@ -5,6 +5,29 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-11-13
+
+A preview: the studio tried on Linux (Fedora 45, KDE Plasma on Wayland) for the first time, and the fixes from that. Checked on
+Linux: the command line (every template, all 20 building blocks, validate, pack, `factorio install`, smoke), every tab in the
+desktop window and the browser, Validate and Smoke test from the Build tab, the letter-case check on a case-sensitive file
+system, and the update from a release archive (0.3.1 to 0.3.2: downloaded, swapped in at the next start, permissions kept).
+Not tried yet on Linux: *Run in Factorio* and *Quick try* with the full game.
+
+### Fixed
+- **Linux without WebKitGTK**: the window showed only "NativeWebView is not supported on this platform/configuration." It now
+  says that WebKitGTK 4.1 is missing, gives the install command for Fedora, Debian / Ubuntu, Arch and openSUSE, and offers
+  *Open in the browser* (the studio is already running). The same text is printed in the terminal.
+- **Ctrl+C and `kill` ended only the studio's server**, not the window: the program kept running with a dead page and only
+  `kill -9` stopped it. They now close the window like its close button does, which stops the server and any Factorio started
+  from the Build tab.
+- The window and taskbar show the studio's icon instead of a generic placeholder; the browser tab shows it too.
+- Blocks: with the headless server (the usual Factorio on Linux), the Icons box showed a broken picture. The headless server
+  has no graphics to recolour, so the box now shows the placeholder, as without a game.
+- `fmstudio factorio available`: "(1 release)", not "(1 releases)".
+- `fmstudio factorio install` says where it puts Factorio: the studio's per-user data folder, not the program's folder.
+- Tests: the test run uses an empty studio data folder of its own. On a machine where Factorio was installed with the
+  studio, about 20 tests found that Factorio instead of their fake one and failed, and tests could write into the real folder.
+
 ## [0.3.2] - 2026-11-13
 
 A preview: smoke tests that leave your own Factorio alone, and the fixes from making a mod from scratch in the studio (New
@@ -251,7 +274,8 @@ The first release.
   tool on NuGet.
 - README translations of the introduction in the 7 other interface languages.
 
-[Unreleased]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.2...v0.3.4
 [0.3.2]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/4a11/factorio-mod-studio/compare/v0.2.1...v0.3.0

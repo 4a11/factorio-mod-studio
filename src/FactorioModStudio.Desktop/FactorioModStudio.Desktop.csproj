@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="Assets\icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FactorioModStudio.Core\FactorioModStudio.Core.csproj" />
     <ProjectReference Include="..\FactorioModStudio.Server\FactorioModStudio.Server.csproj" />
   </ItemGroup>

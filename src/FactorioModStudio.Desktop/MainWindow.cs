@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Platform;
@@ -16,6 +17,7 @@ public sealed class MainWindow : Window
 {
     private readonly TextBlock _status = new() { Text = "Starting Factorio Mod Studio...", HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     private RunningUi? _ui;
+    private readonly List<PosixSignalRegistration> _signals = new();
 
     public MainWindow()
     {
@@ -27,8 +29,25 @@ public sealed class MainWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Content = _status;
 
+        // The window and taskbar icon: without one, Linux desktops show a generic placeholder.
+        try { Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FactorioModStudio/Assets/icon.png"))); }
+        catch (Exception ex) when (ex is IOException or FileNotFoundException) { /* the default icon will do */ }
+
         Opened += async (_, _) => await StartAsync();
         Closing += OnClosing;
+        Closed += (_, _) => { foreach (var signal in _signals) signal.Dispose(); };
+        // Ctrl+C in the terminal, `kill`, logging out: close the window like its close button does. Without this the in-process
+        // web server's host takes these signals, stops only itself and keeps the program from exiting, leaving a window with a
+        // dead page that only `kill -9` ends.
+        if (!OperatingSystem.IsWindows())
+        {
+            foreach (var signal in new[] { PosixSignal.SIGINT, PosixSignal.SIGTERM })
+                _signals.Add(PosixSignalRegistration.Create(signal, context =>
+                {
+                    context.Cancel = true;
+                    Dispatcher.UIThread.Post(Close);
+                }));
+        }
         // The system's web engine is created after the window: when it cannot start (Linux without WebKitGTK, a broken
         // WebView2), the error surfaces here instead of ending the program.
         Dispatcher.UIThread.UnhandledException += (_, e) =>
@@ -42,14 +61,13 @@ public sealed class MainWindow : Window
     private void ShowFallback(string reason)
     {
         var url = _ui?.Url;
+        var text = "This window cannot show the studio: " + reason + Environment.NewLine + Environment.NewLine +
+                   (OperatingSystem.IsLinux() ? LinuxWebKitHelp + Environment.NewLine + Environment.NewLine : "") +
+                   (url is null ? "" : "The studio is running and can be opened in your browser: " + url);
+        // Also in the terminal, for a start from one (and for bug reports).
+        Console.Error.WriteLine(text);
         var panel = new StackPanel { Spacing = 12, MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        panel.Children.Add(new TextBlock
-        {
-            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            Text = "This window cannot show the studio: " + reason + Environment.NewLine + Environment.NewLine +
-                   (OperatingSystem.IsLinux() ? "On Linux the window needs the WebKitGTK package (webkit2gtk-4.1). " : "") +
-                   (url is null ? "" : "The studio is running and can be opened in your browser.")
-        });
+        panel.Children.Add(new SelectableTextBlock { TextWrapping = Avalonia.Media.TextWrapping.Wrap, Text = text });
         if (url is not null)
         {
             var open = new Button { Content = "Open in the browser" };
@@ -57,6 +75,23 @@ public sealed class MainWindow : Window
             panel.Children.Add(open);
         }
         Content = panel;
+    }
+
+    /// <summary>The web engine the window uses on Linux (WebKitGTK 4.1, the GTK 3 build).</summary>
+    private const string WebKitGtkLibrary = "libwebkit2gtk-4.1.so.0";
+
+    private const string LinuxWebKitHelp =
+        "On Linux the window needs WebKitGTK 4.1. Install it and start the studio again:" + "\n" +
+        "  Fedora:          sudo dnf install webkit2gtk4.1" + "\n" +
+        "  Debian / Ubuntu: sudo apt install libwebkit2gtk-4.1-0" + "\n" +
+        "  Arch:            sudo pacman -S webkit2gtk-4.1" + "\n" +
+        "  openSUSE:        sudo zypper install libwebkit2gtk-4_1-0";
+
+    private static bool WebKitGtkInstalled()
+    {
+        if (!NativeLibrary.TryLoad(WebKitGtkLibrary, out var handle)) return false;
+        NativeLibrary.Free(handle);
+        return true;
     }
 
     private static void OpenInBrowser(string url)
@@ -80,6 +115,13 @@ public sealed class MainWindow : Window
             var options = new UiOptions(Port: 0, FactorioExecutable: NewestFactorio(context), WorkspaceDirectory: context.WorkspaceDirectory,
                 Restart: Restart);
             _ui = await Task.Run(() => UiServer.StartAsync(context, options));
+            // Without WebKitGTK the web view does not fail: it shows a bare "NativeWebView is not supported on this
+            // platform/configuration." So look for the library first and say what to install.
+            if (OperatingSystem.IsLinux() && !WebKitGtkInstalled())
+            {
+                ShowFallback("the WebKitGTK library (" + WebKitGtkLibrary + ") is not installed.");
+                return;
+            }
             var view = new NativeWebView();
             view.EnvironmentRequested += (_, e) =>
             {

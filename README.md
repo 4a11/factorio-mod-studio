@@ -8,7 +8,7 @@ command line or in your browser. It runs entirely on your machine and works next
 
 > **Early version (0.3).** The logic is covered by tests; `smoke` is checked against Factorio 1.1, 2.0 and 2.1 on Linux (CI), `run` with 2.1
 > on Windows. macOS has not been tried yet. Feedback and bug reports are very welcome.
-> The desktop app works on Windows; for Linux and macOS it is built but not tried yet.
+> The desktop app works on Windows and Linux (tried on Fedora 45 with KDE Plasma); for macOS it is built but not tried yet.
 > Unofficial community project, not affiliated with Wube Software. "Factorio" is a trademark of Wube Software Ltd.
 
 ![The Overview tab: release readiness, counts and the prototypes a mod changes](docs/images/overview.png)
@@ -41,7 +41,7 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 **0.1.** The CLI (`new`, `add`, `validate`, `pack`, `prepare` / `run`, `smoke`, `log`, `factorio`) and the studio, in a desktop window or in the browser, in 8 interface languages: Overview, Files, Prototypes, Resources, Localization, Problems and Build tabs; 20 building blocks (armor, enemies, belt tiers, machines, vehicles...) as recoloured copies of the originals, checked in Factorio 2.1; whole folders of mods added with a check first.
 
 **0.2: ready for people**
-- [x] the desktop app everywhere: in the release archives for Windows, Linux and macOS, each with something to double-click, and one program with the CLI (a double click opens the window); *tried on Windows; built for Linux and macOS, reports welcome*
+- [x] the desktop app everywhere: in the release archives for Windows, Linux and macOS, each with something to double-click, and one program with the CLI (a double click opens the window); *tried on Windows and Linux (Fedora 45, KDE Plasma); built for macOS, reports welcome*
 - [x] `run` and `smoke` checked against Factorio 1.1, 2.0 and 2.1, including the headless server; *`run` with 2.1 on Windows, `smoke` on the Linux headless server for 1.1, 2.0 and 2.1 in CI; macOS not tried yet*
 - [x] after a run or smoke test, read `factorio-current.log` too and show its errors in Problems and Output
 - [x] the prototypes the templates generate (entity, runtime script) loaded in the game, not only written from the documentation; *all four load in Factorio 2.1*
@@ -159,7 +159,7 @@ or run it without installing: `dotnet run --project src/FactorioModStudio.Cli --
 | `fmstudio log <file>` | Summarizes errors and warnings of a Factorio log: location, merged duplicates, hints. |
 | `fmstudio smoke [profile]` | Headless test: generates a map (or loads the profile's save), simulates N ticks, fails on any log error. |
 | `fmstudio factorio [--json]` | Lists the Factorio installations found (id, version, where each came from) and the one chosen for the project's mod. |
-| `fmstudio factorio available` / `install [version]` / `remove <version>` | Factorio's headless server releases; download one into the studio's folder (Linux only); delete it again. `--game` installs or removes the full game instead (Windows x64, Linux x64; needs a factorio.com account that owns Factorio). See "Several Factorio versions". |
+| `fmstudio factorio available` / `install [version]` / `remove <version>` | Factorio's headless server releases; download one into the studio's per-user data folder (Linux only); delete it again. `--game` installs or removes the full game instead (Windows x64, Linux x64; needs a factorio.com account that owns Factorio). See "Several Factorio versions". |
 | `fmstudio ui` | Opens the graphical mod browser in your web browser (see below). |
 
 Common options: `--project <dir>` (default: current directory), `--factorio <path>`, `--json` (for `validate`, `log`, `smoke`, `factorio`).
@@ -353,7 +353,7 @@ Opens a local page where you pick a mod and look inside it.
 Linux). Like `fmstudio ui` it serves the studio on the loopback interface only, here on a free port, with the folder it is started
 in as the project and that folder's `mods` as the workspace (created when missing). Closing the window stops everything, Factorio
 processes started from the Build tab included. The web engine keeps its data in `<user data dir>/FactorioModStudio/webview`.
-It has been tried on Windows; on Linux the WebKitGTK package (`webkit2gtk-4.1`) is expected to be needed, which is not verified yet.
+It has been tried on Windows and on Linux (Fedora 45, KDE Plasma). On Linux it needs WebKitGTK 4.1 (Fedora `webkit2gtk4.1`, Debian / Ubuntu `libwebkit2gtk-4.1-0`, Arch `webkit2gtk-4.1`); without it the window says so, with the install command, and offers the browser instead.
 
 **Workspace.** Put your mods (one unpacked folder each, with an `info.json`) into the workspace folder, `mods` by default
 (set `"workspace"` in `fmstudio.json` or pass `--workspace`). They show up under *Workspace* in the sidebar and are watched

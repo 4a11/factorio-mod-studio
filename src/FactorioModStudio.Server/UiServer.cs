@@ -247,6 +247,7 @@ public static class UiServer
         });
         app.MapGet("/app.js", () => Results.Bytes(Load("app.js"), "text/javascript; charset=utf-8"));
         app.MapGet("/style.css", () => Results.Bytes(Load("style.css"), "text/css; charset=utf-8"));
+        app.MapGet("/favicon.svg", () => Results.Bytes(Load("favicon.svg"), "image/svg+xml"));
         foreach (var script in StaticScripts)
         {
             var name = script; // closure copy; the resource name comes from this allowlist, never from the request
