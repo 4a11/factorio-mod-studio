@@ -334,7 +334,9 @@ fmstudio smoke --ticks 600
 
 Runs `factorio --create` and `factorio --benchmark <save> --benchmark-ticks N` with the profile's mods and parses the output.
 It catches mods that fail to load and errors thrown from `control.lua` in the first ticks. It does **not** replace real tests
-of your mod's behaviour; use a framework such as FactorioTest for that.
+of your mod's behaviour; use a framework such as FactorioTest for that. The game writes its log and temporary files into the
+profile (`.fmstudio/profiles/<profile>/smoke-data`), so your own Factorio folder and `factorio-current.log` stay untouched and
+the test runs while the game is open.
 
 ### Graphical mod browser
 
