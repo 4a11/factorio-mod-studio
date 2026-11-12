@@ -5,16 +5,21 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
-### Changed
-- *New mod* picks the installed game's version (2.1 with Factorio 2.1.24 installed) instead of always 2.0.
-- Release readiness has a sixth check: the author is not empty and no longer the "Your Name" a new mod starts with, with a
-  button that opens info.json.
-- *New language...* suggests Factorio's own language codes with their names (es-ES, not es), leaving out the ones the mod has.
+## [0.3.2] - 2026-11-13
 
+A preview: smoke tests that leave your own Factorio alone, and the fixes from making a mod from scratch in the studio (New
+mod, Blocks next to an open file, translations, release readiness). The first update that 0.3.1 installs and restarts into
+by itself.
+
+### Changed
 - **Smoke tests leave the player's Factorio alone**: they run with a config of the studio's own, so the game writes its log,
   lock and temporary files into the profile (`.fmstudio/profiles/<profile>/smoke-data`), not into the player's Factorio folder.
   The player's `factorio-current.log` is no longer overwritten, and a smoke test works while the game is open. A `--config`
   among the profile's own `args` still wins. *Run* and *Quick try* keep using the player's settings.
+- *New mod* picks the installed game's version (2.1 with Factorio 2.1.24 installed) instead of always 2.0.
+- Release readiness has a sixth check: the author is not empty and no longer the "Your Name" a new mod starts with, with a
+  button that opens info.json.
+- *New language...* suggests Factorio's own language codes with their names (es-ES, not es), leaving out the ones the mod has.
 
 ### Fixed
 - Blocks: with a file open beside the tab the editor was squeezed to one word per line; in a narrow column the list now sits
@@ -246,7 +251,8 @@ The first release.
   tool on NuGet.
 - README translations of the introduction in the 7 other interface languages.
 
-[Unreleased]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/4a11/factorio-mod-studio/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/4a11/factorio-mod-studio/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/4a11/factorio-mod-studio/compare/v0.2.0...v0.2.1
