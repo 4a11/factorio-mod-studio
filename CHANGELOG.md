@@ -5,6 +5,20 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
+### Changed
+- *New mod* picks the installed game's version (2.1 with Factorio 2.1.24 installed) instead of always 2.0.
+- Release readiness has a sixth check: the author is not empty and no longer the "Your Name" a new mod starts with, with a
+  button that opens info.json.
+- *New language...* suggests Factorio's own language codes with their names (es-ES, not es), leaving out the ones the mod has.
+
+### Fixed
+- Blocks: with a file open beside the tab the editor was squeezed to one word per line; in a narrow column the list now sits
+  above the editor and the properties table scrolls by itself.
+- Blocks: after a value is saved, the "In the game" column showed the old value without a hint; it is shown faded with "the
+  mod's files changed since this was loaded" and *Load again*.
+- Localization: each translation field is named with its section for screen readers (`mod-name.x`, not just `x`, which
+  `mod-description.x` has too).
+
 ## [0.3.1] - 2026-11-12
 
 A preview: updates from the studio's window, and far fewer false problems on real mods. **Updating from 0.3.0:** after the

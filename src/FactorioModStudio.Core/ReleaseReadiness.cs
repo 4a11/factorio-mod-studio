@@ -1,6 +1,6 @@
 namespace FactorioModStudio.Core;
 
-/// <param name="Id">"thumbnail", "changelog", "locale-name", "errors" or "packed".</param>
+/// <param name="Id">"thumbnail", "changelog", "locale-name", "author", "errors" or "packed".</param>
 /// <param name="Status">"ok", "warn", "fail" or "info".</param>
 public sealed record ReadinessCheck(string Id, string Status, string? Version = null, int? Count = null, string? File = null, int? Line = null);
 
@@ -9,7 +9,7 @@ public static class ReleaseReadiness
 {
     public const string Ok = "ok", Warn = "warn", Fail = "fail", Info = "info";
 
-    /// <summary>Always returns the same five checks in a fixed order.</summary>
+    /// <summary>Always returns the same six checks in a fixed order.</summary>
     public static IReadOnlyList<ReadinessCheck> Evaluate(string modDirectory, ModOverview overview, string? distDirectory)
     {
         var name = overview.Info?.Name;
@@ -20,6 +20,7 @@ public static class ReleaseReadiness
             Thumbnail(modDirectory),
             ChangelogEntry(modDirectory, version),
             LocaleName(modDirectory, name),
+            Author(overview.Info?.Author),
             Errors(overview),
             Packed(modDirectory, name, version, distDirectory)
         };
@@ -63,6 +64,15 @@ public static class ReleaseReadiness
 
         return new("locale-name", Warn);
     }
+
+    /// <summary>
+    /// The author the mod portal shows: a warning while it is empty or still the "Your Name" a new mod starts with, which is
+    /// easy to publish by mistake.
+    /// </summary>
+    private static ReadinessCheck Author(string? author) =>
+        string.IsNullOrWhiteSpace(author) || string.Equals(author.Trim(), ModScaffolder.DefaultAuthor, StringComparison.OrdinalIgnoreCase)
+            ? new("author", Warn, File: "info.json")
+            : new("author", Ok);
 
     private static ReadinessCheck Errors(ModOverview overview)
     {

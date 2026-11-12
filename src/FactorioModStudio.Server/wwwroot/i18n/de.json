@@ -840,6 +840,8 @@
   "readiness.changelog.warn": "changelog.txt hat keinen Eintrag für Version {version}",
   "readiness.localeName.ok": "Name und Beschreibung der Mod sind lokalisiert",
   "readiness.localeName.warn": "Name und Beschreibung der Mod sind nicht lokalisiert ([mod-name] und [mod-description])",
+  "readiness.author.ok": "Der Autor ist eingetragen",
+  "readiness.author.warn": "Der Autor ist noch „Your Name“ oder leer (wird im Mod-Portal angezeigt)",
   "readiness.errors.ok": "Keine Fehler",
   "readiness.errors.fail.one": "{n} Fehler muss behoben werden",
   "readiness.errors.fail.other": "{n} Fehler müssen behoben werden",

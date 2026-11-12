@@ -848,6 +848,8 @@
   "readiness.changelog.warn": "changelog.txt no tiene ninguna entrada para la versión {version}",
   "readiness.localeName.ok": "El nombre y la descripción del mod están traducidos",
   "readiness.localeName.warn": "El nombre y la descripción del mod no están localizados ([mod-name] y [mod-description])",
+  "readiness.author.ok": "El autor está indicado",
+  "readiness.author.warn": "El autor sigue siendo «Your Name» o está vacío (se muestra en el portal de mods)",
   "readiness.errors.ok": "Sin errores",
   "readiness.errors.fail.one": "Hay que corregir {n} error",
   "readiness.errors.fail.many": "Hay que corregir {n} de errores",

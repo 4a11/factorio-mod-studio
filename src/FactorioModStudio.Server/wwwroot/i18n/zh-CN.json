@@ -832,6 +832,8 @@
   "readiness.changelog.warn": "changelog.txt 中没有版本 {version} 的条目",
   "readiness.localeName.ok": "模组名称和描述已本地化",
   "readiness.localeName.warn": "模组名称和描述未本地化（[mod-name] 和 [mod-description]）",
+  "readiness.author.ok": "已填写作者",
+  "readiness.author.warn": "作者仍是“Your Name”或为空（会显示在模组门户上）",
   "readiness.errors.ok": "没有错误",
   "readiness.errors.fail.other": "需要修复 {n} 个错误",
   "readiness.packed.ok": "版本 {version} 已打包且是最新的",

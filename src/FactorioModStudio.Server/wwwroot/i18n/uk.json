@@ -856,6 +856,8 @@
   "readiness.changelog.warn": "У changelog.txt немає запису для версії {version}",
   "readiness.localeName.ok": "Назву й опис мода перекладено",
   "readiness.localeName.warn": "Назву й опис мода не локалізовано ([mod-name] і [mod-description])",
+  "readiness.author.ok": "Автора вказано",
+  "readiness.author.warn": "Автор досі «Your Name» або порожній (показується на порталі модів)",
   "readiness.errors.ok": "Помилок немає",
   "readiness.errors.fail.one": "Треба виправити {n} помилку",
   "readiness.errors.fail.few": "Треба виправити {n} помилки",

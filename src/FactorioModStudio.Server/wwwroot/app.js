@@ -383,7 +383,7 @@ function categoryCounts(o) {
 }
 
 const READINESS_ICONS = { ok: '✓', warn: '!', fail: '✕', info: 'i' };
-const READINESS_KEYS = { thumbnail: 'thumbnail', changelog: 'changelog', 'locale-name': 'localeName', errors: 'errors', packed: 'packed' };
+const READINESS_KEYS = { thumbnail: 'thumbnail', changelog: 'changelog', 'locale-name': 'localeName', author: 'author', errors: 'errors', packed: 'packed' };
 
 /** What to do about a check that is not done yet: an explicit button label and its action, or null. */
 function readinessAction(c, o) {
@@ -1401,6 +1401,16 @@ function openNewModDialog() {
   setNewModStatus(null);
   updateNameHint();
   updateTemplateAvailability();
+  // Default to the installed game's version (2.1.24 -> 2.1) instead of the 2.0 in the markup, unless it was changed meanwhile.
+  const versionBefore = $('#nm-version').value;
+  api('/api/environment').then((env) => {
+    const installed = /^(\d+\.\d+)\./.exec(env?.factorio?.version || '')?.[1];
+    const select = $('#nm-version');
+    if (installed && select.value === versionBefore && [...select.options].some((o) => o.value === installed)) {
+      select.value = installed;
+      updateTemplateAvailability();
+    }
+  }).catch(() => { /* no game found: the markup's default stays */ });
   $('#nm-create').disabled = false;
   newMod.busy = false;
   dialog.showModal();

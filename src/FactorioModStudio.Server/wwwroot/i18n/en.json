@@ -840,6 +840,8 @@
   "readiness.changelog.warn": "changelog.txt has no entry for version {version}",
   "readiness.localeName.ok": "Mod name and description are localised",
   "readiness.localeName.warn": "Mod name and description are not localised ([mod-name] and [mod-description])",
+  "readiness.author.ok": "The author is set",
+  "readiness.author.warn": "The author is still \"Your Name\" or empty (shown on the mod portal)",
   "readiness.errors.ok": "No errors",
   "readiness.errors.fail.one": "{n} error must be fixed",
   "readiness.errors.fail.other": "{n} errors must be fixed",

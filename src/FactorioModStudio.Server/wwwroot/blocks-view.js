@@ -256,10 +256,11 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
   }
 
   // The originals come from the game: the first block opened without game data starts a dump (once per mod and session).
-  async function maybeDump(modId, file) {
+  // `force`: load again although there is game data (it is from before the last change).
+  async function maybeDump(modId, file, force = false) {
     const s = stateOf(modId);
     const data = s.details.get(file);
-    if (!current?.editable || !data?.block || data.gameData || s.dump || s.dumpTried) return;
+    if (!current?.editable || !data?.block || (data.gameData && !force) || s.dump || (s.dumpTried && !force)) return;
     s.dumpTried = true;
     try {
       const jobs = await api(`/api/jobs?modId=${enc(modId)}`);
@@ -300,6 +301,12 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
     }
     if (current) render();
     if (pending) schedulePoll();
+  }
+
+  function refreshDump() {
+    const s = stateOf(current.modId);
+    s.dumpError = null;
+    maybeDump(current.modId, s.selected, true);
   }
 
   async function retryDump() {
@@ -485,12 +492,15 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
   }
 
   function originalsStatus(s, data) {
-    if (data.gameData) return null;
     if (s.dump) return el('div', { class: 'bv-status', role: 'status', 'data-testid': 'blocks-dump' },
       el('span', { class: 'spinner', 'aria-hidden': 'true' }), el('span', { text: t('blocks.loadingOriginals') }),
       s.dump.line && el('span', { class: 'muted small mono gd-line', text: s.dump.line }));
     if (s.dumpError) return el('div', { class: 'gd-error', role: 'alert' }, el('span', { text: s.dumpError }), ' ',
       el('button', { type: 'button', class: 'linklike small', onclick: retryDump, text: t('blocks.retry') }));
+    if (data.gameData && data.gameDataStale) return el('p', { class: 'muted small bv-stale-note', role: 'status', 'data-testid': 'blocks-stale' },
+      el('span', { text: t('gamedata.stale') }), ' ',
+      current?.editable && el('button', { type: 'button', class: 'linklike small', 'data-testid': 'blocks-reload', onclick: refreshDump, text: t('gamedata.refresh') }));
+    if (data.gameData) return null;
     return el('p', { class: 'muted small', text: t('blockprops.noGameData') });
   }
 
@@ -568,7 +578,8 @@ export function createBlocksView({ api, el, openFile, fileUrl, installation }) {
             onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } } }),
           editable && reset !== null && value !== reset && el('button', { type: 'button', class: 'bv-reset', title: t('blockprops.resetTitle'), 'aria-label': t('blockprops.resetTitle'),
             'data-testid': 'blocks-reset', onclick: () => { if (reset === p.value) s.edits.delete(p.key); else s.edits.set(p.key, reset); render(); }, text: '↺' })),
-        el('td', { class: 'mono bv-game', title: data.gameData ? t('blocks.gameHint') : '', text: game ?? '—' }));
+        el('td', { class: data.gameDataStale ? 'mono bv-game bv-stale' : 'mono bv-game',
+          title: data.gameData ? t(data.gameDataStale ? 'gamedata.stale' : 'blocks.gameHint') : '', text: game ?? '—' }));
     };
     return el('table', { class: 'bv-table', 'data-testid': 'blocks-table' },
       el('thead', {}, el('tr', {},

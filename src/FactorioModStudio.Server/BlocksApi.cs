@@ -39,10 +39,17 @@ internal static class BlocksApi
             if (!BlockProperties.IsBlock(source)) return Error(StatusCodes.Status400BadRequest, "This file is not a building block.");
             var report = jobs.LoadReport(entry);
             var block = BlockProperties.WithGameData(BlockProperties.Read(file, source), report);
+            // The game data is from before the mod's last change (a value just saved): the page says so and offers a new load.
+            var gameDataStale = false;
+            if (report is not null)
+            {
+                try { gameDataStale = report.Fingerprint != GameDataDump.Fingerprint(Path.GetFullPath(entry.Path)); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { gameDataStale = true; }
+            }
             var kind = BlockOperations.KindOf(source, BlockOperations.IdOf(source, file));
             return Results.Json(new
                 {
-                    block, gameData = report is not null, editable = entry.Editable, needsUpgrade = BlockOperations.NeedsUpgrade(source),
+                    block, gameData = report is not null, gameDataStale, editable = entry.Editable, needsUpgrade = BlockOperations.NeedsUpgrade(source),
                     // What the colour row needs: the block it was made from (for the icon preview) and its colour.
                     kind = kind?.Id,
                     iconSuffixes = kind?.Icons ?? Array.Empty<string>(),

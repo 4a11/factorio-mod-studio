@@ -10,7 +10,7 @@
 // re-attach it (it redraws the whole mod page on live updates) without losing unsaved edits.
 // Mod content (keys, strings) is untrusted: it is only ever set with textContent / value / attributes, never as HTML.
 
-import { t } from '/i18n.js';
+import { t, getLanguage } from '/i18n.js';
 import { compare, extract } from '/locale-placeholders.js';
 
 const CHUNK = 200; // rows rendered per section at once; "show more" adds another chunk
@@ -26,6 +26,11 @@ const enc = encodeURIComponent;
 /**
  * @param {{ api: (url: string, options?: object) => Promise<any>, el: (tag: string, props?: object, ...children: any[]) => HTMLElement }} host
  */
+// The locale folders Factorio itself ships (data/base/locale): picking one of these avoids "es" where the game wants "es-ES".
+const FACTORIO_LANGUAGES = ['af', 'ar', 'be', 'bg', 'ca', 'cs', 'da', 'de', 'el', 'eo', 'es-ES', 'et', 'eu', 'fa', 'fi', 'fil', 'fr',
+  'fy-NL', 'ga-IE', 'he', 'hr', 'hu', 'id', 'is', 'it', 'ja', 'ka', 'kk', 'ko', 'lt', 'lv', 'nl', 'no', 'pl', 'pt-BR', 'pt-PT', 'ro',
+  'ru', 'sk', 'sl', 'sq', 'sr', 'sv-SE', 'th', 'tr', 'uk', 'vi', 'zh-CN', 'zh-TW'];
+
 export function createLocaleView({ api, el }) {
   const s = {
     modId: null,
@@ -132,15 +137,25 @@ export function createLocaleView({ api, el }) {
 
   // New language dialog
   refs.dialog = el('dialog', { class: 'locale-dialog', 'aria-labelledby': 'locale-dialog-heading' });
-  refs.newCode = withPlaceholder(el('input', { type: 'text', 'data-testid': 'locale-new-code', maxlength: '12', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', 'aria-describedby': 'locale-new-hint' }), 'locale.newCodePlaceholder');
+  refs.newCode = withPlaceholder(el('input', { type: 'text', 'data-testid': 'locale-new-code', maxlength: '12', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', 'aria-describedby': 'locale-new-hint', list: 'locale-new-codes' }), 'locale.newCodePlaceholder');
+  refs.newCodes = el('datalist', { id: 'locale-new-codes' });
   refs.newError = el('p', { class: 'locale-new-error small', 'data-testid': 'locale-new-error', role: 'alert' });
   refs.newConfirm = label(el('button', { type: 'button', class: 'primary', 'data-testid': 'locale-new-confirm' }), 'locale.create');
   refs.newCancel = label(el('button', { type: 'button', 'data-testid': 'locale-new-cancel' }), 'locale.cancel');
   refs.dialog.append(
     label(el('h2', { id: 'locale-dialog-heading' }), 'locale.newTitle'),
     label(el('p', { class: 'small muted', id: 'locale-new-hint' }), 'locale.newHint'),
-    refs.newCode, refs.newError,
+    refs.newCode, refs.newCodes, refs.newError,
     el('div', { class: 'nm-actions' }, refs.newCancel, refs.newConfirm));
+
+  /** The suggestions: Factorio's languages the mod does not have yet, named in the interface language. */
+  function fillLanguageSuggestions(existing) {
+    let names = null;
+    try { names = new Intl.DisplayNames([getLanguage()], { type: 'language' }); } catch { /* old engine: codes only */ }
+    const name = (code) => { try { return names?.of(code) || ''; } catch { return ''; } };
+    refs.newCodes.replaceChildren(...FACTORIO_LANGUAGES.filter((code) => !existing.has(code))
+      .map((code) => el('option', { value: code, label: name(code) })));
+  }
   refs.newCancel.addEventListener('click', () => refs.dialog.close());
   refs.newConfirm.addEventListener('click', createLanguage);
   refs.newCode.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); createLanguage(); } });
@@ -344,7 +359,8 @@ export function createLocaleView({ api, el }) {
     // Target cell
     const area = el('textarea', {
       class: 'locale-target', 'data-testid': 'locale-target', spellcheck: 'false', rows: '2',
-      'aria-label': t('locale.targetAria', { key: row.key }),
+      // With the section: "mod-name.x" and "mod-description.x" are different strings with the same key.
+      'aria-label': t('locale.targetAria', { key: row.section ? `${row.section}.${row.key}` : row.key }),
       readonly: !s.editable,
     });
     area.value = currentOf(row);
@@ -667,6 +683,7 @@ export function createLocaleView({ api, el }) {
     refs.newCode.value = '';
     refs.newError.textContent = '';
     refs.newError.hidden = true;
+    fillLanguageSuggestions(new Set((s.info?.languages ?? []).map((l) => l.code)));
     if (!refs.dialog.open) refs.dialog.showModal();
     refs.newCode.focus();
   }

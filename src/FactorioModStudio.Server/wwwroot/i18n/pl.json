@@ -856,6 +856,8 @@
   "readiness.changelog.warn": "changelog.txt nie zawiera wpisu dla wersji {version}",
   "readiness.localeName.ok": "Nazwa i opis moda są przetłumaczone",
   "readiness.localeName.warn": "Nazwa i opis moda nie są zlokalizowane ([mod-name] i [mod-description])",
+  "readiness.author.ok": "Autor jest podany",
+  "readiness.author.warn": "Autor to wciąż „Your Name” albo jest pusty (widać to na portalu modów)",
   "readiness.errors.ok": "Brak błędów",
   "readiness.errors.fail.one": "Trzeba poprawić {n} błąd",
   "readiness.errors.fail.few": "Trzeba poprawić {n} błędy",
