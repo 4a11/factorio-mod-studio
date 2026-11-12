@@ -11,6 +11,11 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
   button that opens info.json.
 - *New language...* suggests Factorio's own language codes with their names (es-ES, not es), leaving out the ones the mod has.
 
+- **Smoke tests leave the player's Factorio alone**: they run with a config of the studio's own, so the game writes its log,
+  lock and temporary files into the profile (`.fmstudio/profiles/<profile>/smoke-data`), not into the player's Factorio folder.
+  The player's `factorio-current.log` is no longer overwritten, and a smoke test works while the game is open. A `--config`
+  among the profile's own `args` still wins. *Run* and *Quick try* keep using the player's settings.
+
 ### Fixed
 - Blocks: with a file open beside the tab the editor was squeezed to one word per line; in a narrow column the list now sits
   above the editor and the properties table scrolls by itself.

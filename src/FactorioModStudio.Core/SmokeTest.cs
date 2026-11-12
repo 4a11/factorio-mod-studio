@@ -25,6 +25,13 @@ public static class SmokeTest
         var allLines = new List<string>();
         // The headless server has no sound and rejects --disable-audio (it prints its help and exits with 1).
         var audio = FactorioDownloads.IsHeadlessInstall(factorioExecutable) ? Array.Empty<string>() : new[] { "--disable-audio" };
+        // A config and write-data folder of the studio (profiles/<name>/smoke-data): the player's factorio-current.log is
+        // not overwritten, and the test runs while the player has the game open (its lock is elsewhere). A --config among
+        // the profile's own arguments wins.
+        var isolation = Array.Empty<string>();
+        if (!profileConfig.Args.Contains("--config") &&
+            IsolatedFactorioConfig.Write(factorioExecutable, Path.Combine(profile.Directory, "smoke-data"), "smoke tests") is { } config)
+            isolation = ["--config", config];
 
         string save;
         if (profileConfig.Save is { Length: > 0 } configured)
@@ -43,7 +50,7 @@ public static class SmokeTest
                 ["--create", save,
                  "--map-gen-seed", options.Seed.ToString(),
                  "--mod-directory", profile.ModsDirectory,
-                 ..audio]);
+                 ..audio, ..isolation]);
 
             if (create.Cancelled) return Finish(false, CancelledReason, allLines, cancelled: true);
             var failure = Failure("Map generation", create);
@@ -57,6 +64,7 @@ public static class SmokeTest
             "--mod-directory", profile.ModsDirectory
         };
         args.AddRange(audio);
+        args.AddRange(isolation);
         args.AddRange(profileConfig.Args);
 
         if (cancellationToken.IsCancellationRequested) return Finish(false, CancelledReason, allLines, cancelled: true);

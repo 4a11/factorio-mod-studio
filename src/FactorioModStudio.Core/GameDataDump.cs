@@ -74,16 +74,10 @@ public static class GameDataDump
     public static (ProcessResult Process, string? DumpPath) Dump(string factorioExecutable, string modsDirectory, string workDirectory,
         IProcessRunner runner, TimeSpan timeout, Action<string>? onLine = null, CancellationToken cancellationToken = default)
     {
-        var data = DataDirectoryFor(factorioExecutable)
-                   ?? throw new FmsException($"The data folder of \"{factorioExecutable}\" was not found (expected data/base next to the game).");
-
-        var write = Path.Combine(workDirectory, "write");
-        Directory.CreateDirectory(write);
-        var output = Path.Combine(write, "script-output", DumpFileName);
+        var config = IsolatedFactorioConfig.Write(factorioExecutable, workDirectory, "--dump-data")
+                     ?? throw new FmsException($"The data folder of \"{factorioExecutable}\" was not found (expected data/base next to the game).");
+        var output = Path.Combine(IsolatedFactorioConfig.WriteDirectory(workDirectory), "script-output", DumpFileName);
         if (File.Exists(output)) File.Delete(output);
-
-        var config = Path.Combine(workDirectory, "config.ini");
-        File.WriteAllText(config, $"; Written by Factorio Mod Studio for --dump-data.\n[path]\nread-data={data}\nwrite-data={write}\n", new UTF8Encoding(false));
 
         string[] args = ["--config", config, "--mod-directory", modsDirectory, "--dump-data"];
         var result = runner is ICancellableProcessRunner cancellable

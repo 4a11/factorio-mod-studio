@@ -100,6 +100,53 @@ public class SmokeTestTests
         Assert.Contains("--some-flag", call);
     }
 
+    /// <summary>A game folder as installed: bin/x64/factorio(.exe) and data/base.</summary>
+    private static string FakeGame(TempDir root)
+    {
+        var exe = Path.Combine(root.Path, "game", "bin", "x64", OperatingSystem.IsWindows() ? "factorio.exe" : "factorio");
+        Directory.CreateDirectory(Path.GetDirectoryName(exe)!);
+        File.WriteAllText(exe, "");
+        Directory.CreateDirectory(Path.Combine(root.Path, "game", "data", "base"));
+        return exe;
+    }
+
+    [Fact]
+    public void Runs_WithAConfigOfItsOwn_SoThePlayersLogAndLockStayUntouched()
+    {
+        using var root = Fixtures.ValidMod();
+        var (context, profile) = Setup(root);
+        var exe = FakeGame(root);
+        var runner = new FakeRunner(_ => Ok());
+
+        Assert.True(SmokeTest.Run(exe, context, profile, new ProfileConfig(), new SmokeOptions(), runner).Passed);
+
+        var config = Path.Combine(profile.Directory, "smoke-data", "config.ini");
+        Assert.Equal(2, runner.Calls.Count);
+        foreach (var call in runner.Calls)
+        {
+            Assert.Equal(config, call[call.ToList().IndexOf("--config") + 1]);
+            Assert.Contains(call[0], new[] { "--create", "--benchmark" }); // the step stays first
+        }
+        var text = File.ReadAllText(config);
+        Assert.Contains("read-data=" + Path.GetFullPath(Path.Combine(root.Path, "game", "data")), text);
+        Assert.Contains("write-data=" + Path.Combine(profile.Directory, "smoke-data", "write"), text);
+    }
+
+    [Fact]
+    public void A_config_among_the_profiles_own_arguments_wins()
+    {
+        using var root = Fixtures.ValidMod();
+        var (context, profile) = Setup(root);
+        var runner = new FakeRunner(_ => Ok());
+        var config = new ProfileConfig { Args = { "--config", "mine.ini" } };
+
+        SmokeTest.Run(FakeGame(root), context, profile, config, new SmokeOptions(), runner);
+
+        Assert.DoesNotContain("--config", runner.Calls[0]); // map generation: no studio config either
+        Assert.Single(runner.Calls[1], a => a == "--config");
+        Assert.Equal("mine.ini", runner.Calls[1][runner.Calls[1].ToList().IndexOf("--config") + 1]);
+    }
+
     [Fact]
     public void MissingConfiguredSave_Throws()
     {
