@@ -1,0 +1,562 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import Screenshot from '../../components/Screenshot.astro';
+import Lightbox from '../../components/Lightbox.astro';
+import FeatureCard from '../../components/FeatureCard.astro';
+import LinkCard from '../../components/LinkCard.astro';
+import { langPaths, useT, type Lang } from '../../i18n';
+import { pageUrl } from '../../lib/urls';
+import { site } from '../../data/site';
+import { screenshots } from '../../data/screenshots';
+import { latestStable, formatDate } from '../../data/releases';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = useT(lang);
+const page = t.pages.home;
+
+const heroFeature = t.features.find((f) => f.id === 'blocks')!;
+const communityLinks: Record<string, string> = { repo: site.repo, issues: site.issues, releases: site.releases };
+---
+
+<MainLayout lang={lang} path="/" fullTitle={page.title}>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-text">
+        <p class="eyebrow">{page.eyebrow}</p>
+        <h1>{page.heading}</h1>
+        <p class="lead">{page.lead}</p>
+        <div class="actions">
+          <a class="btn btn--primary" href={pageUrl(lang, '/download/')}>
+            {page.download}
+            {latestStable && <span class="btn-version">{latestStable.tag}</span>}
+          </a>
+          <a class="btn" href={pageUrl(lang, '/features/')}>{page.explore}</a>
+          <a class="more source" href={site.repo} rel="noopener">{page.source}</a>
+        </div>
+        <ul class="facts">
+          {page.facts.map((fact) => <li class="status status--ok">{fact}</li>)}
+        </ul>
+      </div>
+
+      <div class="hero-shot">
+        <Screenshot
+          src={screenshots.blocks!}
+          alt={page.heroShot}
+          label={heroFeature.name}
+          enlarge={t.lightbox.enlarge}
+          width={1200}
+          sizes="(max-width: 80rem) 100vw, 75rem"
+          eager
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem / solution -->
+  <section class="section section--raised">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">{page.problem.eyebrow}</p>
+        <h2>{page.problem.heading}</h2>
+        <p class="lead">{page.problem.lead}</p>
+      </div>
+      <div class="compare">
+        <div class="compare-col">
+          <h3>{page.problem.beforeTitle}</h3>
+          <ul class="list list--before">
+            {page.problem.before.map((item) => <li>{item}</li>)}
+          </ul>
+        </div>
+        <div class="compare-col compare-col--after">
+          <h3>{page.problem.afterTitle}</h3>
+          <ul class="list list--after">
+            {page.problem.after.map((item) => <li>{item}</li>)}
+          </ul>
+        </div>
+      </div>
+      <p class="note">{page.problem.note}</p>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">{page.featuresSection.eyebrow}</p>
+        <h2>{page.featuresSection.heading}</h2>
+        <p class="lead">{page.featuresSection.lead}</p>
+      </div>
+      <div class="cards">
+        {
+          t.features.map((feature, i) => (
+            <FeatureCard
+              index={i + 1}
+              name={feature.name}
+              text={feature.text}
+              benefit={feature.benefit}
+              href={`${pageUrl(lang, '/features/')}#${feature.id}`}
+            />
+          ))
+        }
+      </div>
+      <p class="after-grid"><a class="more" href={pageUrl(lang, '/features/')}>{page.featuresSection.all}</a></p>
+    </div>
+  </section>
+
+  <!-- Workflow -->
+  <section class="section section--raised">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">{page.workflow.eyebrow}</p>
+        <h2>{page.workflow.heading}</h2>
+        <p class="lead">{page.workflow.lead}</p>
+      </div>
+      <ol class="steps">
+        {
+          page.workflow.steps.map((step, i) => (
+            <li class="step">
+              <p class="step-number" aria-hidden="true">{String(i + 1).padStart(2, '0')}</p>
+              <h3>{step.name}</h3>
+              <p class="step-text">{step.text}</p>
+              <ul class="tools">
+                {step.tools.map((tool) => <li class="tag">{tool}</li>)}
+              </ul>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- Product preview -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">{page.preview.eyebrow}</p>
+        <h2>{page.preview.heading}</h2>
+        <p class="lead">{page.preview.lead}</p>
+      </div>
+      <div class="gallery">
+        {
+          t.features.map((feature) => (
+            <Screenshot
+              src={screenshots[feature.id]!}
+              alt={feature.shot}
+              label={feature.name}
+              enlarge={t.lightbox.enlarge}
+              width={560}
+              sizes="(max-width: 44rem) 100vw, (max-width: 66rem) 50vw, 25vw"
+            />
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Download -->
+  <section class="section section--raised">
+    <div class="container cta">
+      <div class="cta-text">
+        <p class="eyebrow">{page.cta.eyebrow}</p>
+        <h2>{page.cta.heading}</h2>
+        <p class="lead">{page.cta.lead}</p>
+      </div>
+      <div class="cta-panel panel">
+        {
+          latestStable ? (
+            <p class="cta-version">
+              <span class="status status--ok">{page.cta.latest}</span>
+              <strong>{latestStable.tag}</strong>
+              <span class="cta-date">
+                {page.cta.released} <time datetime={latestStable.date}>{formatDate(latestStable.date, lang)}</time>
+              </span>
+            </p>
+          ) : (
+            <p class="cta-fallback">{page.cta.fallback}</p>
+          )
+        }
+        <a class="btn btn--primary" href={pageUrl(lang, '/download/')}>{page.cta.all}</a>
+        <a class="more" href={site.releases} rel="noopener">GitHub Releases</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Community -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">{page.community.eyebrow}</p>
+        <h2>{page.community.heading}</h2>
+        <p class="lead">{page.community.lead}</p>
+      </div>
+      <div class="links">
+        {
+          page.community.cards.map((card) => (
+            <LinkCard href={communityLinks[card.key]!} title={card.title} text={card.text} />
+          ))
+        }
+      </div>
+      <p class="after-grid"><a class="more" href={pageUrl(lang, '/community/')}>{page.community.more}</a></p>
+    </div>
+  </section>
+
+  <Lightbox lang={lang} />
+</MainLayout>
+
+<style>
+  /* Hero */
+  .hero {
+    padding-block: clamp(var(--space-7), 9vw, 7rem) clamp(var(--space-7), 8vw, var(--space-9));
+  }
+
+  .hero-text {
+    max-width: 52rem;
+  }
+
+  h1 {
+    margin-block: var(--space-4) var(--space-5);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+  }
+
+  .btn-version {
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--radius-sm);
+    background: rgba(22, 16, 11, 0.16);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+  }
+
+  .source {
+    margin-left: var(--space-3);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .source:hover {
+    color: var(--color-text);
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    margin: var(--space-6) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .hero-shot {
+    position: relative;
+    margin-top: clamp(var(--space-7), 6vw, var(--space-8));
+  }
+
+  /* A warm glow behind the top edge of the screenshot, like a work light over a bench. */
+  .hero-shot::before {
+    content: '';
+    position: absolute;
+    inset: -3rem 10% auto;
+    height: 10rem;
+    z-index: -1;
+    background: radial-gradient(closest-side, rgba(232, 117, 50, 0.22), transparent);
+    filter: blur(24px);
+    pointer-events: none;
+  }
+
+  .hero-shot :global(.shot) {
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
+  }
+
+  /* Problem / solution */
+  .compare {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+
+  .compare-col {
+    padding: var(--space-5) var(--space-6) var(--space-6);
+    background: var(--color-bg);
+    border: var(--line);
+    border-radius: var(--radius);
+  }
+
+  .compare-col--after {
+    border-top: 2px solid var(--color-ok);
+  }
+
+  .compare h3 {
+    margin-bottom: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .list {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .list li {
+    position: relative;
+    padding-left: var(--space-5);
+  }
+
+  .list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.6em;
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  .list--before li {
+    color: var(--color-text-muted);
+  }
+
+  .list--before li::before {
+    height: 2px;
+    top: 0.75em;
+    background: var(--color-text-dim);
+  }
+
+  .list--after li::before {
+    border-radius: 50%;
+    background: var(--color-ok);
+  }
+
+  .note {
+    margin-top: var(--space-5);
+    color: var(--color-text-muted);
+  }
+
+  /* Features */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .after-grid {
+    margin-top: var(--space-6);
+  }
+
+  /* Workflow */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+  }
+
+  .step {
+    position: relative;
+    padding-top: var(--space-5);
+    border-top: 2px solid var(--color-border-strong);
+  }
+
+  /* The node on the line, and an arrow head towards the next step */
+  .step::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -6px;
+    width: 10px;
+    height: 10px;
+    background: var(--color-accent);
+  }
+
+  .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: calc(var(--space-5) * -0.5 - 4px);
+    top: -6px;
+    width: 8px;
+    height: 8px;
+    border-top: 2px solid var(--color-border-strong);
+    border-right: 2px solid var(--color-border-strong);
+    transform: rotate(45deg);
+    transform-origin: center;
+  }
+
+  .step-number {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+    color: var(--color-accent);
+  }
+
+  .step h3 {
+    margin-block: var(--space-2) var(--space-3);
+  }
+
+  .step-text {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Gallery */
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  /* Download */
+  .cta {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: center;
+    gap: var(--space-7);
+  }
+
+  .cta-text {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .cta-panel {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-4);
+    padding: var(--space-6);
+    background: var(--color-bg);
+    border-left: 2px solid var(--color-accent);
+  }
+
+  .cta-version {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .cta-version strong {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .cta-date,
+  .cta-fallback {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  /* Community */
+  .links {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  /* Tablets and small laptops */
+  @media (max-width: 66rem) {
+    .cards,
+    .gallery {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .steps {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      row-gap: var(--space-7);
+    }
+
+    .step:nth-child(2n)::after {
+      display: none;
+    }
+
+    .cta {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+  }
+
+  /* Phones: one column, the workflow becomes a vertical line */
+  @media (max-width: 44rem) {
+    .compare,
+    .cards,
+    .gallery,
+    .links {
+      grid-template-columns: 1fr;
+    }
+
+    .compare-col {
+      padding: var(--space-5);
+    }
+
+    .actions .btn {
+      flex: 1 1 100%;
+    }
+
+    .source {
+      margin: var(--space-2) 0 0;
+    }
+
+    /* A whole desktop window is unreadable at phone width: show the part with the block editor, enlarged. */
+    .hero-shot :global(img) {
+      aspect-ratio: 1;
+      object-fit: cover;
+      object-position: 74% 38%;
+    }
+
+    .facts {
+      flex-direction: column;
+    }
+
+    .steps {
+      grid-template-columns: 1fr;
+      row-gap: 0;
+    }
+
+    .step {
+      padding: 0 0 var(--space-6) var(--space-6);
+      border-top: 0;
+      border-left: 2px solid var(--color-border-strong);
+    }
+
+    .step:last-child {
+      padding-bottom: 0;
+    }
+
+    .step::before {
+      left: -6px;
+      top: 0;
+    }
+
+    .step:not(:last-child)::after {
+      display: none;
+    }
+  }
+</style>

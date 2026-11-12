@@ -1,0 +1,94 @@
+---
+// A screenshot of the studio in a frame. It is a link to the full-size image; with JavaScript the link opens the
+// lightbox instead (see Lightbox.astro), which pages that use this component have to include once.
+import { Image, getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  src: ImageMetadata;
+  alt: string;
+  /** Shown in the frame's title strip and as the lightbox caption. */
+  label: string;
+  /** Hint for screen readers and the tooltip: "Enlarge". */
+  enlarge: string;
+  /** The rendered width in CSS pixels at its largest, and the `sizes` attribute. */
+  width?: number;
+  sizes?: string;
+  /** For the first image of a page: load it at once. */
+  eager?: boolean;
+}
+
+const { src, alt, label, enlarge, width = 640, sizes = '(max-width: 44rem) 100vw, 40rem', eager = false } = Astro.props;
+const full = await getImage({ src, format: 'webp', quality: 90 });
+const widths = [480, 640, 960, 1280, 1920, 2560].filter((w) => w <= src.width);
+---
+
+<figure class="shot">
+  <figcaption>
+    <span class="lamp" aria-hidden="true"></span>
+    <span class="label">{label}</span>
+  </figcaption>
+  <a href={full.src} data-lightbox data-caption={label} data-alt={alt} title={enlarge} aria-label={`${enlarge}: ${label}`}>
+    <Image
+      src={src}
+      alt={alt}
+      width={width}
+      widths={widths}
+      sizes={sizes}
+      format="webp"
+      quality={85}
+      loading={eager ? 'eager' : 'lazy'}
+      fetchpriority={eager ? 'high' : undefined}
+    />
+  </a>
+</figure>
+
+<style>
+  .shot {
+    margin: 0;
+    border: var(--line);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    overflow: hidden;
+  }
+
+  figcaption {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: var(--line);
+    background: var(--color-surface-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .lamp {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--color-ok);
+  }
+
+  a {
+    display: block;
+    cursor: zoom-in;
+  }
+
+  a:focus-visible {
+    outline-offset: -3px;
+  }
+
+  a :global(img) {
+    width: 100%;
+    height: auto;
+    transition: opacity 0.15s var(--ease);
+  }
+
+  a:hover :global(img) {
+    opacity: 0.88;
+  }
+</style>

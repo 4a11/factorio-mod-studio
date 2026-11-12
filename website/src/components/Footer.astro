@@ -1,0 +1,145 @@
+---
+import Logo from './Logo.astro';
+import { useT, type Lang } from '../i18n';
+import { pageUrl } from '../lib/urls';
+import { site } from '../data/site';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = useT(lang);
+
+const product = [
+  { href: pageUrl(lang, '/features/'), label: t.nav.features },
+  { href: pageUrl(lang, '/download/'), label: t.nav.download },
+  { href: pageUrl(lang, '/changelog/'), label: t.nav.changelog },
+  { href: pageUrl(lang, '/community/'), label: t.nav.community },
+];
+
+const project = [
+  { href: site.repo, label: t.footer.repository },
+  { href: site.releases, label: t.footer.releases },
+  { href: site.issues, label: t.footer.issues },
+  { href: site.discussions, label: t.footer.discussions },
+];
+---
+
+<footer class="footer">
+  <div class="container grid">
+    <div class="about">
+      <a class="brand" href={pageUrl(lang, '/')}>
+        <Logo size={24} />
+        <span>Factorio Mod Studio</span>
+      </a>
+      <p>{t.footer.tagline}</p>
+    </div>
+
+    <nav aria-label={t.footer.product}>
+      <h2>{t.footer.product}</h2>
+      <ul>
+        {product.map((link) => <li><a href={link.href}>{link.label}</a></li>)}
+      </ul>
+    </nav>
+
+    <nav aria-label={t.footer.project}>
+      <h2>{t.footer.project}</h2>
+      <ul>
+        {project.map((link) => <li><a href={link.href} rel="noopener">{link.label}</a></li>)}
+      </ul>
+    </nav>
+  </div>
+
+  <div class="container legal">
+    <p>{t.footer.disclaimer}</p>
+    <a href={site.license} rel="noopener">{t.footer.license}</a>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    margin-top: var(--space-8);
+    border-top: var(--line);
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+    padding-block: var(--space-7);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    color: var(--color-text);
+    font-size: var(--text-base);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .about p {
+    max-width: 26rem;
+  }
+
+  h2 {
+    margin-bottom: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-dim);
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li a {
+    display: inline-block;
+    padding-block: var(--space-1);
+    color: var(--color-text-muted);
+    text-decoration: none;
+  }
+
+  li a:hover,
+  .legal a:hover {
+    color: var(--color-text);
+    text-decoration: underline;
+  }
+
+  .legal {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-6);
+    padding-block: var(--space-5);
+    border-top: var(--line);
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+  }
+
+  .legal a {
+    color: var(--color-text-muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 44rem) {
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .about {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

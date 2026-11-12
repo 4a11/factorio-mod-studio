@@ -1,0 +1,176 @@
+<!doctype html>
+<!--
+  The source of public/og.png, the picture shown when a link to the site is shared (1200x630).
+  It is not a page of the site. To make the picture again, from the website folder:
+
+    msedge --headless=new --hide-scrollbars --force-device-scale-factor=1 --window-size=1200,630
+           --screenshot=<full path>\og.png file:///<full path>/scripts/og.html
+
+  (one line; any Chromium browser has the same options. A screenshot path with spaces may be refused: write the
+  picture to a folder without them and copy it to public/og.png.)
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @font-face {
+        font-family: 'Plex';
+        font-weight: 400;
+        src: url('../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2');
+      }
+      @font-face {
+        font-family: 'Plex';
+        font-weight: 600;
+        src: url('../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff2');
+      }
+      @font-face {
+        font-family: 'Plex Mono';
+        font-weight: 500;
+        src: url('../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2');
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      body {
+        position: relative;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background-color: #111315;
+        background-image:
+          linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+        background-size: 48px 48px;
+        color: #e8e9e7;
+        font-family: 'Plex', sans-serif;
+      }
+
+      .text {
+        position: absolute;
+        left: 72px;
+        top: 64px;
+        width: 520px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 28px;
+        font-weight: 600;
+      }
+
+      .brand img {
+        width: 52px;
+        height: 52px;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 84px;
+        font-family: 'Plex Mono', monospace;
+        font-size: 18px;
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #e87532;
+      }
+
+      .eyebrow::before {
+        content: '';
+        width: 40px;
+        height: 2px;
+        background: currentColor;
+      }
+
+      h1 {
+        margin-top: 22px;
+        font-size: 82px;
+        font-weight: 600;
+        line-height: 1.04;
+        letter-spacing: -0.03em;
+      }
+
+      .facts {
+        position: absolute;
+        left: 72px;
+        bottom: 60px;
+        display: flex;
+        gap: 32px;
+        font-family: 'Plex Mono', monospace;
+        font-size: 17px;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #a1a9aa;
+      }
+
+      .facts span {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .facts span::before {
+        content: '';
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #83a66a;
+        box-shadow: 0 0 0 4px rgba(131, 166, 106, 0.16);
+      }
+
+      /* The studio's window, running off the right and bottom edges */
+      .shot {
+        position: absolute;
+        left: 600px;
+        top: 96px;
+        width: 1040px;
+        border: 1px solid #4a5459;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow:
+          0 40px 90px -20px rgba(0, 0, 0, 0.9),
+          0 0 120px rgba(232, 117, 50, 0.16);
+      }
+
+      .shot img {
+        display: block;
+        width: 100%;
+      }
+
+      /* The text stays readable where the window comes close to it. */
+      .fade {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 640px;
+        background: linear-gradient(to right, #111315 78%, transparent);
+      }
+
+      .accent {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 6px;
+        background: #e87532;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shot"><img src="../src/assets/screenshots/blocks.png" alt="" /></div>
+    <div class="fade"></div>
+    <div class="accent"></div>
+    <div class="text">
+      <p class="brand"><img src="../public/favicon.svg" alt="" />Factorio Mod Studio</p>
+      <p class="eyebrow">For Factorio mod authors</p>
+      <h1>Build. Inspect.<br />Test. Ship.</h1>
+    </div>
+    <p class="facts"><span>Windows · Linux · macOS</span><span>Open source</span></p>
+  </body>
+</html>

@@ -1,0 +1,377 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import Screenshot from '../../components/Screenshot.astro';
+import Lightbox from '../../components/Lightbox.astro';
+import { langPaths, useT, type Lang } from '../../i18n';
+import { pageUrl } from '../../lib/urls';
+import { inline, escapeHtml } from '../../lib/markdown';
+import { site } from '../../data/site';
+import { screenshots } from '../../data/screenshots';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = useT(lang);
+const page = t.pages.features;
+
+type FeatureId = keyof typeof t.featureDetails;
+
+// Which tabs belong to which stage of the work. The order inside a group is the order on the page.
+const groupTabs: Record<string, FeatureId[]> = {
+  develop: ['files', 'blocks'],
+  inspect: ['overview', 'prototypes', 'resources', 'localization', 'problems'],
+  ship: ['build'],
+};
+
+// The number of a tab is its place in the studio's tab row.
+const tabNumber = (id: string) => String(t.features.findIndex((f) => f.id === id) + 1).padStart(2, '0');
+
+const groups = page.groups.map((group) => ({
+  ...group,
+  tabs: (groupTabs[group.id] ?? []).map((id) => ({
+    ...t.features.find((f) => f.id === id)!,
+    ...t.featureDetails[id],
+  })),
+}));
+
+const commands = ['validate', 'pack', 'smoke', 'run'] as const;
+// A comment line above each command, so that the block stays readable on a narrow screen.
+const cliHtml = commands
+  .map((command) => `<span class="comment"># ${escapeHtml(page.cli.comments[command])}</span>\nfmstudio ${command}`)
+  .join('\n\n');
+---
+
+<MainLayout lang={lang} path="/features/" title={page.title} description={page.description}>
+  <PageIntro eyebrow={page.eyebrow} heading={page.heading} lead={page.lead}>
+    <nav class="jump" aria-label={page.jump}>
+      <ul>
+        {
+          t.features.map((feature) => (
+            <li>
+              <a href={`#${feature.id}`}>
+                <span aria-hidden="true">{tabNumber(feature.id)}</span>
+                {feature.name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </PageIntro>
+
+  {
+    groups.map((group, groupIndex) => (
+      <section class:list={['section', 'group', { 'section--raised': groupIndex % 2 === 1 }]} id={group.id}>
+        <div class="container">
+          <div class="section-head">
+            <p class="eyebrow">{group.name}</p>
+            <h2>{group.heading}</h2>
+            <p class="lead">{group.lead}</p>
+          </div>
+
+          {group.tabs.map((tab, tabIndex) => (
+            <article class:list={['feature', { 'feature--flip': tabIndex % 2 === 1 }]} id={tab.id}>
+              <div class="feature-text">
+                <p class="number">
+                  {page.tab} {tabNumber(tab.id)}
+                </p>
+                <h3>{tab.name}</h3>
+                <p class="purpose" set:html={inline(tab.purpose)} />
+                <ul class="bullets points">
+                  {tab.points.map((point) => (
+                    <li set:html={inline(point)} />
+                  ))}
+                </ul>
+                <div class="scenario">
+                  <p class="scenario-label">{page.scenario}</p>
+                  <p set:html={inline(tab.scenario)} />
+                </div>
+              </div>
+              <div class="feature-shot">
+                <Screenshot
+                  src={screenshots[tab.id]!}
+                  alt={tab.shot}
+                  label={tab.name}
+                  enlarge={t.lightbox.enlarge}
+                  width={760}
+                  sizes="(max-width: 66rem) 100vw, 46rem"
+                  eager={groupIndex === 0 && tabIndex === 0}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    ))
+  }
+
+  <!-- Tools without a tab -->
+  <section class="section section--raised">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">{page.extras.eyebrow}</p>
+        <h2>{page.extras.heading}</h2>
+        <p class="lead">{page.extras.lead}</p>
+      </div>
+      <ul class="extras">
+        {
+          page.extras.items.map((item) => (
+            <li class="extra">
+              <h3>{item.title}</h3>
+              <p set:html={inline(item.text)} />
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- Command line -->
+  <section class="section">
+    <div class="container split">
+      <div class="section-head">
+        <p class="eyebrow">{page.cli.eyebrow}</p>
+        <h2>{page.cli.heading}</h2>
+        <p class="lead" set:html={inline(page.cli.lead)} />
+      </div>
+      <pre class="code"><code set:html={cliHtml} /></pre>
+    </div>
+  </section>
+
+  <!-- Limits -->
+  <section class="section section--raised">
+    <div class="container split">
+      <div class="section-head">
+        <p class="eyebrow">{page.limits.eyebrow}</p>
+        <h2>{page.limits.heading}</h2>
+      </div>
+      <ul class="bullets limits">
+        {page.limits.items.map((item) => <li set:html={inline(item)} />)}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Next step -->
+  <section class="section">
+    <div class="container next">
+      <h2>{page.cta.heading}</h2>
+      <p class="lead" set:html={inline(page.cta.lead)} />
+      <div class="actions">
+        <a class="btn btn--primary" href={pageUrl(lang, '/download/')}>{page.cta.download}</a>
+        <a class="more" href={site.repo} rel="noopener">{page.cta.source}</a>
+      </div>
+    </div>
+  </section>
+
+  <Lightbox lang={lang} />
+</MainLayout>
+
+<style>
+  /* The row of tab links under the heading */
+  .jump {
+    margin-top: var(--space-6);
+  }
+
+  .jump ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .jump a {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: var(--line);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: none;
+    transition: border-color 0.15s var(--ease);
+  }
+
+  .jump a:hover {
+    border-color: var(--color-accent);
+  }
+
+  .jump span {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+  }
+
+  /* One tab: text on one side, its screenshot on the other */
+  .feature {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+    gap: var(--space-7);
+    padding-block: var(--space-7);
+    border-top: var(--line);
+  }
+
+  .feature:last-child {
+    padding-bottom: 0;
+  }
+
+  .feature--flip .feature-text {
+    order: 2;
+  }
+
+  .feature-text {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .number {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-dim);
+  }
+
+  .feature h3 {
+    font-size: var(--text-2xl);
+  }
+
+  .purpose {
+    font-size: var(--text-lg);
+  }
+
+  .points {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .points :global(em) {
+    font-style: normal;
+    color: var(--color-text);
+  }
+
+  .scenario {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border-left: 2px solid var(--color-ok);
+    background: var(--color-ok-soft);
+    font-size: var(--text-sm);
+  }
+
+  .scenario-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-ok);
+  }
+
+  .feature-shot {
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-5));
+  }
+
+  /* Tools without a tab */
+  .extras {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .extra {
+    display: grid;
+    align-content: start;
+    gap: var(--space-2);
+    padding: var(--space-5);
+    border: var(--line);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+  }
+
+  .extra h3 {
+    font-size: var(--text-lg);
+  }
+
+  .extra p {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  /* Heading on the left, content on the right */
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+    gap: var(--space-7);
+  }
+
+  .split .section-head {
+    margin-bottom: 0;
+  }
+
+  .limits {
+    color: var(--color-text-muted);
+  }
+
+  .limits :global(em) {
+    font-style: normal;
+    color: var(--color-text);
+  }
+
+  .next {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-4);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-5);
+    margin-top: var(--space-3);
+  }
+
+  @media (max-width: 66rem) {
+    .feature,
+    .split {
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+    }
+
+    .feature--flip .feature-text {
+      order: 0;
+    }
+
+    .feature-shot {
+      position: static;
+    }
+
+    .extras {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 44rem) {
+    .extras {
+      grid-template-columns: 1fr;
+    }
+
+    .feature {
+      padding-block: var(--space-6);
+    }
+  }
+</style>

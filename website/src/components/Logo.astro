@@ -1,0 +1,28 @@
+---
+// The FMStudio mark: a chamfered plate, an "M" and a status lamp. Decorative next to the name, so hidden from screen readers.
+interface Props {
+  size?: number;
+}
+const { size = 28 } = Astro.props;
+---
+
+<svg class="logo" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+  <path
+    d="M7 1.5h18L30.5 7v18L25 30.5H7L1.5 25V7z"
+    fill="var(--color-surface)"
+    stroke="var(--color-border-strong)"
+    stroke-width="1.5"></path>
+  <path
+    d="M8.5 22.5v-13l7.5 8 7.5-8v13"
+    fill="none"
+    stroke="var(--color-accent)"
+    stroke-width="3"
+    stroke-linecap="square"></path>
+  <rect x="14" y="21" width="4" height="4" fill="var(--color-ok)"></rect>
+</svg>
+
+<style>
+  .logo {
+    flex: none;
+  }
+</style>

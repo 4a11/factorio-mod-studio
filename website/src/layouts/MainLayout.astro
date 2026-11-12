@@ -1,0 +1,83 @@
+---
+import '../styles/fonts.css';
+import '../styles/variables.css';
+import '../styles/global.css';
+import '../styles/components.css';
+
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { languages, defaultLang, useT, type Lang } from '../i18n';
+import { absoluteUrl, assetUrl } from '../lib/urls';
+import { site } from '../data/site';
+
+interface Props {
+  lang: Lang;
+  /** The page's English route with slashes on both sides: '/', '/features/'. */
+  path: string;
+  /** The page's own title; the site name is added to it. `fullTitle` is used as it is (the home page). */
+  title?: string;
+  fullTitle?: string;
+  description?: string;
+  /** Pages that must not be indexed or listed in other languages (404). */
+  noindex?: boolean;
+}
+
+const { lang, path, title, fullTitle, description, noindex = false } = Astro.props;
+const t = useT(lang);
+
+const pageTitle = fullTitle ?? (title ? `${title} · ${site.name}` : site.name);
+const pageDescription = description ?? t.meta.description;
+const canonical = absoluteUrl(Astro.site, lang, path);
+const ogLocale: Record<Lang, string> = { en: 'en_US', ru: 'ru_RU' };
+// One picture for every page and language: public/og.png, made from scripts/og.html.
+const ogImage = new URL(assetUrl('/og.png'), Astro.site ?? 'http://localhost').href;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDescription} />
+    <meta name="theme-color" content="#111315" />
+    <link rel="icon" type="image/svg+xml" href={assetUrl('/favicon.svg')} />
+    <link rel="sitemap" href={assetUrl('/sitemap-index.xml')} />
+
+    {
+      noindex ? (
+        <meta name="robots" content="noindex" />
+      ) : (
+        <>
+          <link rel="canonical" href={canonical} />
+          {languages.map((code) => (
+            <link rel="alternate" hreflang={code} href={absoluteUrl(Astro.site, code, path)} />
+          ))}
+          <link rel="alternate" hreflang="x-default" href={absoluteUrl(Astro.site, defaultLang, path)} />
+        </>
+      )
+    }
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={ogLocale[lang]} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={t.meta.ogAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImage} />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{t.nav.skip}</a>
+    <Header lang={lang} path={path} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer lang={lang} />
+  </body>
+</html>

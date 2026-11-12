@@ -1,0 +1,195 @@
+---
+// The full-size screenshot viewer: one <dialog> per page, opened by links marked with data-lightbox.
+// Without JavaScript those links simply open the image.
+import { useT, type Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+}
+const t = useT(Astro.props.lang).lightbox;
+---
+
+<dialog class="lightbox" aria-label={t.label} data-lightbox-dialog>
+  <div class="bar">
+    <p class="caption" data-lightbox-caption></p>
+    <p class="count" data-lightbox-count aria-hidden="true"></p>
+    <button type="button" class="icon" data-lightbox-close aria-label={t.close} title={t.close}>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M5 5l14 14M19 5L5 19" fill="none" stroke="currentColor" stroke-width="2"></path>
+      </svg>
+    </button>
+  </div>
+  <div class="stage">
+    <button type="button" class="icon nav" data-lightbox-prev aria-label={t.previous} title={t.previous}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M15 4l-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2"></path>
+      </svg>
+    </button>
+    <img data-lightbox-image alt="" />
+    <button type="button" class="icon nav" data-lightbox-next aria-label={t.next} title={t.next}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M9 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2"></path>
+      </svg>
+    </button>
+  </div>
+</dialog>
+
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>('[data-lightbox-dialog]');
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('a[data-lightbox]')];
+
+  if (dialog && links.length > 0 && typeof dialog.showModal === 'function') {
+    const image = dialog.querySelector<HTMLImageElement>('[data-lightbox-image]')!;
+    const caption = dialog.querySelector<HTMLElement>('[data-lightbox-caption]')!;
+    const count = dialog.querySelector<HTMLElement>('[data-lightbox-count]')!;
+    const prev = dialog.querySelector<HTMLButtonElement>('[data-lightbox-prev]')!;
+    const next = dialog.querySelector<HTMLButtonElement>('[data-lightbox-next]')!;
+
+    // The same picture may be linked twice on a page (hero and gallery): step through distinct pictures only.
+    const items = links.filter((link, i) => links.findIndex((other) => other.href === link.href) === i);
+    let current = 0;
+    let opener: HTMLElement | null = null;
+
+    const show = (index: number) => {
+      current = (index + items.length) % items.length;
+      const link = items[current]!;
+      image.src = link.href;
+      image.alt = link.dataset.alt ?? '';
+      caption.textContent = link.dataset.caption ?? '';
+      count.textContent = `${current + 1} / ${items.length}`;
+    };
+
+    for (const link of links) {
+      link.addEventListener('click', (event) => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+        event.preventDefault();
+        opener = link;
+        show(items.findIndex((item) => item.href === link.href));
+        dialog.showModal();
+      });
+    }
+
+    const single = items.length < 2;
+    prev.hidden = single;
+    next.hidden = single;
+    prev.addEventListener('click', () => show(current - 1));
+    next.addEventListener('click', () => show(current + 1));
+    dialog.querySelector('[data-lightbox-close]')!.addEventListener('click', () => dialog.close());
+
+    // A click on the dimmed area around the picture closes the viewer.
+    dialog.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      if (target === dialog || target.classList.contains('stage')) dialog.close();
+    });
+
+    dialog.addEventListener('keydown', (event) => {
+      if (single) return;
+      if (event.key === 'ArrowLeft') show(current - 1);
+      if (event.key === 'ArrowRight') show(current + 1);
+    });
+
+    dialog.addEventListener('close', () => {
+      image.removeAttribute('src');
+      opener?.focus();
+    });
+  }
+</script>
+
+<style>
+  .lightbox {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: rgba(10, 11, 12, 0.96);
+    color: var(--color-text);
+  }
+
+  .lightbox[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
+    border-bottom: var(--line);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .caption {
+    flex: 1;
+  }
+
+  .count {
+    color: var(--color-text-dim);
+  }
+
+  .stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-2);
+  }
+
+  img {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border: var(--line);
+    border-radius: var(--radius);
+  }
+
+  .icon {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  .icon:hover {
+    color: var(--color-text);
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
+  }
+
+  .icon[hidden] {
+    display: none;
+  }
+
+  /* Narrow screens: the picture takes the full width, the arrows sit under it. */
+  @media (max-width: 44rem) {
+    .stage {
+      flex-wrap: wrap;
+      align-content: center;
+      padding-inline: var(--space-3);
+    }
+
+    img {
+      order: -1;
+      flex-basis: 100%;
+      max-height: calc(100% - 4rem);
+    }
+  }
+</style>

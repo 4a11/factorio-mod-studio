@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://4a11.github.io/factorio-mod-studio/sitemap-index.xml

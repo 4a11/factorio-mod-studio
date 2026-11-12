@@ -1,0 +1,29 @@
+---
+// The top of an inner page: label, heading and lead.
+interface Props {
+  eyebrow: string;
+  heading: string;
+  lead?: string;
+}
+const { eyebrow, heading, lead } = Astro.props;
+---
+
+<section class="intro">
+  <div class="container">
+    <p class="eyebrow">{eyebrow}</p>
+    <h1>{heading}</h1>
+    {lead && <p class="lead">{lead}</p>}
+    <slot />
+  </div>
+</section>
+
+<style>
+  .intro {
+    padding-block: clamp(var(--space-7), 9vw, var(--space-9)) var(--space-7);
+  }
+
+  h1 {
+    margin-block: var(--space-4) var(--space-5);
+    max-width: 20ch;
+  }
+</style>

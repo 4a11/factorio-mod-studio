@@ -1,0 +1,280 @@
+---
+import Logo from './Logo.astro';
+import LanguageSwitch from './LanguageSwitch.astro';
+import { useT, type Lang } from '../i18n';
+import { pageUrl } from '../lib/urls';
+import { site } from '../data/site';
+
+interface Props {
+  lang: Lang;
+  path: string;
+}
+const { lang, path } = Astro.props;
+const t = useT(lang);
+
+const links = [
+  { path: '/features/', label: t.nav.features },
+  { path: '/download/', label: t.nav.download },
+  { path: '/changelog/', label: t.nav.changelog },
+  { path: '/community/', label: t.nav.community },
+];
+---
+
+<header class="header">
+  <div class="container bar">
+    <a class="brand" href={pageUrl(lang, '/')} aria-label={t.nav.home}>
+      <Logo />
+      <span class="brand-name">Factorio Mod Studio</span>
+    </a>
+
+    <button class="toggle" type="button" aria-expanded="false" aria-controls="site-menu" data-menu-toggle>
+      <span class="visually-hidden">{t.nav.menu}</span>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path class="bars" d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2"></path>
+        <path class="cross" d="M5 5l14 14M19 5L5 19" fill="none" stroke="currentColor" stroke-width="2"></path>
+      </svg>
+    </button>
+
+    <div class="menu" id="site-menu">
+      <nav aria-label={t.nav.label}>
+        <ul class="links">
+          {
+            links.map((link) => (
+              <li>
+                <a href={pageUrl(lang, link.path)} aria-current={link.path === path ? 'page' : undefined}>
+                  {link.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <div class="tools">
+        <LanguageSwitch lang={lang} path={path} />
+        <a class="repo" href={site.repo} rel="noopener">
+          {t.nav.github}
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+            <path d="M5 3h8v8M13 3L3 13" fill="none" stroke="currentColor" stroke-width="1.6"></path>
+          </svg>
+        </a>
+        <a class="btn btn--primary btn--small" href={pageUrl(lang, '/download/')}>{t.nav.download}</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  // The mobile menu: the only script in the header. Without JavaScript the menu is simply always open (see the CSS).
+  const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+  const menu = document.getElementById('site-menu');
+
+  if (toggle && menu) {
+    document.documentElement.classList.add('js');
+
+    const setOpen = (open: boolean) => {
+      toggle.setAttribute('aria-expanded', String(open));
+      menu.classList.toggle('is-open', open);
+    };
+
+    toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
+  }
+</script>
+
+<style>
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(17, 19, 21, 0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: var(--line);
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    min-height: var(--header-height);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--color-text);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .menu {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-5);
+  }
+
+  .links {
+    display: flex;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .links a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: var(--header-height);
+    padding: 0 var(--space-3);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.15s var(--ease);
+  }
+
+  .links a:hover {
+    color: var(--color-text);
+  }
+
+  .links a[aria-current] {
+    color: var(--color-text);
+  }
+
+  /* The active page: an orange bar on the header's bottom edge */
+  .links a[aria-current]::after {
+    content: '';
+    position: absolute;
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: -1px;
+    height: 2px;
+    background: var(--color-accent);
+  }
+
+  .links a:focus-visible {
+    outline-offset: -4px;
+  }
+
+  .tools {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .repo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .repo:hover {
+    color: var(--color-text);
+  }
+
+  .toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-left: auto;
+    margin-right: calc(var(--space-2) * -1);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  .toggle .cross,
+  .toggle[aria-expanded='true'] .bars {
+    display: none;
+  }
+
+  .toggle[aria-expanded='true'] .cross {
+    display: inline;
+  }
+
+  /* Narrow screens: the navigation becomes a panel under the bar, opened by the button. */
+  @media (max-width: 66rem) {
+    .bar {
+      flex-wrap: wrap;
+      gap: 0;
+    }
+
+    .brand {
+      min-height: var(--header-height);
+    }
+
+    :global(.js) .toggle {
+      display: inline-flex;
+    }
+
+    .menu {
+      flex-basis: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-4);
+      padding-bottom: var(--space-5);
+    }
+
+    :global(.js) .menu:not(.is-open) {
+      display: none;
+    }
+
+    .links {
+      flex-direction: column;
+      gap: 0;
+      border-top: var(--line);
+    }
+
+    .links a {
+      min-height: 3rem;
+      padding: 0 var(--space-1);
+      font-size: var(--text-base);
+      border-bottom: var(--line);
+    }
+
+    .links a[aria-current]::after {
+      left: 0;
+      right: auto;
+      top: 0.75rem;
+      bottom: 0.75rem;
+      width: 2px;
+      height: auto;
+    }
+
+    .links a[aria-current] {
+      padding-left: var(--space-4);
+    }
+
+    .tools {
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    .tools .btn {
+      flex-basis: 100%;
+      min-height: 2.75rem;
+    }
+  }
+</style>

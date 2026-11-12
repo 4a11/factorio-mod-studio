@@ -1,0 +1,510 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import { langPaths, useT, type Lang } from '../../i18n';
+import { pageUrl } from '../../lib/urls';
+import { inline } from '../../lib/markdown';
+import { site } from '../../data/site';
+import { releases, latestStable, formatDate } from '../../data/releases';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = useT(lang);
+const page = t.pages.download;
+
+// The archives of a release, by the end of their file names. `tried` says whether the desktop app was run there.
+const platformFiles = [
+  { key: 'windows', suffix: 'win-x64.zip', tried: true },
+  { key: 'linux', suffix: 'linux-x64.tar.gz', tried: false },
+  { key: 'macArm', suffix: 'osx-arm64.tar.gz', tried: false },
+  { key: 'macIntel', suffix: 'osx-x64.tar.gz', tried: false },
+] as const;
+
+const platforms = platformFiles.map((platform) => ({
+  ...platform,
+  ...page.platforms[platform.key],
+  asset: latestStable?.assets.find((asset) => asset.name.endsWith(platform.suffix)),
+}));
+
+const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} ${page.megabytes}`;
+
+// A preview that is newer than the latest release gets a notice of its own.
+const newest = releases[0];
+const preview = newest && newest.prerelease && newest !== latestStable ? newest : undefined;
+
+const toolCommands = 'dotnet tool install --global FactorioModStudio.Cli\nfmstudio ui';
+const sourceCommands = `git clone ${site.repo}\ncd factorio-mod-studio\ndotnet run --project src/FactorioModStudio.Desktop -c Release`;
+const nixCommands = 'nix run github:4a11/factorio-mod-studio';
+---
+
+<MainLayout lang={lang} path="/download/" title={page.title} description={page.description}>
+  <PageIntro eyebrow={page.eyebrow} heading={page.heading} lead={page.lead}>
+    {
+      latestStable ? (
+        <div class="latest">
+          <p class="status status--ok">{page.latest}</p>
+          <p class="version">
+            <strong>{latestStable.tag}</strong>
+            <span>
+              {page.released} <time datetime={latestStable.date}>{formatDate(latestStable.date, lang)}</time>
+            </span>
+          </p>
+          <p class="latest-links">
+            <a class="more" href={`${pageUrl(lang, '/changelog/')}#${latestStable.tag}`}>{page.notes}</a>
+            <a class="more" href={latestStable.url} rel="noopener">{page.onGithub}</a>
+          </p>
+        </div>
+      ) : (
+        <div class="latest">
+          <p>{page.fallback.text}</p>
+          <p><a class="btn btn--primary" href={site.latestRelease} rel="noopener">{page.fallback.button}</a></p>
+        </div>
+      )
+    }
+  </PageIntro>
+
+  {
+    latestStable && (
+      <section class="section platforms-section">
+        <div class="container">
+          <h2 class="sub">{page.platformsHeading}</h2>
+          <div class="platforms">
+            {platforms.map((platform) => (
+              <article class="platform">
+                <header>
+                  <h3>
+                    {platform.name} <span class="tag">{platform.arch}</span>
+                  </h3>
+                  <p class:list={['status', platform.tried ? 'status--ok' : 'status--busy']}>
+                    {platform.tried ? page.tried : page.untried}
+                  </p>
+                </header>
+                {platform.asset ? (
+                  <a class="btn btn--primary file" href={platform.asset.url} rel="noopener">
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M8 2v8M4.5 6.5L8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" />
+                    </svg>
+                    <span class="file-name">{platform.asset.name}</span>
+                    <span class="file-size">{megabytes(platform.asset.size)}</span>
+                  </a>
+                ) : (
+                  <p class="missing">{page.missing}</p>
+                )}
+                <ol class="steps">
+                  {platform.steps.map((step) => (
+                    <li set:html={inline(step)} />
+                  ))}
+                </ol>
+              </article>
+            ))}
+          </div>
+          <p class="free">{page.free}</p>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Requirements and what was tried -->
+  <section class="section section--raised">
+    <div class="container facts">
+      <div class="fact">
+        <h2 class="sub">{page.requirements.heading}</h2>
+        <ul class="bullets">
+          {page.requirements.items.map((item) => <li set:html={inline(item)} />)}
+        </ul>
+      </div>
+      <div class="fact">
+        <h2 class="sub">{page.factorio.heading}</h2>
+        <ul class="bullets">
+          {page.factorio.items.map((item) => <li set:html={inline(item)} />)}
+        </ul>
+      </div>
+      <div class="fact fact--wide">
+        <h2 class="sub">{page.status.heading}</h2>
+        <p>{page.status.text}</p>
+        <p><a class="more" href={site.bugReport} rel="noopener">{page.status.report}</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Other ways to get it -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">{page.other.eyebrow}</p>
+        <h2>{page.other.heading}</h2>
+        <p class="lead">{page.other.lead}</p>
+      </div>
+      <div class="ways">
+        <div class="way">
+          <h3>{page.other.tool.title}</h3>
+          <p set:html={inline(page.other.tool.text)} />
+          <pre class="code"><code>{toolCommands}</code></pre>
+        </div>
+        <div class="way">
+          <h3>{page.other.source.title}</h3>
+          <p set:html={inline(page.other.source.text)} />
+          <pre class="code"><code>{sourceCommands}</code></pre>
+        </div>
+        <div class="way">
+          <h3>{page.other.nix.title}</h3>
+          <p set:html={inline(page.other.nix.text)} />
+          <pre class="code"><code>{nixCommands}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Every version -->
+  {
+    releases.length > 0 && (
+      <section class="section section--raised">
+        <div class="container">
+          <h2 class="sub">{page.previous.heading}</h2>
+          {preview && (
+            <p class="preview">
+              <span class="status status--busy">
+                {page.preview.label} {preview.tag}
+              </span>
+              <span>{page.preview.text}</span>
+              <a class="more" href={preview.url} rel="noopener">
+                {page.onGithub}
+              </a>
+            </p>
+          )}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">{page.previous.version}</th>
+                  <th scope="col">{page.previous.date}</th>
+                  <th scope="col">{page.previous.kind}</th>
+                  <th scope="col">
+                    <span class="visually-hidden">{page.previous.files}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {releases.map((release) => (
+                  <tr>
+                    <th scope="row">{release.tag}</th>
+                    <td>
+                      <time datetime={release.date}>{formatDate(release.date, lang)}</time>
+                    </td>
+                    <td>{release.prerelease ? page.previous.preview : page.previous.release}</td>
+                    <td class="cell-link">
+                      <a href={release.url} rel="noopener" aria-label={`${page.previous.files}: ${release.tag}`}>
+                        {page.previous.files}
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p class="after">
+            <a class="more" href={pageUrl(lang, '/changelog/')}>{page.previous.changelog}</a>
+          </p>
+        </div>
+      </section>
+    )
+  }
+</MainLayout>
+
+<style>
+  .latest {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+  }
+
+  .version {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+    color: var(--color-text-muted);
+  }
+
+  .version strong {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--color-text);
+  }
+
+  .latest-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    font-size: var(--text-sm);
+  }
+
+  /* A smaller heading for the blocks of this page */
+  .sub {
+    margin-bottom: var(--space-5);
+    font-size: var(--text-xl);
+  }
+
+  .platforms-section {
+    padding-top: var(--space-5);
+  }
+
+  .platforms {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .platform {
+    display: grid;
+    align-content: start;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border: var(--line);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+  }
+
+  .platform header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .platform h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .file {
+    justify-content: flex-start;
+    min-height: 3rem;
+    white-space: normal;
+  }
+
+  .file-name {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .file-size {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+  }
+
+  .missing {
+    color: var(--color-text-muted);
+  }
+
+  .steps {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding-left: var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .steps li::marker {
+    font-family: var(--font-mono);
+    color: var(--color-text-dim);
+  }
+
+  .steps :global(em) {
+    font-style: normal;
+    color: var(--color-text);
+  }
+
+  .free {
+    margin-top: var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  /* Requirements */
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-7) var(--space-7);
+  }
+
+  .fact {
+    color: var(--color-text-muted);
+  }
+
+  .fact h2 {
+    color: var(--color-text);
+  }
+
+  .fact :global(strong),
+  .fact :global(em) {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .fact--wide {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: var(--space-3);
+    padding-top: var(--space-6);
+    border-top: var(--line);
+  }
+
+  .fact--wide h2 {
+    margin-bottom: 0;
+  }
+
+  .fact--wide p {
+    max-width: 52rem;
+  }
+
+  /* Other ways */
+  .ways {
+    display: grid;
+  }
+
+  /* The explanation on the left, the commands on the right */
+  .way {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    grid-template-rows: auto 1fr;
+    column-gap: var(--space-7);
+    row-gap: var(--space-2);
+    padding-block: var(--space-5);
+    border-top: var(--line);
+  }
+
+  .way pre {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    align-self: start;
+  }
+
+  .way h3 {
+    font-size: var(--text-lg);
+  }
+
+  .way p {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  /* All versions */
+  .preview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-5);
+    padding: var(--space-3) var(--space-4);
+    border: var(--line);
+    border-left: 2px solid var(--color-accent);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .table-wrap {
+    /* Positioned, so that the hidden label of the last column cannot widen the page. */
+    position: relative;
+    overflow-x: auto;
+    border: var(--line);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+
+  th,
+  td {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  thead th {
+    border-bottom: var(--line);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  tbody tr + tr > * {
+    border-top: var(--line);
+  }
+
+  tbody th {
+    font-family: var(--font-mono);
+    font-weight: 500;
+  }
+
+  tbody td {
+    color: var(--color-text-muted);
+  }
+
+  .cell-link {
+    text-align: right;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .after {
+    margin-top: var(--space-5);
+  }
+
+  @media (max-width: 66rem) {
+    .way {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: none;
+      row-gap: var(--space-3);
+    }
+
+    .way pre {
+      grid-column: auto;
+      grid-row: auto;
+    }
+  }
+
+  @media (max-width: 44rem) {
+    .platforms,
+    .facts {
+      grid-template-columns: 1fr;
+    }
+
+    .facts {
+      gap: var(--space-6);
+    }
+  }
+</style>

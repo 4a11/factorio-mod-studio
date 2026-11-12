@@ -1,0 +1,216 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import LinkCard from '../../components/LinkCard.astro';
+import { langPaths, useT, type Lang } from '../../i18n';
+import { inline } from '../../lib/markdown';
+import { site } from '../../data/site';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = useT(lang);
+const page = t.pages.community;
+
+// Where each card leads. The forms are GitHub's own: nothing is sent from this site.
+const links: Record<string, string> = {
+  bug: site.bugReport,
+  feature: site.featureRequest,
+  discussions: site.discussions,
+  testing: site.bugReport,
+  translations: site.translating,
+  code: site.contributing,
+  roadmap: site.roadmap,
+};
+---
+
+<MainLayout lang={lang} path="/community/" title={page.title} description={page.description}>
+  <PageIntro eyebrow={page.eyebrow} heading={page.heading} lead={page.lead}>
+    <p class="account">{page.account}</p>
+  </PageIntro>
+
+  <!-- Feedback -->
+  <section class="section first">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">{page.feedback.eyebrow}</p>
+        <h2>{page.feedback.heading}</h2>
+      </div>
+      <div class="cards cards--3">
+        {page.feedback.cards.map((card) => <LinkCard href={links[card.key]!} title={card.title} text={card.text} />)}
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <h3>{page.report.heading}</h3>
+          <ul class="bullets">
+            {page.report.items.map((item) => <li set:html={inline(item)} />)}
+          </ul>
+          <p class="hint">
+            {page.report.search}
+            <a class="more" href={site.issues} rel="noopener">{page.report.searchLink}</a>
+          </p>
+        </div>
+        <div class="note note--security">
+          <h3>{page.security.heading}</h3>
+          <p>{page.security.text}</p>
+          <p class="note-links">
+            <a class="btn btn--small" href={site.securityReport} rel="noopener">{page.security.report}</a>
+            <a class="more" href={site.security} rel="noopener">{page.security.policy}</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Taking part -->
+  <section class="section section--raised">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">{page.contribute.eyebrow}</p>
+        <h2>{page.contribute.heading}</h2>
+      </div>
+      <div class="cards cards--2">
+        {page.contribute.cards.map((card) => <LinkCard href={links[card.key]!} title={card.title} text={card.text} />)}
+      </div>
+    </div>
+  </section>
+
+  <!-- The project -->
+  <section class="section">
+    <div class="container project">
+      <h2>{page.project.heading}</h2>
+      <ul class="project-links">
+        <li><a href={site.repo} rel="noopener">{page.project.repo}</a></li>
+        <li><a href={site.releases} rel="noopener">{page.project.releases}</a></li>
+        <li><a href={site.license} rel="noopener">{page.project.license}</a></li>
+        <li><a href={site.codeOfConduct} rel="noopener">{page.project.conduct}</a></li>
+      </ul>
+      <p class="disclaimer">{page.project.disclaimer}</p>
+    </div>
+  </section>
+</MainLayout>
+
+<style>
+  .account {
+    margin-top: var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+  }
+
+  .first {
+    padding-top: var(--space-5);
+  }
+
+  .cards {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .cards--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cards--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The cards of the raised section sit on the page background to stay visible. */
+  .section--raised .cards :global(.link-card) {
+    background: var(--color-bg);
+  }
+
+  .section--raised .cards :global(.link-card:hover) {
+    background: var(--color-surface-2);
+  }
+
+  .notes {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+    gap: var(--space-7);
+    margin-top: var(--space-7);
+    padding-top: var(--space-7);
+    border-top: var(--line);
+  }
+
+  .note {
+    display: grid;
+    gap: var(--space-4);
+    color: var(--color-text-muted);
+  }
+
+  .note h3 {
+    color: var(--color-text);
+  }
+
+  .note--security {
+    padding: var(--space-5);
+    border: var(--line);
+    border-left: 2px solid var(--color-warn);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+  }
+
+  .note--security h3 {
+    font-size: var(--text-lg);
+  }
+
+  .hint {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+  }
+
+  .note-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-5);
+  }
+
+  .project {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .project h2 {
+    font-size: var(--text-xl);
+  }
+
+  .project-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .disclaimer {
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+  }
+
+  @media (max-width: 66rem) {
+    .cards--3 {
+      grid-template-columns: 1fr;
+    }
+
+    .notes {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+  }
+
+  @media (max-width: 44rem) {
+    .cards--2 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

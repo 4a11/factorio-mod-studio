@@ -1,0 +1,28 @@
+---
+// GitHub Pages serves this one file for every missing address, in either language: it is in English and offers both home pages.
+import MainLayout from '../layouts/MainLayout.astro';
+import PageIntro from '../components/PageIntro.astro';
+import { useT, languageNames } from '../i18n';
+import { pageUrl } from '../lib/urls';
+
+const t = useT('en');
+const page = t.pages.notFound;
+---
+
+<MainLayout lang="en" path="/404/" title={page.title} description={page.description} noindex>
+  <PageIntro eyebrow={page.eyebrow} heading={page.heading} lead={page.lead}>
+    <div class="actions">
+      <a class="btn btn--primary" href={pageUrl('en', '/')}>{page.home}</a>
+      <a class="btn" href={pageUrl('ru', '/')} lang="ru" hreflang="ru">{languageNames.ru}</a>
+    </div>
+  </PageIntro>
+</MainLayout>
+
+<style>
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+  }
+</style>

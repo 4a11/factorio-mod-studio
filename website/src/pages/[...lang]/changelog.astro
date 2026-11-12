@@ -1,0 +1,226 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import { langPaths, useT, type Lang } from '../../i18n';
+import { renderMarkdown } from '../../lib/markdown';
+import { site } from '../../data/site';
+import { releases, latestStable, formatDate } from '../../data/releases';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = useT(lang);
+const page = t.pages.changelog;
+
+// Every release ends with the same "Install" section; the Download page covers it, so it is left out here.
+const notes = (body: string) => {
+  const cut = body.search(/^##\s+Install\s*$/m);
+  return renderMarkdown(cut >= 0 ? body.slice(0, cut) : body);
+};
+
+const entries = releases.map((release) => ({ ...release, html: notes(release.body) }));
+---
+
+<MainLayout lang={lang} path="/changelog/" title={page.title} description={page.description}>
+  <PageIntro eyebrow={page.eyebrow} heading={page.heading} lead={page.lead}>
+    {page.languageNote && <p class="language-note">{page.languageNote}</p>}
+  </PageIntro>
+
+  <section class="section log">
+    <div class="container">
+      {
+        entries.length > 0 ? (
+          <div class="layout">
+            <nav class="versions" aria-label={page.versions}>
+              <p class="versions-title">{page.versions}</p>
+              <ul>
+                {entries.map((release) => (
+                  <li>
+                    <a href={`#${release.tag}`}>
+                      <span>{release.tag}</span>
+                      <time datetime={release.date}>{formatDate(release.date, lang)}</time>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+
+            <div class="entries">
+              {entries.map((release) => (
+                <article class="entry" id={release.tag}>
+                  <header>
+                    <h2>{release.tag}</h2>
+                    <p class="meta">
+                      <time datetime={release.date}>{formatDate(release.date, lang)}</time>
+                      <span class="tag">{release.prerelease ? page.preview : page.release}</span>
+                      {release.tag === latestStable?.tag &&<span class="status status--ok">{page.latest}</span>}
+                    </p>
+                  </header>
+                  <div class="prose" lang="en" set:html={release.html} />
+                  <p>
+                    <a class="more" href={release.url} rel="noopener" aria-label={`${page.onGithub}: ${release.tag}`}>
+                      {page.onGithub}
+                    </a>
+                  </p>
+                </article>
+              ))}
+              <p class="all">
+                <a class="more" href={site.releases} rel="noopener">{page.all}</a>
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div class="empty">
+            <p>{page.empty}</p>
+            <p><a class="btn" href={site.releases} rel="noopener">{page.all}</a></p>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</MainLayout>
+
+<style>
+  .language-note {
+    margin-top: var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+  }
+
+  .log {
+    padding-top: var(--space-5);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 13rem minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-8);
+  }
+
+  /* The list of versions stays in view while the notes scroll */
+  .versions {
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-5));
+  }
+
+  .versions-title {
+    margin-bottom: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-dim);
+  }
+
+  .versions ul {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-left: var(--line);
+  }
+
+  .versions a {
+    display: grid;
+    gap: 0.1rem;
+    margin-left: -1px;
+    padding: var(--space-2) var(--space-4);
+    border-left: 1px solid transparent;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .versions a:hover {
+    border-left-color: var(--color-accent);
+    color: var(--color-accent-hover);
+  }
+
+  .versions span {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+
+  .versions time {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+  }
+
+  .entries {
+    display: grid;
+    gap: var(--space-7);
+    max-width: 50rem;
+  }
+
+  .entry {
+    display: grid;
+    gap: var(--space-5);
+    padding-bottom: var(--space-7);
+    border-bottom: var(--line);
+  }
+
+  .entry header {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .entry h2 {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .empty {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-4);
+  }
+
+  @media (max-width: 66rem) {
+    .layout {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+
+    /* On narrow screens the versions become a row of chips above the notes. */
+    .versions {
+      position: static;
+    }
+
+    .versions ul {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      border-left: 0;
+    }
+
+    .versions a {
+      margin: 0;
+      padding: var(--space-2) var(--space-3);
+      border: var(--line);
+      border-radius: var(--radius);
+      background: var(--color-surface);
+    }
+
+    .versions a:hover {
+      border-color: var(--color-accent);
+    }
+
+    .versions time {
+      display: none;
+    }
+  }
+</style>
