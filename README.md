@@ -783,3 +783,7 @@ and become available to every client. The shape of the `--json` output and of th
 ## License
 
 [MIT](LICENSE)
+
+### Dependency status in the studio
+
+For editable mods, the existing dependency chips show resolution for the default profile using its configured `modsSource`. Required dependencies (including `~`) and profile extras are resolved together; optional dependencies constrain versions only when enabled. The newest compatible set is selected, including transitive requirements. Missing or incompatible versions appear in Problems as FMS050, and preparing a run refuses an unresolved set before touching profile files. This environment check does not prevent packaging a mod for others. Bundled game mods are marked for checking in the game; their installed versions are not verified by these chips. Quick try can additionally use the workspace when no `modsSource` is configured, so its available set can differ.

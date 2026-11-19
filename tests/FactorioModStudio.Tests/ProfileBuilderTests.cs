@@ -75,7 +75,7 @@ public class ProfileBuilderTests
     }
 
     [Fact]
-    public void Prepare_WarnsWhenOnlyAnOutdatedVersionIsAvailable()
+    public void Prepare_RejectsWhenOnlyAnOutdatedVersionIsAvailable()
     {
         using var root = Fixtures.ValidMod("""
             { "name": "my-mod", "version": "1.0.0", "title": "t", "author": "a", "factorio_version": "2.0",
@@ -84,10 +84,8 @@ public class ProfileBuilderTests
         using var installed = new TempDir();
         Fixtures.WriteModZip(installed.Path, "flib", "0.14.0", "base");
 
-        var prepared = ProfileBuilder.Prepare(Project(root, $$"""{ "modsSource": "{{installed.Path.Replace("\\", "\\\\")}}" }"""), "default");
-
-        Assert.Single(prepared.Warnings);
-        Assert.Contains("0.14.0", prepared.Warnings[0]);
+        var error = Assert.Throws<FmsException>(() => ProfileBuilder.Prepare(Project(root, $$"""{ "modsSource": "{{installed.Path.Replace("\\", "\\\\")}}" }"""), "default"));
+        Assert.Contains("0.14.0", error.Message);
     }
 
     [Fact]

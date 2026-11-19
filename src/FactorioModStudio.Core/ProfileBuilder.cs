@@ -38,64 +38,16 @@ public static class ProfileBuilder
         var sourceDir = context.ModsSourceDirectory;
         var available = sourceDir is not null ? ModSource.Scan(sourceDir) : new List<AvailableMod>();
 
+        var resolution = DependencyResolver.Resolve(info, available, profile.Mods);
+        if (resolution.Error is not null) throw new FmsException(resolution.Error);
+        var dlcRequested = resolution.Bundled.ToList();
+        var toCopy = resolution.Mods;
         var enabled = new List<string> { "base", info.Name };
-        var dlcRequested = new List<string>();
-        var toCopy = new List<AvailableMod>();
-        var incompatibilities = new List<(string By, Dependency Dep)>();
-
-        var queue = new Queue<(Dependency Dep, string RequiredBy)>();
-        foreach (var dep in info.ParsedDependencies)
-        {
-            if (dep.Kind == DependencyKind.Required) queue.Enqueue((dep, info.Name));
-            else if (dep.Kind == DependencyKind.Incompatible) incompatibilities.Add((info.Name, dep));
-        }
-
-        foreach (var spec in profile.Mods)
-        {
-            if (!Dependency.TryParse(spec, out var dep))
-                throw new FmsException($"Invalid mod \"{spec}\" in profile \"{profileName}\" (expected e.g. \"flib >= 0.15.0\").");
-            queue.Enqueue((dep, $"profile \"{profileName}\""));
-        }
-
-        while (queue.Count > 0)
-        {
-            var (dep, requiredBy) = queue.Dequeue();
-            var name = dep.Name;
-
-            if (name is "base" or "core" || name == info.Name) continue;
-            if (enabled.Contains(name)) continue;
-
-            if (Dlc.Contains(name))
-            {
-                enabled.Add(name);
-                dlcRequested.Add(name);
-                continue;
-            }
-
-            var best = available.Where(m => m.Name == name).OrderByDescending(m => m.Version).FirstOrDefault();
-            if (best is null)
-            {
-                var where = sourceDir is null
-                    ? $"no \"modsSource\" is set in {ProjectConfig.FileName}"
-                    : $"it was not found in \"{sourceDir}\"";
-                throw new FmsException($"Mod \"{name}\" (needed by {requiredBy}) is unavailable: {where}.");
-            }
-
-            if (!dep.IsSatisfiedBy(best.Version))
-                warnings.Add($"{name} {best.Version} does not satisfy \"{dep}\" required by {requiredBy}.");
-
-            enabled.Add(name);
-            toCopy.Add(best);
-
-            foreach (var sub in best.Dependencies)
-            {
-                if (sub.Kind == DependencyKind.Required) queue.Enqueue((sub, name));
-                else if (sub.Kind == DependencyKind.Incompatible) incompatibilities.Add((name, sub));
-            }
-        }
-
-        foreach (var (by, dep) in incompatibilities.Where(i => enabled.Contains(i.Dep.Name)))
-            warnings.Add($"{by} declares \"{dep}\" but {dep.Name} is enabled in this profile.");
+        enabled.AddRange(toCopy.Select(m => m.Name));
+        enabled.AddRange(dlcRequested);
+        foreach (var dep in info.ParsedDependencies.Concat(toCopy.SelectMany(m => m.Dependencies))
+                     .Where(d => d.Kind == DependencyKind.Incompatible && DependencyResolver.IsBundled(d.Name) && enabled.Contains(d.Name)))
+            warnings.Add($"The profile enables {dep.Name}, but declares incompatibility '{dep}'. Check the installed game version.");
 
         var profileDir = Path.Combine(context.ProfilesDirectory, profileName);
         var modsDir = Path.Combine(profileDir, "mods");

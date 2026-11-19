@@ -889,5 +889,10 @@
   "update.close": "关闭",
   "update.chip.current": "Factorio Mod Studio {version}：关于与更新",
   "update.chip.available": "{version} 版本已发布",
-  "update.chip.failed": "更新未完成"
+  "update.chip.failed": "更新未完成",
+  "dep.status.ready": "就绪",
+  "dep.status.unresolved": "未解决",
+  "dep.status.inactive": "未启用",
+  "dep.status.game": "在游戏中检查",
+  "dep.status.invalid": "无效"
 }

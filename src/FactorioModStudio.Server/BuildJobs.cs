@@ -456,7 +456,7 @@ internal sealed class BuildJobs : IDisposable
     /// profiles). Mods, args and save are taken from the project's "default" profile.
     /// </summary>
     /// <param name="workspaceAsSource">Without a "modsSource" in the project, dependencies are looked up in the workspace folder.</param>
-    private (ProjectContext Context, string Profile, ProfileConfig Config) ContextFor(CatalogEntry entry, string? modVersion, bool workspaceAsSource = false)
+    internal (ProjectContext Context, string Profile, ProfileConfig Config) ContextFor(CatalogEntry entry, string? modVersion, bool workspaceAsSource = false)
     {
         var source = _project.Config;
         var profile = SanitizeProfileName(entry, modVersion);

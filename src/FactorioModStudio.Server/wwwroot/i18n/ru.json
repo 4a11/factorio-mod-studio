@@ -916,5 +916,10 @@
   "update.close": "Закрыть",
   "update.chip.current": "Factorio Mod Studio {version}: о программе и обновления",
   "update.chip.available": "Вышла версия {version}",
-  "update.chip.failed": "Обновление не завершилось"
+  "update.chip.failed": "Обновление не завершилось",
+  "dep.status.ready": "Готово",
+  "dep.status.unresolved": "Не разрешено",
+  "dep.status.inactive": "Не включено",
+  "dep.status.game": "Проверить в игре",
+  "dep.status.invalid": "Ошибка записи"
 }

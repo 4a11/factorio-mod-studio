@@ -6,6 +6,8 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 ## [Unreleased]
 
 ### Fixed
+- Dependency preparation selects versions satisfying all enabled mods, including transitive and optional constraints, and refuses unresolved profiles before changing files.
+- Existing dependency chips show default-profile status and selected versions; unresolved requirements appear in Problems (FMS050).
 - Packing rejects unsafe mod names even with `--force`, excludes linked files and directories, and clamps file dates to the ZIP timestamp range.
 - Creating a translation language refuses a linked locale directory, preventing writes outside the mod.
 

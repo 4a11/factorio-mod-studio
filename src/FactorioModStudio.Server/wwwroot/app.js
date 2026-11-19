@@ -342,7 +342,13 @@ function renderMod(keepScroll = false) {
       info.author && el('span', { text: t('mod.by', { author: info.author }) })),
     info.description && el('p', { class: 'muted', text: info.description }),
     info.dependencies && info.dependencies.length > 0 && el('div', { class: 'chips' },
-      info.dependencies.map((d) => el('span', { class: 'chip' + (/^(\?|\(\?\)|~)/.test(d) ? ' optional' : '') + (d.startsWith('!') ? ' accent' : ''), title: t(dependencyKind(d)), text: d }))));
+      info.dependencies.map((d) => {
+        const check = (o.dependencyStatuses || []).find((s) => s.specification === d);
+        const status = check ? t('dep.status.' + check.status) : '';
+        return el('span', { class: 'chip' + (/^(\?|\(\?\)|~)/.test(d) ? ' optional' : '') + (d.startsWith('!') ? ' accent' : ''),
+          title: [t(dependencyKind(d)), check?.detail].filter(Boolean).join(' — '),
+          text: d + (check ? ' · ' + status + (check.version ? ' ' + check.version : '') : '') });
+      })));
 
   const tabCount = {
     files: o.files.length, prototypes: o.prototypes.length, blocks: (o.blocks || []).length,

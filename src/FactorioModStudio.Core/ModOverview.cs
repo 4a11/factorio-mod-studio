@@ -61,6 +61,8 @@ public sealed record ModOverview(
     IReadOnlyList<ValidationIssue> Issues,
     IReadOnlyList<string> Notes)
 {
+    public IReadOnlyList<DependencyStatus> DependencyStatuses { get; init; } = Array.Empty<DependencyStatus>();
+
     /// <summary>Per-language key counts, "en" first, then alphabetical. Missing/extra are relative to the default language.</summary>
     public IReadOnlyList<LocaleCoverage> LocaleCoverage { get; init; } = Array.Empty<LocaleCoverage>();
 
