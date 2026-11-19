@@ -295,6 +295,21 @@ public static class UiServer
             try
             {
                 var overview = catalog.Overview(entry);
+                if (entry.Editable && overview.Info is not null)
+                {
+                    var (dependencyContext, _, profileConfig) = jobs.ContextFor(entry, overview.Info.FactorioVersion);
+                    var info = ModInfo.Load(Path.Combine(catalog.Materialize(entry), "info.json"));
+                    var available = dependencyContext.ModsSourceDirectory is { } source ? ModSource.Scan(source) : new List<AvailableMod>();
+                    var resolution = DependencyResolver.Resolve(info, available, profileConfig.Mods);
+                    overview = overview with
+                    {
+                        DependencyStatuses = DependencyResolver.Statuses(info, resolution),
+                        Issues = resolution.Error is null ? overview.Issues : overview.Issues.Concat(new[]
+                        {
+                            new ValidationIssue(Severity.Warning, "FMS050", "Default profile: " + resolution.Error, "info.json")
+                        }).ToList()
+                    };
+                }
                 // Readiness depends on dist/ and file times, so it is computed per request and never cached.
                 return Results.Ok(overview with { Readiness = ReleaseReadiness.Evaluate(catalog.Materialize(entry), overview, jobs.DistDirectory) });
             }

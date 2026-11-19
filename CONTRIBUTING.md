@@ -11,6 +11,19 @@ Thanks for taking the time to help. Bug reports, ideas, translations and code ar
 * Questions and open-ended ideas fit better in [Discussions](https://github.com/4a11/factorio-mod-studio/discussions).
 * A security problem is **not** a public issue: see [SECURITY.md](SECURITY.md).
 
+## What gets built
+
+Factorio Mod Studio is a tool its author uses for his own modding, shared in case it helps someone else.
+It is not trying to be a general-purpose editor or a replacement for VS Code and FMTK.
+
+* **A feature needs a real use first.** It is added when it solved an actual problem while making an actual mod,
+  not because it might be useful to modders in general.
+* **Sit next to the code, don't replace it.** Inspecting, checking, running and packaging are in scope. Hiding Lua behind
+  visual editors or generators is not: those limit what a mod can do.
+* **Small and separate beats big and integrated.** Prefer a small piece that works from the CLI or an editor over another tab in the studio.
+
+A feature request is most convincing when it describes the mod you were making and what got in your way.
+
 ## Setting up
 
 You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) and, for the browser-side tests, Node 18 or newer.

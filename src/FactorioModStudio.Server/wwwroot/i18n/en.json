@@ -898,5 +898,10 @@
   "update.close": "Close",
   "update.chip.current": "Factorio Mod Studio {version}: about and updates",
   "update.chip.available": "Version {version} is out",
-  "update.chip.failed": "The update did not finish"
+  "update.chip.failed": "The update did not finish",
+  "dep.status.ready": "Ready",
+  "dep.status.unresolved": "Unresolved",
+  "dep.status.inactive": "Not enabled",
+  "dep.status.game": "Check in game",
+  "dep.status.invalid": "Invalid"
 }
