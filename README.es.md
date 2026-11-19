@@ -59,17 +59,21 @@ Dónde está el proyecto y qué viene después. Las versiones son objetivos, no 
 - [x] traducciones de los bloques nuevos: sus claves se añaden a todos los idiomas del mod, marcadas como sin traducir en la pestaña Localización; *en 0.3.0*
 
 **0.4: un editor cómodo**
-- [ ] ayudas de Lua en el editor: autocompletado, documentación al pasar el ratón y ayuda de parámetros para la API de Factorio (`data.raw`, campos de prototipos, `game`, `script`, `defines`, eventos), leídas de la descripción de la API que trae el juego instalado (`doc-html/*-api.json`), así que coinciden con su versión
-- [ ] Problemas con el nuevo estilo: agrupados por archivo y regla (*hecho en 0.3.0*), correcciones rápidas seguras (añadir una clave de traducción que falta, corregir mayúsculas y minúsculas de una ruta)
-- [ ] iconos de ingredientes y resultados que vienen del juego base o de una dependencia
-- [ ] dependencias de un vistazo: obligatorias, opcionales, incompatibles y cuáles están disponibles en `modsSource`
-- [ ] un editor de recetas y tecnologías: ingredientes elegidos con sus iconos del juego y de las dependencias, y la tecnología que desbloquea la receta
+- [ ] Primero, comprobar el guardado, los cambios externos y deshacer/rehacer. Después, Ctrl+Espacio para una versión instalada de la API de Factorio, seguido de ayuda al pasar el cursor y de parámetros. [Plan del editor (ruso)](docs/editor-plan.md)
+- [x] Estado de dependencias del perfil predeterminado disponible (PR #2). El grafo completo pertenece al plan de conjuntos.
+- [ ] Correcciones seguras: primero mayúsculas y minúsculas de rutas con coincidencia única, luego claves de traducción que faltan.
+- [ ] Opcional: iconos del juego base y sus dependencias en la vista de recetas.
+
+Después de 0.4: mostrar primero desbloqueos y usos de recetas, luego editar recetas y tecnologías con un mod de parches. [→](docs/modpack-plan.md)
 
 **0.5: flujo de publicación**
 - [ ] subir la versión y añadir la entrada del changelog en un solo paso (`fmstudio bump patch|minor|major`)
 - [ ] subida al portal de mods de Factorio (opcional, con tu propia clave de API)
 - [ ] un workflow de GitHub Actions listo (`fmstudio init --ci`): comprobar, empaquetar y hacer la prueba de humo en cada push
 - [ ] Compilación: elegir el perfil, mods adicionales y una partida guardada; un historial de ejecuciones para comparar
+
+**Conjuntos de mods y equilibrio (previsto, sin versión asignada)**
+- [ ] Gestionar conjuntos existentes de mods, visualizar dependencias y cadenas de tecnologías y recetas, y ajustar el equilibrio mediante un mod de parches separado. Primero, perfiles y gráficos de consulta. [Plan por etapas (ruso)](docs/modpack-plan.md).
 
 **0.6: gráficos**
 - [ ] un editor de sprites en el estudio: crear y editar iconos y sprites, y montar animaciones (fotogramas, hoja de sprites, vista previa en vivo) sin salir del estudio

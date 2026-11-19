@@ -59,17 +59,21 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 - [x] tłumaczenia nowych bloków: ich klucze trafiają do wszystkich języków moda, oznaczone jako nieprzetłumaczone w zakładce Lokalizacja; *w 0.3.0*
 
 **0.4: wygodny edytor**
-- [ ] podpowiedzi Lua w edytorze: uzupełnianie, dokumentacja po najechaniu i pomoc dla parametrów API Factorio (`data.raw`, pola prototypów, `game`, `script`, `defines`, zdarzenia), czytane z opisu API dołączonego do zainstalowanej gry (`doc-html/*-api.json`), więc zgodne z jej wersją
-- [ ] Problemy w nowym stylu: grupowanie według pliku i reguły (*zrobione w 0.3.0*), bezpieczne szybkie poprawki (dodanie brakującego klucza tłumaczenia, poprawienie wielkości liter w ścieżce)
-- [ ] ikony składników i produktów pochodzących z gry podstawowej lub zależności
-- [ ] zależności w jednym miejscu: wymagane, opcjonalne, niezgodne i które z nich są dostępne w `modsSource`
-- [ ] edytor receptur i technologii: składniki wybierane z ikonami z gry i zależności oraz technologia odblokowująca recepturę
+- [ ] Najpierw sprawdzić zapis, zmiany zewnętrzne oraz cofanie i ponawianie. Potem Ctrl+Spacja dla jednej zainstalowanej wersji API Factorio, a następnie opis i podpowiedzi parametrów. [Plan rozwoju edytora (rosyjski)](docs/editor-plan.md)
+- [x] Stan zależności profilu domyślnego jest dostępny (PR #2). Pełny graf należy do planu zestawów.
+- [ ] Bezpieczne poprawki: najpierw wielkość liter w jednoznacznej ścieżce, potem brakujące klucze tłumaczeń.
+- [ ] Opcjonalnie: ikony gry podstawowej i zależności w widoku receptur.
+
+Po 0.4: wyświetlić odblokowania i zastosowania receptur, następnie edytować receptury i technologie osobnym modem. [→](docs/modpack-plan.md)
 
 **0.5: proces wydawania**
 - [ ] podbicie wersji i wpis do changelogu w jednym kroku (`fmstudio bump patch|minor|major`)
 - [ ] wysyłanie na portal modów Factorio (opcjonalnie, z Twoim własnym kluczem API)
 - [ ] gotowy workflow GitHub Actions (`fmstudio init --ci`): sprawdzanie, pakowanie i test dymny przy każdym pushu
 - [ ] Budowanie: wybór profilu, dodatkowych modów i zapisu gry; historia uruchomień do porównania
+
+**Zestawy modów i balans (plan, bez wyznaczonej wersji)**
+- [ ] Zarządzanie gotowymi zestawami modów, wizualizacja zależności oraz powiązań technologii i receptur, a następnie zmiany balansu przez osobny mod z poprawkami. Najpierw profile i grafy tylko do odczytu. [Plan etapów (rosyjski)](docs/modpack-plan.md).
 
 **0.6: grafika**
 - [ ] edytor sprite'ów w studiu: tworzenie i edycja ikon i sprite'ów oraz animacje (klatki, arkusz sprite'ów, podgląd na żywo) bez wychodzenia ze studia
