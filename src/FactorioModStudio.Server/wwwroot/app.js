@@ -562,7 +562,7 @@ function renderProblems(o) {
 // ---------------------------------------------------------------- file viewer / editor (tabs live in editor-tabs.js)
 
 const editorTabs = createEditorTabs({
-  api, el, fileUrl,
+  api, el, fileUrl, installation: chosenInstallation,
   getModId: () => state.currentId,
   isEditable: () => !!currentMod()?.editable,
   onChange: () => onEditorTabsChanged(),

@@ -469,6 +469,8 @@
   "editor.ariaLabel": "Modifier {path}",
   "editor.unsaved": "Modifications non enregistrées",
   "editor.saved": "Enregistré",
+  "editor.completionEmpty": "Aucun nom correspondant dans l’API Factorio.",
+  "editor.completionUnavailable": "La documentation de l’API runtime est indisponible pour cette installation de Factorio.",
   "editor.saving": "Enregistrement…",
   "editor.notSaved": "Non enregistré",
   "editor.changedOnDisk": "Modifié sur le disque",

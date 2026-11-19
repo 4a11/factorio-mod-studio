@@ -466,6 +466,8 @@
   "editor.ariaLabel": "Bearbeiten: {path}",
   "editor.unsaved": "Ungespeicherte Änderungen",
   "editor.saved": "Gespeichert",
+  "editor.completionEmpty": "Keine passenden Factorio-API-Namen.",
+  "editor.completionUnavailable": "Die Runtime-API-Dokumentation der gewählten Factorio-Installation ist nicht verfügbar.",
   "editor.saving": "Wird gespeichert…",
   "editor.notSaved": "Nicht gespeichert",
   "editor.changedOnDisk": "Auf der Festplatte geändert",

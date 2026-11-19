@@ -5,7 +5,12 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
+### Added
+- Ctrl+Space in control.lua suggests runtime globals and defines.events from the selected Factorio installation.
+
 ### Fixed
+- Tab indentation integrates with the editor’s native Undo history.
+- The file editor protects external changes after a save conflict and preserves typing while a save or background reload is in progress.
 - Manage installations immediately displays cached releases or loading status when opened.
 - Dependency preparation selects versions satisfying all enabled mods, including transitive and optional constraints, and refuses unresolved profiles before changing files.
 - Existing dependency chips show default-profile status and selected versions; unresolved requirements appear in Problems (FMS050).

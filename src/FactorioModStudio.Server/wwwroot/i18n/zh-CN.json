@@ -463,6 +463,8 @@
   "editor.ariaLabel": "编辑 {path}",
   "editor.unsaved": "有未保存的更改",
   "editor.saved": "已保存",
+  "editor.completionEmpty": "没有匹配的 Factorio API 名称。",
+  "editor.completionUnavailable": "所选 Factorio 安装缺少运行时 API 文档。",
   "editor.saving": "正在保存…",
   "editor.notSaved": "未保存",
   "editor.changedOnDisk": "磁盘上已更改",

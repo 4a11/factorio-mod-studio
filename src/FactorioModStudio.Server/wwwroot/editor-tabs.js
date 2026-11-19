@@ -7,6 +7,7 @@
 
 import { tokenize } from '/lua-highlight.js';
 import { t } from '/i18n.js';
+import { completionAt, completionNames } from '/lua-completion.js';
 
 export const EDITABLE_EXT = ['lua', 'cfg', 'json', 'txt', 'md'];
 const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'bmp'];
@@ -61,7 +62,7 @@ function offsetOf(text, line, column = 1) {
  * @param {{ api: Function, el: Function, getModId: () => string|null, isEditable: () => boolean,
  *           fileUrl: (path: string) => string, onChange?: () => void, onSaved?: () => void }} host
  */
-export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onChange = () => {}, onSaved = () => {} }) {
+export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, installation = () => null, onChange = () => {}, onSaved = () => {} }) {
   const viewer = $('#viewer');
   const body = $('#viewer-body');
   const strip = $('#editor-tabs');
@@ -516,21 +517,101 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
     area.value = text;
     // Highlight layer: a <pre> under the transparent textarea with identical metrics. Only .lua files get colours.
     const hl = el('pre', { class: 'hl', 'aria-hidden': 'true' });
-    const wrap = el('div', { class: 'editor-wrap' }, gutter, el('div', { class: 'editor-stack' }, hl, area));
+    const hints = el('div', { class: 'editor-completion', hidden: true });
+    const wrap = el('div', { class: 'editor-wrap' }, gutter, el('div', { class: 'editor-stack' }, hl, area, hints));
     Object.assign(tab, { area, gutter, hl, wrap, lua: /\.lua$/i.test(tab.path), diags: [], diagLines: new Set(), diagCursor: -1, wasDirty: false });
     renderHighlight(tab);
 
-    area.addEventListener('input', () => afterTextChange(tab));
+    let request = 0;
+    let choice = null;
+
+    function dismiss() {
+      request++;
+      choice = null;
+      hints.hidden = true;
+    }
+
+    function accept(name) {
+      if (!choice || area.value !== choice.text || area.selectionStart !== choice.caret || area.selectionEnd !== choice.caret) {
+        dismiss();
+        return;
+      }
+      const { start, end } = choice.context;
+      const caret = choice.caret;
+      dismiss();
+      area.setSelectionRange(start, end);
+      if (!document.execCommand?.('insertText', false, name)) area.setSelectionRange(caret, caret);
+    }
+
+    function select(index) {
+      choice.index = (index + choice.buttons.length) % choice.buttons.length;
+      choice.buttons.forEach((button, i) => button.setAttribute('aria-selected', String(i === choice.index)));
+      choice.buttons[choice.index].scrollIntoView({ block: 'nearest' });
+      hints.firstElementChild.textContent = 'Factorio ' + choice.version + ' · ' + choice.names[choice.index];
+    }
+
+    async function complete() {
+      dismiss();
+      const seq = request;
+      const text = area.value;
+      const caret = area.selectionStart;
+      if (caret !== area.selectionEnd || text.length > HIGHLIGHT_LIMIT) return;
+      const context = completionAt(text, caret);
+      if (!context) return;
+      let schema;
+      try {
+        const manual = installation(tab.modId);
+        const url = '/api/mods/' + encodeURIComponent(tab.modId) + '/runtime-api';
+        schema = await api(url + (manual ? '?installation=' + encodeURIComponent(manual) : ''));
+      } catch { /* A missing or unreadable API leaves ordinary editing available. */ }
+      if (seq !== request || tab !== active || document.activeElement !== area || area.value !== text ||
+          area.selectionStart !== caret || area.selectionEnd !== caret) return;
+      const names = completionNames(schema, context);
+      if (!names.length) {
+        setStatus(tab, schema ? 'editor.completionEmpty' : 'editor.completionUnavailable');
+        return;
+      }
+      const buttons = names.map(name => {
+        const button = el('button', { type: 'button', tabindex: '-1', role: 'option', text: name });
+        button.addEventListener('pointerdown', event => event.preventDefault());
+        button.addEventListener('click', () => accept(name));
+        return button;
+      });
+      choice = { text, caret, context, names, buttons, index: 0, version: schema.version };
+      hints.replaceChildren(el('div', { class: 'editor-completion-title', role: 'status' }),
+        el('div', { role: 'listbox', 'aria-label': 'Factorio API' }, ...buttons));
+      hints.hidden = false;
+      select(0);
+    }
+
+    area.addEventListener('input', () => { dismiss(); afterTextChange(tab); });
+    area.addEventListener('blur', dismiss);
+    area.addEventListener('click', dismiss);
     area.addEventListener('scroll', () => {
       gutter.scrollTop = area.scrollTop;
       hl.scrollTop = area.scrollTop;
       hl.scrollLeft = area.scrollLeft;
     });
     area.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault(); // keep focus in the editor; insert two spaces (Lua convention in Factorio mods)
-        area.setRangeText('  ', area.selectionStart, area.selectionEnd, 'end');
-        area.dispatchEvent(new Event('input'));
+      if (e.isComposing) return;
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.code === 'Space' || e.key === ' ') &&
+          tab.path.toLowerCase() === 'control.lua') {
+        e.preventDefault();
+        if (!e.repeat) void complete();
+        return;
+      }
+      if (choice && ['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        if (e.key === 'Escape') dismiss();
+        else if (e.key === 'Enter') accept(choice.names[choice.index]);
+        else select(choice.index + (e.key === 'ArrowDown' ? 1 : -1));
+        return;
+      }
+      dismiss();
+      if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing && area.selectionStart === area.selectionEnd) {
+        // A native editing command inserts text into the undo stack. setRangeText does not.
+        // If unavailable, allow the browser to move focus instead.
+        if (document.execCommand?.('insertText', false, '  ')) e.preventDefault();
       }
     });
     scheduleLint(tab, 0);
@@ -682,15 +763,38 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
 
   // ------------------------------------------------------------ saving and external changes
 
-  async function save(tab = active) {
-    if (!tab || tab.kind !== 'text' || !isDirty(tab)) return;
+  async function save(tab = active, overwrite = false) {
+    if (!tab || tab.closed || tab.kind !== 'text' || tab.saving || !isDirty(tab)) return;
+    if (tab.conflict && !overwrite) return;
     const { modId, path } = tab;
     const content = tab.area.value;
+    tab.saving = true;
     setStatus(tab, 'editor.saving');
     try {
+      if (overwrite) {
+        const response = await fetch(fileUrl(path));
+        if (tab.closed) return;
+        if (!response.ok && response.status !== 404) throw new Error(response.statusText || String(response.status));
+        const etag = response.ok ? response.headers.get('ETag') : null;
+        if (response.ok && !etag) throw new Error('Missing ETag');
+        await write(etag);
+      } else {
+        await write(tab.etag);
+      }
+    } catch (error) {
+      if (tab.closed) return;
+      setStatus(tab, 'editor.notSaved');
+      if (error.status === 409) tab.conflict = true;
+      if (tab.conflict) setBanner(tab, 'editor.conflict', {}, true);
+      else setBanner(tab, 'editor.saveFailed', { message: error.message });
+    } finally {
+      tab.saving = false;
+    }
+
+    async function write(etag) {
       const result = await api(`/api/mods/${encodeURIComponent(modId)}/file?path=${encodeURIComponent(path)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'text/plain; charset=utf-8', ...(tab.etag ? { 'If-Match': tab.etag } : { 'If-None-Match': '*' }) },
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', ...(etag ? { 'If-Match': etag } : { 'If-None-Match': '*' }) },
         body: content,
       });
       if (tab.closed) return;
@@ -702,35 +806,18 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
       updateEditorState(tab);
       updateTabEl(tab);
       onSaved();
-    } catch (error) {
-      if (tab.closed) return;
-      if (error.status === 409) {
-        tab.conflict = true;
-        tab.etag = error.body.etag || tab.etag;
-        setBanner(tab, 'editor.conflict', {}, true);
-        setStatus(tab, 'editor.notSaved');
-      } else {
-        setStatus(tab, 'editor.notSaved');
-        setBanner(tab, 'editor.saveFailed', { message: error.message });
-      }
     }
   }
 
   async function overwriteWithMine(tab) {
-    // Fetch the current validator, then save over it deliberately.
-    try {
-      const response = await fetch(fileUrl(tab.path));
-      if (response.ok) tab.etag = response.headers.get('ETag');
-      else if (response.status === 404) tab.etag = null;
-    } catch { /* save() reports problems */ }
-    tab.conflict = false;
-    setBanner(tab, null);
-    await save(tab);
+    await save(tab, true);
   }
 
   async function reloadFromDisk(tab, force = false) {
     if (!tab || tab.closed || tab.modId !== getModId()) return;
     const { path } = tab;
+    const original = tab.original;
+    const beforeReload = tab.area?.value;
     try {
       const response = await fetch(fileUrl(path));
       if (tab.closed) return;
@@ -761,7 +848,7 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
         return;
       }
       const text = await response.text();
-      if (tab.closed) return;
+      if (tab.closed || tab.saving || tab.original !== original || tab.area.value !== beforeReload) return;
       const top = tab.area.scrollTop;
       tab.area.value = text;
       tab.original = text;

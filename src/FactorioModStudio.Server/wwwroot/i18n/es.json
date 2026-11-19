@@ -469,6 +469,8 @@
   "editor.ariaLabel": "Editar {path}",
   "editor.unsaved": "Cambios sin guardar",
   "editor.saved": "Guardado",
+  "editor.completionEmpty": "No hay nombres de la API de Factorio que coincidan.",
+  "editor.completionUnavailable": "No está disponible la documentación de la API de ejecución de esa instalación de Factorio.",
   "editor.saving": "Guardando…",
   "editor.notSaved": "Sin guardar",
   "editor.changedOnDisk": "Modificado en el disco",

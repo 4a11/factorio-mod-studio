@@ -472,6 +472,8 @@
   "editor.ariaLabel": "Редагування: {path}",
   "editor.unsaved": "Є незбережені зміни",
   "editor.saved": "Збережено",
+  "editor.completionEmpty": "Немає відповідних імен API Factorio.",
+  "editor.completionUnavailable": "Документація runtime API вибраної інсталяції Factorio недоступна.",
   "editor.saving": "Збереження…",
   "editor.notSaved": "Не збережено",
   "editor.changedOnDisk": "Змінено на диску",

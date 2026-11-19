@@ -85,7 +85,7 @@ public static class UiServer
     private static readonly string[] StaticScripts =
     [
         "lua-highlight.js", "locale-placeholders.js", "locale-view.js", "build-view.js", "i18n.js",
-        "theme-init.js", "theme.js", "ui-state.js", "palette-logic.js", "palette.js", "editor-tabs.js",
+        "theme-init.js", "theme.js", "ui-state.js", "palette-logic.js", "palette.js", "editor-tabs.js", "lua-completion.js",
         "bottom-panel.js", "search-panel.js", "action-bar.js", "files-logic.js", "files-view.js", "problems-logic.js", "problems-view.js", "colour-logic.js", "colour-field.js", "prototypes-view.js", "resources-view.js",
         "import-logic.js", "content-dialog.js", "update-logic.js", "update-view.js", "mod-menu.js", "game-data-view.js", "block-props.js", "blocks-view.js"
     ];
@@ -314,6 +314,16 @@ public static class UiServer
                 return Results.Ok(overview with { Readiness = ReleaseReadiness.Evaluate(catalog.Materialize(entry), overview, jobs.DistDirectory) });
             }
             catch (FmsException ex) { return Error(StatusCodes.Status422UnprocessableEntity, ex.Message); }
+        });
+
+        app.MapGet("/api/mods/{id}/runtime-api", (string id, string? installation) =>
+        {
+            var entry = catalog.Find(id);
+            if (entry is null) return Error(StatusCodes.Status404NotFound, "Unknown mod.");
+            var (version, requirement) = jobs.ModGameRequirement(entry);
+            var selected = jobs.Pick(jobs.GetCandidates(), version, installation, baseRequirement: requirement).Chosen;
+            var api = selected is null ? null : FactorioRuntimeApi.Read(selected.Path, selected.Version);
+            return api is null ? Results.NoContent() : Results.Ok(api);
         });
 
         app.MapGet("/api/mods/{id}/file", (HttpContext http, string id, string path) =>

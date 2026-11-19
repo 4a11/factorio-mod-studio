@@ -472,6 +472,8 @@
   "editor.ariaLabel": "Редактирование: {path}",
   "editor.unsaved": "Есть несохранённые изменения",
   "editor.saved": "Сохранено",
+  "editor.completionEmpty": "Нет подходящих имён API Factorio.",
+  "editor.completionUnavailable": "Документация runtime API недоступна для выбранной установки Factorio.",
   "editor.saving": "Сохранение…",
   "editor.notSaved": "Не сохранено",
   "editor.changedOnDisk": "Изменён на диске",

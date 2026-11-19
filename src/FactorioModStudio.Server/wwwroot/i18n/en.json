@@ -466,6 +466,8 @@
   "editor.ariaLabel": "Edit {path}",
   "editor.unsaved": "Unsaved changes",
   "editor.saved": "Saved",
+  "editor.completionEmpty": "No matching Factorio API names.",
+  "editor.completionUnavailable": "Runtime API documentation is unavailable for the selected Factorio installation.",
   "editor.saving": "Saving…",
   "editor.notSaved": "Not saved",
   "editor.changedOnDisk": "Changed on disk",

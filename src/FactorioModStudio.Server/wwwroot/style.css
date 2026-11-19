@@ -430,6 +430,17 @@ details .file-row:hover { background: var(--surface-2); }
 .editor-wrap { display: flex; flex: 1; min-width: 0; min-height: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; }
 .gutter { margin: 0; padding: 8px 10px 8px 8px; text-align: right; color: var(--muted); user-select: none; overflow: hidden; background: var(--surface-2); border-right: 1px solid var(--border); font: inherit; min-width: 44px; }
 .editor-stack { position: relative; flex: 1; min-width: 0; background: var(--code-bg); }
+.editor-completion {
+  position: absolute; z-index: 3; inset: 8px 8px auto auto;
+  width: min(26rem, calc(100% - 16px)); max-height: min(18rem, calc(100% - 16px));
+  overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+}
+.editor-completion-title { padding: 6px 8px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.editor-completion button {
+  display: block; width: 100%; text-align: left; border: 0; border-radius: 0;
+  padding: 4px 8px; font-family: inherit; overflow-wrap: anywhere;
+}
+.editor-completion button[aria-selected="true"] { background: var(--accent-soft); }
 .editor, .hl {
   position: absolute; inset: 0; margin: 0; border: 0; border-radius: 0;
   font: inherit; letter-spacing: normal; tab-size: 2; white-space: pre; word-spacing: 0;
