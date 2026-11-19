@@ -736,6 +736,7 @@ const kindLabel = (kind) => (KINDS.includes(kind) || kind === 'dump' ? t(`build.
     renderInstallList();
     refs.installDialog.showModal();
     refs.instClose.focus();
+    renderGet(); // Cached or in-flight availability still needs painting in the newly opened dialog.
     loadAvailable();
     try {
       applyInstalls(await api('/api/factorio/installations'));
