@@ -16,7 +16,8 @@ public static class ModPackager
         var validation = ModValidator.Validate(modDirectory);
         var info = validation.Info;
 
-        if (info?.Name is null || !ModVersion.TryParse(info.Version, out var version))
+        if (info?.Name is null || !System.Text.RegularExpressions.Regex.IsMatch(info.Name, @"\A[A-Za-z0-9_\- ]+\z") ||
+            !ModVersion.TryParse(info.Version, out var version))
             return new PackResult(false, null, validation, 0, 0);
         if (validation.HasErrors && !force)
             return new PackResult(false, null, validation, 0, 0);
@@ -57,6 +58,7 @@ public static class ModPackager
     private static DateTimeOffset ClampZipTime(DateTime time)
     {
         var min = new DateTime(1980, 1, 1);
-        return time < min ? min : time;
+        var max = new DateTime(2107, 12, 31, 23, 59, 58);
+        return time < min ? min : time > max ? max : time;
     }
 }
