@@ -633,6 +633,9 @@ public static class LocaleEditor
     private static void CreateLanguageLocked(string modDir, string code)
     {
         if (!IsValidLanguageCode(code)) throw new FmsException($"\"{code}\" is not a valid language code.");
+        var localePath = Path.Combine(modDir, "locale");
+        if (Directory.Exists(localePath) && (File.GetAttributes(localePath) & FileAttributes.ReparsePoint) != 0)
+            throw new FmsException("locale is a link and cannot be edited.");
         var source = SourceLanguage(modDir) ?? throw new FmsException("The mod has no locale folder to copy the structure from.");
 
         var localeDir = Path.Combine(modDir, "locale");

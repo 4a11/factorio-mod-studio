@@ -39,6 +39,7 @@ public static class ModFiles
         {
             foreach (var sub in Directory.EnumerateDirectories(dir))
             {
+                if ((File.GetAttributes(sub) & FileAttributes.ReparsePoint) != 0) continue;
                 var name = Path.GetFileName(sub);
                 if (ExcludedDirectories.Contains(name)) continue;
                 if (excluded is not null &&
@@ -49,6 +50,7 @@ public static class ModFiles
 
             foreach (var file in Directory.EnumerateFiles(dir))
             {
+                if ((File.GetAttributes(file) & FileAttributes.ReparsePoint) != 0) continue;
                 var name = Path.GetFileName(file);
                 if (ExcludedFileNames.Contains(name)) continue;
                 if (ExcludedExtensions.Contains(Path.GetExtension(name))) continue;

@@ -5,6 +5,13 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ## [Unreleased]
 
+### Fixed
+- Packing rejects unsafe mod names even with `--force`, excludes linked files and directories, and clamps file dates to the ZIP timestamp range.
+- Creating a translation language refuses a linked locale directory, preventing writes outside the mod.
+
+### Changed
+- CI runs JavaScript tests on both Windows and Linux alongside the .NET tests.
+
 ## [0.3.4] - 2026-11-13
 
 A preview: the studio tried on Linux (Fedora 45, KDE Plasma on Wayland) for the first time, and the fixes from that. Checked on
