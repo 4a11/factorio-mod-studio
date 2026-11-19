@@ -107,11 +107,20 @@ function formatSize(bytes) {
   return t('size.mb', { value: formatNumber(bytes / 1024 / 1024, one) });
 }
 
-// What the main content area currently shows when it is a plain message (so a language switch can redraw it).
+// What the main content area currently shows when it is a message (so a language switch can redraw it).
 let contentMessage = null;
 function showMessage(key, params) {
+  if (key === 'content.loading') {
+    renderContent(el('div', { class: 'empty mod-loading', role: 'status' },
+      el('div', { class: 'mod-loader-belt', 'aria-hidden': 'true' },
+        el('span', { class: 'mod-loader-track' }),
+        el('span', { class: 'mod-loader-crate' }),
+        el('span', { class: 'mod-loader-crate' })),
+      el('span', { text: t(key, params) })));
+  } else {
+    renderContent(el('div', { class: 'empty', text: t(key, params) }));
+  }
   contentMessage = { key, params };
-  renderContent(el('div', { class: 'empty', text: t(key, params) }));
 }
 
 // ---------------------------------------------------------------- routing

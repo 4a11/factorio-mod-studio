@@ -6,6 +6,7 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 ## [Unreleased]
 
 ### Added
+- A conveyor animation while a mod opens in the studio, with a static illustration when reduced motion is enabled.
 - Ctrl+Space in control.lua suggests runtime globals and defines.events from the selected Factorio installation.
 
 ### Fixed
