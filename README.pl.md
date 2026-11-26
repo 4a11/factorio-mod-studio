@@ -59,12 +59,12 @@ Gdzie projekt jest teraz i co dalej. Wersje to cele, a nie terminy; kolejność 
 - [x] tłumaczenia nowych bloków: ich klucze trafiają do wszystkich języków moda, oznaczone jako nieprzetłumaczone w zakładce Lokalizacja; *w 0.3.0*
 
 **0.4: wygodny edytor**
-- [ ] Najpierw sprawdzić zapis, zmiany zewnętrzne oraz cofanie i ponawianie. Potem Ctrl+Spacja dla jednej zainstalowanej wersji API Factorio, a następnie opis i podpowiedzi parametrów. [Plan rozwoju edytora (rosyjski)](docs/editor-plan.md)
+- [ ] Najpierw sprawdzić zapis, zmiany zewnętrzne oraz cofanie i ponawianie. Potem Ctrl+Spacja dla jednej zainstalowanej wersji API Factorio, a następnie opis i podpowiedzi parametrów.
 - [x] Stan zależności profilu domyślnego jest dostępny (PR #2). Pełny graf należy do planu zestawów.
 - [ ] Bezpieczne poprawki: najpierw wielkość liter w jednoznacznej ścieżce, potem brakujące klucze tłumaczeń.
 - [ ] Opcjonalnie: ikony gry podstawowej i zależności w widoku receptur.
 
-Po 0.4: wyświetlić odblokowania i zastosowania receptur, następnie edytować receptury i technologie osobnym modem. [→](docs/modpack-plan.md)
+Po 0.4: wyświetlić odblokowania i zastosowania receptur, następnie edytować receptury i technologie osobnym modem.
 
 **0.5: proces wydawania**
 - [ ] podbicie wersji i wpis do changelogu w jednym kroku (`fmstudio bump patch|minor|major`)
@@ -73,7 +73,7 @@ Po 0.4: wyświetlić odblokowania i zastosowania receptur, następnie edytować 
 - [ ] Budowanie: wybór profilu, dodatkowych modów i zapisu gry; historia uruchomień do porównania
 
 **Zestawy modów i balans (plan, bez wyznaczonej wersji)**
-- [ ] Zarządzanie gotowymi zestawami modów, wizualizacja zależności oraz powiązań technologii i receptur, a następnie zmiany balansu przez osobny mod z poprawkami. Najpierw profile i grafy tylko do odczytu. [Plan etapów (rosyjski)](docs/modpack-plan.md).
+- [ ] Zarządzanie gotowymi zestawami modów, wizualizacja zależności oraz powiązań technologii i receptur, a następnie zmiany balansu przez osobny mod z poprawkami. Najpierw profile i grafy tylko do odczytu.
 
 **0.6: grafika**
 - [ ] edytor sprite'ów w studiu: tworzenie i edycja ikon i sprite'ów oraz animacje (klatki, arkusz sprite'ów, podgląd na żywo) bez wychodzenia ze studia

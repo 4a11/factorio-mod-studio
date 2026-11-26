@@ -57,12 +57,12 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 - [x] translations of new blocks: their keys added to every language of the mod, marked as untranslated in the Localization tab; *in 0.3.0*
 
 **0.4: a comfortable editor**
-- [ ] First: verify saving, external changes, and Undo/Redo. Then add Ctrl+Space for one installed Factorio API version, followed by hover and parameter hints. [Editor implementation plan (Russian)](docs/editor-plan.md)
+- [ ] First: verify saving, external changes, and Undo/Redo. Then add Ctrl+Space for one installed Factorio API version, followed by hover and parameter hints.
 - [x] Dependency status for the default profile is in place (PR #2). The full dependency graph belongs to the mod collections plan.
 - [ ] Safe quick fixes: correct path casing only when there is one match, then add missing locale keys.
 - [ ] If time allows: show base-game and dependency icons in the existing recipe view.
 
-After 0.4: show recipe unlocks and uses first, then edit recipes and technologies through a patch mod. [→](docs/modpack-plan.md)
+After 0.4: show recipe unlocks and uses first, then edit recipes and technologies through a patch mod.
 
 **0.5: release workflow**
 - [ ] version bump and changelog entry in one step (`fmstudio bump patch|minor|major`)
@@ -71,7 +71,7 @@ After 0.4: show recipe unlocks and uses first, then edit recipes and technologie
 - [ ] Build: choose the profile, extra mods and a save; a history of runs to compare
 
 **Mod collections and balance (planned, no release assigned)**
-- [ ] Manage existing third-party mod sets; visually explore mod dependencies and technology/recipe progression; apply balance changes through a separate, inspectable patch mod. Start with collection profiles and read-only graphs. [Staged plan (Russian)](docs/modpack-plan.md).
+- [ ] Manage existing third-party mod sets; visually explore mod dependencies and technology/recipe progression; apply balance changes through a separate, inspectable patch mod. Start with collection profiles and read-only graphs.
 
 **0.6: graphics**
 - [ ] a sprite editor in the studio: create and edit icons and sprites, and build animations (frames, sprite sheet, live preview) without leaving the studio

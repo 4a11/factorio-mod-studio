@@ -59,12 +59,12 @@ Où en est le projet et ce qui vient ensuite. Les versions sont des objectifs, p
 - [x] traductions des nouveaux blocs : leurs clés ajoutées à toutes les langues du mod, marquées non traduites dans l'onglet Localisation ; *dans 0.3.0*
 
 **0.4 : un éditeur confortable**
-- [ ] Vérifier d’abord l’enregistrement, les modifications externes et l’annulation/rétablissement. Ensuite, Ctrl+Espace pour une version installée de l’API Factorio, puis l’aide au survol et aux paramètres. [Plan de développement de l’éditeur (russe)](docs/editor-plan.md)
+- [ ] Vérifier d’abord l’enregistrement, les modifications externes et l’annulation/rétablissement. Ensuite, Ctrl+Espace pour une version installée de l’API Factorio, puis l’aide au survol et aux paramètres.
 - [x] L’état des dépendances du profil par défaut est disponible (PR #2). Le graphe complet relève du plan des collections.
 - [ ] Corrections sûres : d’abord la casse des chemins avec une seule correspondance, puis les clés de traduction manquantes.
 - [ ] Facultatif : icônes du jeu de base et des dépendances dans la vue des recettes.
 
-Après 0.4 : afficher les déblocages et usages des recettes, puis modifier recettes et technologies par un mod de correctifs. [→](docs/modpack-plan.md)
+Après 0.4 : afficher les déblocages et usages des recettes, puis modifier recettes et technologies par un mod de correctifs.
 
 **0.5 : processus de publication**
 - [ ] montée de version et entrée de changelog en une étape (`fmstudio bump patch|minor|major`)
@@ -73,7 +73,7 @@ Après 0.4 : afficher les déblocages et usages des recettes, puis modifier rece
 - [ ] Compilation : choisir le profil, des mods supplémentaires et une sauvegarde ; un historique des lancements à comparer
 
 **Collections de mods et équilibrage (prévu, sans version cible)**
-- [ ] Gérer des ensembles de mods existants, visualiser les dépendances et les liens entre technologies et recettes, puis ajuster les valeurs via un mod de correctifs séparé. D’abord, profils et graphes en lecture seule. [Plan par étapes (russe)](docs/modpack-plan.md).
+- [ ] Gérer des ensembles de mods existants, visualiser les dépendances et les liens entre technologies et recettes, puis ajuster les valeurs via un mod de correctifs séparé. D’abord, profils et graphes en lecture seule.
 
 **0.6 : graphismes**
 - [ ] un éditeur de sprites dans le studio : créer et modifier des icônes et des sprites, et monter des animations (images, feuille de sprites, aperçu en direct) sans quitter le studio

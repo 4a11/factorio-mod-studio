@@ -59,12 +59,12 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 - [x] Übersetzungen neuer Bausteine: ihre Schlüssel kommen in alle Sprachen des Mods, im Lokalisierungs-Tab als unübersetzt markiert; *in 0.3.0*
 
 **0.4: ein komfortabler Editor**
-- [ ] Zuerst Speichern, externe Änderungen und Rückgängig/Wiederholen prüfen. Danach Strg+Leertaste für eine installierte Factorio-API-Version, gefolgt von Kurzinfos und Parameterhilfe. [Entwicklungsplan für den Editor (Russisch)](docs/editor-plan.md)
+- [ ] Zuerst Speichern, externe Änderungen und Rückgängig/Wiederholen prüfen. Danach Strg+Leertaste für eine installierte Factorio-API-Version, gefolgt von Kurzinfos und Parameterhilfe.
 - [x] Abhängigkeitsstatus für das Standardprofil ist verfügbar (PR #2). Der vollständige Graph gehört zum Sammlungsplan.
 - [ ] Sichere Schnellkorrekturen: zuerst eindeutige Groß-/Kleinschreibung von Pfaden, dann fehlende Lokalisierungsschlüssel.
 - [ ] Optional: Symbole aus dem Basisspiel und Abhängigkeiten in der Rezeptansicht.
 
-Nach 0.4: zuerst Freischaltung und Verwendung von Rezepten anzeigen, danach Rezepte und Technologien per Patch-Mod bearbeiten. [→](docs/modpack-plan.md)
+Nach 0.4: zuerst Freischaltung und Verwendung von Rezepten anzeigen, danach Rezepte und Technologien per Patch-Mod bearbeiten.
 
 **0.5: Release-Ablauf**
 - [ ] Version erhöhen und Changelog-Eintrag in einem Schritt (`fmstudio bump patch|minor|major`)
@@ -73,7 +73,7 @@ Nach 0.4: zuerst Freischaltung und Verwendung von Rezepten anzeigen, danach Reze
 - [ ] Build: Profil, zusätzliche Mods und einen Spielstand wählen; ein Verlauf der Läufe zum Vergleichen
 
 **Mod-Sammlungen und Balance (geplant, ohne Versionsziel)**
-- [ ] Bestehende Mod-Sammlungen verwalten, Abhängigkeiten und Technologie-/Rezeptketten visualisieren und Balance über einen separaten Patch-Mod ändern. Zuerst Profile und lesende Graphansichten. [Stufenplan (Russisch)](docs/modpack-plan.md).
+- [ ] Bestehende Mod-Sammlungen verwalten, Abhängigkeiten und Technologie-/Rezeptketten visualisieren und Balance über einen separaten Patch-Mod ändern. Zuerst Profile und lesende Graphansichten.
 
 **0.6: Grafik**
 - [ ] ein Sprite-Editor im Studio: Icons und Sprites erstellen und bearbeiten, Animationen bauen (Frames, Spritesheet, Live-Vorschau), ohne das Studio zu verlassen
