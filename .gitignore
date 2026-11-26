@@ -33,6 +33,9 @@ artifacts/
 # Local-only developer tooling (code graph for AI agents): kept on disk, not in the repo
 /tools/graphify/
 /docs/graphify.md
+
+# Local development plans
+/docs/local/
 /.graphifyignore
 graphify-out/
 
