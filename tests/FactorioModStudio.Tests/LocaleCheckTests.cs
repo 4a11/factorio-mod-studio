@@ -523,6 +523,15 @@ public class LocaleCheckTests
         Assert.Contains("control.lua", issue.File);
         Assert.Equal(2, issue.Line);
         Assert.Contains("my-section.missing", issue.Message);
+        Assert.Equal(new LocaleKeyFix("locale/en/a.cfg", "my-section", "missing"), issue.LocaleKeyFix);
+    }
+
+    [Fact]
+    public void Fms043_SectionInTwoLocaleFiles_HasNoQuickFix()
+    {
+        using var mod = Mod(("locale/en/a.cfg", MyLocale), ("locale/en/b.cfg", MyLocale),
+            ("control.lua", "local title = {\"my-section.missing\"}"));
+        Assert.Null(Assert.Single(Of(Validate(mod), "FMS043")).LocaleKeyFix);
     }
 
     [Theory]

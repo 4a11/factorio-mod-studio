@@ -7,6 +7,7 @@ versions are the tags on GitHub, and the same `fmstudio` versions are on [NuGet]
 
 ### Added
 - Inline help in control.lua displays installed Factorio event descriptions and highlights the current script.on_event parameter.
+- Problems offers undoable edits for unambiguous asset path casing and missing keys in a mod’s default locale.
 - A conveyor animation while a mod opens in the studio, with a static illustration when reduced motion is enabled.
 - Ctrl+Space in control.lua suggests runtime globals and defines.events from the selected Factorio installation.
 

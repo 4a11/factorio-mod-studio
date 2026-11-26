@@ -5,7 +5,15 @@ namespace FactorioModStudio.Core;
 
 public enum Severity { Info, Warning, Error }
 
-public sealed record ValidationIssue(Severity Severity, string Code, string Message, string? File = null, int? Line = null);
+public sealed record PathCaseFix(int Offset, string ExpectedText, string Replacement);
+public sealed record LocaleKeyFix(string File, string Section, string Key);
+public sealed record ValidationIssue(Severity Severity, string Code, string Message, string? File = null, int? Line = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PathCaseFix? PathCaseFix { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public LocaleKeyFix? LocaleKeyFix { get; init; }
+}
 
 public sealed class ValidationResult
 {
@@ -19,6 +27,8 @@ public sealed class ValidationResult
 
     internal void Add(Severity severity, string code, string message, string? file = null, int? line = null) =>
         _issues.Add(new ValidationIssue(severity, code, message, file, line));
+
+    internal void Add(ValidationIssue issue) => _issues.Add(issue);
 }
 
 /// <summary>
@@ -76,7 +86,7 @@ public static class ModValidator
         // overview uses the same analysis for its "unused" flags.
         var references = ModReferences.Analyze(modDirectory, result.Info.Name, ModFiles.Enumerate(modDirectory));
         foreach (var issue in references.Issues)
-            result.Add(issue.Severity, issue.Code, issue.Message, issue.File, issue.Line);
+            result.Add(issue);
 
         try { LocaleChecker.Check(result, modDirectory, references.RuntimeOnly); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { /* unreadable tree: skip locale checks */ }

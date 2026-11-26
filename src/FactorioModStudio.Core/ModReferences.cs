@@ -54,7 +54,9 @@ public static class ModReferences
         var issues = new List<ValidationIssue>();
         var exact = new HashSet<string>(files, StringComparer.Ordinal);
         var insensitive = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var f in files) insensitive.TryAdd(f, f);
+        var ambiguous = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var f in files)
+            if (!insensitive.TryAdd(f, f) && !string.Equals(insensitive[f], f, StringComparison.Ordinal)) ambiguous.Add(f);
 
         var referenced = new HashSet<string>(StringComparer.Ordinal); // asset paths and required scripts
         var requires = new Dictionary<string, List<string>>(StringComparer.Ordinal); // script -> the mod scripts it requires
@@ -68,7 +70,9 @@ public static class ModReferences
             {
                 var full = Path.Combine(root, file.Replace('/', Path.DirectorySeparatorChar));
                 if (new FileInfo(full).Length > MaxLuaFileBytes) continue;
-                tokens = LuaLexer.Tokenize(File.ReadAllText(full));
+                // The editor textarea uses LF, including when the original file uses CRLF.
+                var source = File.ReadAllText(full).Replace("\r\n", "\n").Replace('\r', '\n');
+                tokens = LuaLexer.Tokenize(source);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
 
@@ -117,9 +121,12 @@ public static class ModReferences
                 if (insensitive.TryGetValue(path, out var actual))
                 {
                     referenced.Add(actual);
+                    var fix = token.LiteralOffset is { } offset && !ambiguous.Contains(path)
+                        ? new PathCaseFix(offset, token.Text, assetPrefix + actual)
+                        : null;
                     issues.Add(new ValidationIssue(Severity.Error, "FMS031",
                         $"Referenced \"{path}\" differs in letter case from the real file \"{actual}\"; this works on Windows but fails inside the zip and on Linux.",
-                        file, token.Line));
+                        file, token.Line) { PathCaseFix = fix });
                 }
                 else
                 {

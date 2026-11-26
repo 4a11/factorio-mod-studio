@@ -8,6 +8,7 @@
 import { tokenize } from '/lua-highlight.js';
 import { t } from '/i18n.js';
 import { completionAt, completionNames, eventAt, onEventArgument } from '/lua-completion.js';
+import { quickFixEdit } from '/editor-quick-fix.js';
 
 export const EDITABLE_EXT = ['lua', 'cfg', 'json', 'txt', 'md'];
 const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'bmp'];
@@ -762,8 +763,9 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, insta
 
       if (isEditable() && EDITABLE_EXT.includes(extension)) {
         tab.kind = 'text';
-        Object.assign(tab, { etag, original: text, conflict: false });
+        Object.assign(tab, { etag, conflict: false });
         tab.pane.replaceChildren(buildEditor(tab, text));
+        tab.original = tab.area.value;
         updateEditorState(tab);
         if (tab === active) renderHeader();
         const jumpTo = tab.pending || (line ? { line, column, length } : null);
@@ -935,7 +937,7 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, insta
       if (tab.closed || tab.saving || tab.original !== original || tab.area.value !== beforeReload) return;
       const top = tab.area.scrollTop;
       tab.area.value = text;
-      tab.original = text;
+      tab.original = tab.area.value;
       tab.etag = etag;
       tab.conflict = false;
       tab.missing = false;
@@ -1000,8 +1002,22 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, insta
 
   // ------------------------------------------------------------ public API
 
+  function applyQuickFix(modId, path, issue) {
+    const tab = active;
+    if (!tab?.area || tab.modId !== modId || tab.path !== path || isDirty(tab) || tab.saving || tab.conflict) return false;
+    const { area } = tab;
+    const edit = quickFixEdit(area.value, issue);
+    if (!edit) return false;
+    area.focus();
+    area.setSelectionRange(edit.start, edit.end);
+    if (!document.execCommand?.('insertText', false, edit.value)) return false;
+    if (edit.caret !== undefined) area.setSelectionRange(edit.caret, edit.caret);
+    return true;
+  }
+
   return {
     openFile,
+    applyQuickFix,
     closeViewer,
     closeActive: () => closeTab(active),
     closeTab: (path) => closeTab(tabs.find((tab) => tab.path === path)),

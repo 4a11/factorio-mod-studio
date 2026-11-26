@@ -123,8 +123,9 @@ public class ModValidatorTests
     {
         using var mod = Fixtures.ValidMod();
         mod.Write("graphics/Icon.png", "x");
-        mod.Write("data.lua", "icon = \"__my-mod__/graphics/icon.png\"\n");
-        Assert.True(Has(ModValidator.Validate(mod.Path), "FMS031"));
+        mod.Write("data.lua", "-- asset\r\nicon = \"__my-mod__/graphics/icon.png\"\r\n");
+        var issue = Assert.Single(ModValidator.Validate(mod.Path).Issues, i => i.Code == "FMS031");
+        Assert.Equal(new PathCaseFix(17, "__my-mod__/graphics/icon.png", "__my-mod__/graphics/Icon.png"), issue.PathCaseFix);
     }
 
     [Fact]

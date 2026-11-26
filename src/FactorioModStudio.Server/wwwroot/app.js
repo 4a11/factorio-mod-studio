@@ -581,7 +581,25 @@ const editorTabs = createEditorTabs({
 const closeViewer = (force = false) => editorTabs.closeViewer(force);
 
 // The Problems tab (problems-view.js): filter, severity toggles, grouping by rule / file, copy for bug reports.
-const problemsView = createProblemsView({ el, getModId: () => state.currentId, openFile: (path, line) => openFile(path, line) });
+const problemsView = createProblemsView({ el, getModId: () => state.currentId, openFile,
+  canQuickFix: () => !!currentMod()?.editable, quickFix: applyProblemFix });
+
+async function applyProblemFix(issue) {
+  const id = state.currentId;
+  if (!id || !currentMod()?.editable) return;
+  const kind = issue.pathCaseFix ? 'pathCaseFix' : 'localeKeyFix';
+  const current = await api(`/api/mods/${encodeURIComponent(id)}`);
+  if (id !== state.currentId) return;
+  const wanted = JSON.stringify(issue[kind]);
+  const fix = current.issues.find(candidate => candidate.code === issue.code && candidate.file === issue.file &&
+    JSON.stringify(candidate[kind]) === wanted);
+  if (!fix) throw new Error(t('problems.fixStale'));
+  const path = fix.localeKeyFix?.file ?? fix.file;
+  if (editorTabs.dirtyPaths().includes(path)) throw new Error(t('problems.fixDirty'));
+  if (!await openFile(path, fix.pathCaseFix ? fix.line : undefined) || !editorTabs.applyQuickFix(id, path, fix)) {
+    throw new Error(t('problems.fixStale'));
+  }
+}
 
 const filesView = createFilesView({
   api, el, editorTabs, formatSize,

@@ -327,7 +327,7 @@ internal static class LocaleChecker
 
     private static void CheckLua(ValidationResult result, string modDirectory, LocaleLanguage def, IReadOnlySet<string>? runtimeOnly)
     {
-        var defSections = new HashSet<string>(def.First.Values.Select(e => e.Section), StringComparer.Ordinal);
+        var sectionFiles = def.Entries.ToLookup(e => e.Section, e => e.File, StringComparer.Ordinal);
         var references = new HashSet<string>(StringComparer.Ordinal);
         var dynamicSections = new HashSet<string>(StringComparer.Ordinal);
         var sites = new List<ProtoSite>();
@@ -375,14 +375,20 @@ internal static class LocaleChecker
                     if (dot <= 0 || dot == text.Length - 1 || text[0] == '?') continue;
                     var section = text[..dot];
                     var key = text[(dot + 1)..];
-                    if (!defSections.Contains(section) || key.AsSpan().IndexOfAny(" \t\r\n") >= 0) continue;
+                    if (!sectionFiles.Contains(section) || key.AsSpan().IndexOfAny(" \t\r\n") >= 0) continue;
                     // {"fluid-name.water"}, {"entity-name.stone-furnace"}: keys of the standard sections come from the game or any
                     // dependency as well, which this check cannot see; only a mod's own sections are known in full.
                     if (StandardSections.Contains(section) || GameSections.Contains(section)) continue;
                     if (!def.First.ContainsKey(LocaleLanguage.Id(section, key)))
-                        result.Add(Severity.Warning, "FMS043",
+                    {
+                        var targets = sectionFiles[section].Distinct(StringComparer.Ordinal).Take(2).ToArray();
+                        var fix = targets.Length == 1 && key.All(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-' or '.')
+                            ? new LocaleKeyFix(targets[0], section, key)
+                            : null;
+                        result.Add(new ValidationIssue(Severity.Warning, "FMS043",
                             $"Locale key \"{section}.{key}\" is used here but not defined in the \"{def.Name}\" locale of this mod.",
-                            file, t.Line);
+                            file, t.Line) { LocaleKeyFix = fix });
+                    }
                 }
             }
 
