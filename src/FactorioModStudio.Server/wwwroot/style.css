@@ -480,6 +480,15 @@ details .file-row:hover { background: var(--surface-2); }
   padding: 4px 8px; font-family: inherit; overflow-wrap: anywhere;
 }
 .editor-completion button[aria-selected="true"] { background: var(--accent-soft); }
+.editor-api-help {
+  position: absolute; z-index: 2; inset: auto 8px 8px auto; pointer-events: none;
+  width: min(28rem, calc(100% - 16px)); padding: 0 8px 6px;
+  color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  white-space: normal; overflow-wrap: anywhere;
+}
+.editor-api-help .editor-completion-title { padding-inline: 0; }
+.editor-api-help p { margin: 4px 0 0; }
+.editor-api-help strong { color: var(--accent); }
 .editor, .hl {
   position: absolute; inset: 0; margin: 0; border: 0; border-radius: 0;
   font: inherit; letter-spacing: normal; tab-size: 2; white-space: pre; word-spacing: 0;
