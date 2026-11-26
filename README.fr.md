@@ -59,17 +59,21 @@ Où en est le projet et ce qui vient ensuite. Les versions sont des objectifs, p
 - [x] traductions des nouveaux blocs : leurs clés ajoutées à toutes les langues du mod, marquées non traduites dans l'onglet Localisation ; *dans 0.3.0*
 
 **0.4 : un éditeur confortable**
-- [ ] aides Lua dans l'éditeur : complétion, documentation au survol et aide sur les paramètres pour l'API de Factorio (`data.raw`, champs des prototypes, `game`, `script`, `defines`, événements), lues dans la description de l'API fournie avec le jeu installé (`doc-html/*-api.json`), donc conformes à sa version
-- [ ] Problèmes dans le nouveau style : regroupés par fichier et par règle (*fait dans 0.3.0*), corrections rapides sûres (ajouter une clé de traduction manquante, corriger la casse d'un chemin)
-- [ ] icônes des ingrédients et résultats issus du jeu de base ou d'une dépendance
-- [ ] les dépendances d'un coup d'œil : requises, optionnelles, incompatibles, et lesquelles sont disponibles dans `modsSource`
-- [ ] un éditeur de recettes et de technologies : ingrédients choisis avec leurs icônes du jeu et des dépendances, et la technologie qui débloque la recette
+- [ ] Vérifier d’abord l’enregistrement, les modifications externes et l’annulation/rétablissement. Ensuite, Ctrl+Espace pour une version installée de l’API Factorio, puis l’aide au survol et aux paramètres. [Plan de développement de l’éditeur (russe)](docs/editor-plan.md)
+- [x] L’état des dépendances du profil par défaut est disponible (PR #2). Le graphe complet relève du plan des collections.
+- [ ] Corrections sûres : d’abord la casse des chemins avec une seule correspondance, puis les clés de traduction manquantes.
+- [ ] Facultatif : icônes du jeu de base et des dépendances dans la vue des recettes.
+
+Après 0.4 : afficher les déblocages et usages des recettes, puis modifier recettes et technologies par un mod de correctifs. [→](docs/modpack-plan.md)
 
 **0.5 : processus de publication**
 - [ ] montée de version et entrée de changelog en une étape (`fmstudio bump patch|minor|major`)
 - [ ] envoi sur le portail de mods Factorio (facultatif, avec votre propre clé d'API)
 - [ ] un workflow GitHub Actions prêt à l'emploi (`fmstudio init --ci`) : vérifier, empaqueter et tester à chaque push
 - [ ] Compilation : choisir le profil, des mods supplémentaires et une sauvegarde ; un historique des lancements à comparer
+
+**Collections de mods et équilibrage (prévu, sans version cible)**
+- [ ] Gérer des ensembles de mods existants, visualiser les dépendances et les liens entre technologies et recettes, puis ajuster les valeurs via un mod de correctifs séparé. D’abord, profils et graphes en lecture seule. [Plan par étapes (russe)](docs/modpack-plan.md).
 
 **0.6 : graphismes**
 - [ ] un éditeur de sprites dans le studio : créer et modifier des icônes et des sprites, et monter des animations (images, feuille de sprites, aperçu en direct) sans quitter le studio

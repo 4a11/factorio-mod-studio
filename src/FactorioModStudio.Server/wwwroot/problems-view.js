@@ -14,9 +14,9 @@ const LIST_LIMIT = 200; // rows of the flat list before "Show N more"
 const TOAST_MS = 4000;
 
 /**
- * @param {{ el: Function, getModId: () => string|null, openFile: (path: string, line?: number) => any }} host
+ * @param {{ el: Function, getModId: () => string|null, openFile: (path: string, line?: number) => any, canQuickFix: () => boolean, quickFix: (issue: object) => Promise<void> }} host
  */
-export function createProblemsView({ el, getModId, openFile }) {
+export function createProblemsView({ el, getModId, openFile, canQuickFix, quickFix }) {
   const s = {
     issues: [],
     text: '',
@@ -246,6 +246,12 @@ export function createProblemsView({ el, getModId, openFile }) {
     const add = (text, run, testid) => items.push(el('button', { type: 'button', role: 'menuitem', tabindex: '-1', 'data-testid': `problems-menu-${testid}`, text, onclick: () => { closeMenu(false); run(); } }));
     const file = typeof issue.file === 'string' ? issue.file : '';
     const line = Number.isInteger(issue.line) && issue.line > 0 ? issue.line : 0;
+    if (canQuickFix() && (issue.pathCaseFix || issue.localeKeyFix)) {
+      add(t(issue.pathCaseFix ? 'problems.menu.fixPathCase' : 'problems.menu.addLocaleKey'), async () => {
+        try { await quickFix(issue); }
+        catch (error) { showToast(error.message, true); }
+      }, 'quick-fix');
+    }
     if (file) add(t('problems.menu.open'), () => openFile(file, line || undefined), 'open');
     add(t('problems.menu.copy'), () => copyText(issuesAsText([issue]), t('problems.copied', { n: 1 })), 'copy');
     if (issue.code) {

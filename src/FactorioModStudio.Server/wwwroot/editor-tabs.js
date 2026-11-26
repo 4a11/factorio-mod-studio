@@ -7,6 +7,8 @@
 
 import { tokenize } from '/lua-highlight.js';
 import { t } from '/i18n.js';
+import { completionAt, completionNames, eventAt, onEventArgument } from '/lua-completion.js';
+import { quickFixEdit } from '/editor-quick-fix.js';
 
 export const EDITABLE_EXT = ['lua', 'cfg', 'json', 'txt', 'md'];
 const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'bmp'];
@@ -61,7 +63,7 @@ function offsetOf(text, line, column = 1) {
  * @param {{ api: Function, el: Function, getModId: () => string|null, isEditable: () => boolean,
  *           fileUrl: (path: string) => string, onChange?: () => void, onSaved?: () => void }} host
  */
-export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onChange = () => {}, onSaved = () => {} }) {
+export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, installation = () => null, onChange = () => {}, onSaved = () => {} }) {
   const viewer = $('#viewer');
   const body = $('#viewer-body');
   const strip = $('#editor-tabs');
@@ -516,21 +518,185 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
     area.value = text;
     // Highlight layer: a <pre> under the transparent textarea with identical metrics. Only .lua files get colours.
     const hl = el('pre', { class: 'hl', 'aria-hidden': 'true' });
-    const wrap = el('div', { class: 'editor-wrap' }, gutter, el('div', { class: 'editor-stack' }, hl, area));
+    const hints = el('div', { class: 'editor-completion', hidden: true });
+    const help = el('div', { class: 'editor-api-help', role: 'status', hidden: true });
+    const wrap = el('div', { class: 'editor-wrap' }, gutter, el('div', { class: 'editor-stack' }, hl, area, hints, help));
     Object.assign(tab, { area, gutter, hl, wrap, lua: /\.lua$/i.test(tab.path), diags: [], diagLines: new Set(), diagCursor: -1, wasDirty: false });
     renderHighlight(tab);
 
-    area.addEventListener('input', () => afterTextChange(tab));
+    let request = 0;
+    let choice = null;
+    let helpRequest = 0;
+    let helpTimer;
+    let apiCache;
+
+    const runtimeFile = () => tab.path.toLowerCase() === 'control.lua' && area.value.length <= HIGHLIGHT_LIMIT;
+
+    async function runtimeSchema() {
+      const manual = installation(tab.modId);
+      if (apiCache && apiCache.manual === manual && Date.now() < apiCache.until) return apiCache.schema;
+      try {
+        const url = '/api/mods/' + encodeURIComponent(tab.modId) + '/runtime-api';
+        const schema = await api(url + (manual ? '?installation=' + encodeURIComponent(manual) : ''));
+        if (schema) apiCache = { manual, schema, until: Date.now() + 30_000 };
+        return schema;
+      } catch { return null; }
+    }
+
+    function dismissHelp() {
+      clearTimeout(helpTimer);
+      helpRequest++;
+      help.hidden = true;
+    }
+
+    function showHelp(version, title, description) {
+      help.replaceChildren(el('div', { class: 'editor-completion-title', text: 'Factorio ' + version }), title,
+        description && el('p', { text: description }));
+      help.hidden = false;
+    }
+
+    function scheduleHelp(kind, event) {
+      dismissHelp();
+      if (!runtimeFile() || choice) return;
+      const seq = helpRequest;
+      helpTimer = setTimeout(async () => {
+        const text = area.value;
+        const caret = area.selectionStart;
+        const argument = kind === 'signature' && caret === area.selectionEnd ? onEventArgument(text, caret) : null;
+        const name = kind === 'hover' ? eventAt(text, offsetAtPointer(event)) : argument === null ? eventAt(text, caret) : null;
+        if (!name && argument === null) return;
+        const schema = await runtimeSchema();
+        if (!schema || seq !== helpRequest || tab !== active || text !== area.value || choice) return;
+        if (name) {
+          const descriptions = schema.eventDescriptions;
+          if (descriptions && Object.hasOwn(descriptions, name)) {
+            showHelp(schema.version, el('code', { text: 'defines.events.' + name }), descriptions[name]);
+          }
+        } else if (area.selectionStart === caret && area.selectionEnd === caret && schema.onEvent?.parameters[argument]) {
+          const { parameters, description } = schema.onEvent;
+          const signature = el('code', {}, 'script.on_event(', parameters.flatMap((p, i) => [i ? ', ' : '',
+            el(i === argument ? 'strong' : 'span', { text: p.name + (p.optional ? '?' : '') })]), ')');
+          const selected = parameters[argument];
+          showHelp(schema.version, signature, [selected.type, selected.description || description].filter(Boolean).join(' — '));
+        }
+      }, kind === 'hover' ? 350 : 120);
+    }
+
+    let measuringContext;
+    function offsetAtPointer(event) {
+      const bounds = area.getBoundingClientRect();
+      const style = getComputedStyle(area);
+      const x = event.clientX - bounds.left - parseFloat(style.paddingLeft) + area.scrollLeft;
+      const y = event.clientY - bounds.top - parseFloat(style.paddingTop) + area.scrollTop;
+      const row = Math.floor(y / parseFloat(style.lineHeight));
+      const lines = area.value.split('\n');
+      if (x < 0 || row < 0 || row >= lines.length) return -1;
+      measuringContext ??= document.createElement('canvas').getContext('2d');
+      if (!measuringContext) return -1;
+      measuringContext.font = `${style.fontSize} ${style.fontFamily}`;
+      const tabWidth = measuringContext.measureText(' ').width * (parseFloat(style.tabSize) || 2);
+      let offset = 0;
+      for (let i = 0; i < row; i++) offset += lines[i].length + 1;
+      let width = 0;
+      for (const character of lines[row]) {
+        width += character === '\t' ? tabWidth - width % tabWidth : measuringContext.measureText(character).width;
+        if (x < width) return offset;
+        offset += character.length;
+      }
+      return -1;
+    }
+
+    function dismiss() {
+      request++;
+      choice = null;
+      hints.hidden = true;
+    }
+
+    function accept(name) {
+      if (!choice || area.value !== choice.text || area.selectionStart !== choice.caret || area.selectionEnd !== choice.caret) {
+        dismiss();
+        return;
+      }
+      const { start, end } = choice.context;
+      const caret = choice.caret;
+      dismiss();
+      area.setSelectionRange(start, end);
+      if (!document.execCommand?.('insertText', false, name)) area.setSelectionRange(caret, caret);
+    }
+
+    function select(index) {
+      choice.index = (index + choice.buttons.length) % choice.buttons.length;
+      choice.buttons.forEach((button, i) => button.setAttribute('aria-selected', String(i === choice.index)));
+      choice.buttons[choice.index].scrollIntoView({ block: 'nearest' });
+      hints.firstElementChild.textContent = 'Factorio ' + choice.version + ' · ' + choice.names[choice.index];
+    }
+
+    async function complete() {
+      dismiss();
+      dismissHelp();
+      const seq = request;
+      const text = area.value;
+      const caret = area.selectionStart;
+      if (caret !== area.selectionEnd || text.length > HIGHLIGHT_LIMIT) return;
+      const context = completionAt(text, caret);
+      if (!context) return;
+      const schema = await runtimeSchema();
+      if (seq !== request || tab !== active || document.activeElement !== area || area.value !== text ||
+          area.selectionStart !== caret || area.selectionEnd !== caret) return;
+      const names = completionNames(schema, context);
+      if (!names.length) {
+        setStatus(tab, schema ? 'editor.completionEmpty' : 'editor.completionUnavailable');
+        return;
+      }
+      const buttons = names.map(name => {
+        const button = el('button', { type: 'button', tabindex: '-1', role: 'option', text: name });
+        button.addEventListener('pointerdown', event => event.preventDefault());
+        button.addEventListener('click', () => accept(name));
+        return button;
+      });
+      choice = { text, caret, context, names, buttons, index: 0, version: schema.version };
+      hints.replaceChildren(el('div', { class: 'editor-completion-title', role: 'status' }),
+        el('div', { role: 'listbox', 'aria-label': 'Factorio API' }, ...buttons));
+      hints.hidden = false;
+      select(0);
+    }
+
+    area.addEventListener('input', () => { dismiss(); afterTextChange(tab); scheduleHelp('signature'); });
+    area.addEventListener('blur', () => { dismiss(); dismissHelp(); });
+    area.addEventListener('click', () => { dismiss(); scheduleHelp('signature'); });
+    area.addEventListener('pointermove', event => { if (event.pointerType === 'mouse') scheduleHelp('hover', event); });
+    area.addEventListener('pointerleave', dismissHelp);
+    area.addEventListener('keyup', event => {
+      if (!choice && !event.isComposing && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key))
+        scheduleHelp('signature');
+    });
     area.addEventListener('scroll', () => {
+      dismissHelp();
       gutter.scrollTop = area.scrollTop;
       hl.scrollTop = area.scrollTop;
       hl.scrollLeft = area.scrollLeft;
     });
     area.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault(); // keep focus in the editor; insert two spaces (Lua convention in Factorio mods)
-        area.setRangeText('  ', area.selectionStart, area.selectionEnd, 'end');
-        area.dispatchEvent(new Event('input'));
+      if (e.isComposing) return;
+      if (!choice && !help.hidden && e.key === 'Escape') { e.preventDefault(); dismissHelp(); return; }
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.code === 'Space' || e.key === ' ') &&
+          tab.path.toLowerCase() === 'control.lua') {
+        e.preventDefault();
+        if (!e.repeat) void complete();
+        return;
+      }
+      if (choice && ['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        if (e.key === 'Escape') dismiss();
+        else if (e.key === 'Enter') accept(choice.names[choice.index]);
+        else select(choice.index + (e.key === 'ArrowDown' ? 1 : -1));
+        return;
+      }
+      dismiss();
+      if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing && area.selectionStart === area.selectionEnd) {
+        // A native editing command inserts text into the undo stack. setRangeText does not.
+        // If unavailable, allow the browser to move focus instead.
+        if (document.execCommand?.('insertText', false, '  ')) e.preventDefault();
       }
     });
     scheduleLint(tab, 0);
@@ -597,8 +763,9 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
 
       if (isEditable() && EDITABLE_EXT.includes(extension)) {
         tab.kind = 'text';
-        Object.assign(tab, { etag, original: text, conflict: false });
+        Object.assign(tab, { etag, conflict: false });
         tab.pane.replaceChildren(buildEditor(tab, text));
+        tab.original = tab.area.value;
         updateEditorState(tab);
         if (tab === active) renderHeader();
         const jumpTo = tab.pending || (line ? { line, column, length } : null);
@@ -682,15 +849,38 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
 
   // ------------------------------------------------------------ saving and external changes
 
-  async function save(tab = active) {
-    if (!tab || tab.kind !== 'text' || !isDirty(tab)) return;
+  async function save(tab = active, overwrite = false) {
+    if (!tab || tab.closed || tab.kind !== 'text' || tab.saving || !isDirty(tab)) return;
+    if (tab.conflict && !overwrite) return;
     const { modId, path } = tab;
     const content = tab.area.value;
+    tab.saving = true;
     setStatus(tab, 'editor.saving');
     try {
+      if (overwrite) {
+        const response = await fetch(fileUrl(path));
+        if (tab.closed) return;
+        if (!response.ok && response.status !== 404) throw new Error(response.statusText || String(response.status));
+        const etag = response.ok ? response.headers.get('ETag') : null;
+        if (response.ok && !etag) throw new Error('Missing ETag');
+        await write(etag);
+      } else {
+        await write(tab.etag);
+      }
+    } catch (error) {
+      if (tab.closed) return;
+      setStatus(tab, 'editor.notSaved');
+      if (error.status === 409) tab.conflict = true;
+      if (tab.conflict) setBanner(tab, 'editor.conflict', {}, true);
+      else setBanner(tab, 'editor.saveFailed', { message: error.message });
+    } finally {
+      tab.saving = false;
+    }
+
+    async function write(etag) {
       const result = await api(`/api/mods/${encodeURIComponent(modId)}/file?path=${encodeURIComponent(path)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'text/plain; charset=utf-8', ...(tab.etag ? { 'If-Match': tab.etag } : { 'If-None-Match': '*' }) },
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', ...(etag ? { 'If-Match': etag } : { 'If-None-Match': '*' }) },
         body: content,
       });
       if (tab.closed) return;
@@ -702,35 +892,18 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
       updateEditorState(tab);
       updateTabEl(tab);
       onSaved();
-    } catch (error) {
-      if (tab.closed) return;
-      if (error.status === 409) {
-        tab.conflict = true;
-        tab.etag = error.body.etag || tab.etag;
-        setBanner(tab, 'editor.conflict', {}, true);
-        setStatus(tab, 'editor.notSaved');
-      } else {
-        setStatus(tab, 'editor.notSaved');
-        setBanner(tab, 'editor.saveFailed', { message: error.message });
-      }
     }
   }
 
   async function overwriteWithMine(tab) {
-    // Fetch the current validator, then save over it deliberately.
-    try {
-      const response = await fetch(fileUrl(tab.path));
-      if (response.ok) tab.etag = response.headers.get('ETag');
-      else if (response.status === 404) tab.etag = null;
-    } catch { /* save() reports problems */ }
-    tab.conflict = false;
-    setBanner(tab, null);
-    await save(tab);
+    await save(tab, true);
   }
 
   async function reloadFromDisk(tab, force = false) {
     if (!tab || tab.closed || tab.modId !== getModId()) return;
     const { path } = tab;
+    const original = tab.original;
+    const beforeReload = tab.area?.value;
     try {
       const response = await fetch(fileUrl(path));
       if (tab.closed) return;
@@ -761,10 +934,10 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
         return;
       }
       const text = await response.text();
-      if (tab.closed) return;
+      if (tab.closed || tab.saving || tab.original !== original || tab.area.value !== beforeReload) return;
       const top = tab.area.scrollTop;
       tab.area.value = text;
-      tab.original = text;
+      tab.original = tab.area.value;
       tab.etag = etag;
       tab.conflict = false;
       tab.missing = false;
@@ -829,8 +1002,22 @@ export function createEditorTabs({ api, el, getModId, isEditable, fileUrl, onCha
 
   // ------------------------------------------------------------ public API
 
+  function applyQuickFix(modId, path, issue) {
+    const tab = active;
+    if (!tab?.area || tab.modId !== modId || tab.path !== path || isDirty(tab) || tab.saving || tab.conflict) return false;
+    const { area } = tab;
+    const edit = quickFixEdit(area.value, issue);
+    if (!edit) return false;
+    area.focus();
+    area.setSelectionRange(edit.start, edit.end);
+    if (!document.execCommand?.('insertText', false, edit.value)) return false;
+    if (edit.caret !== undefined) area.setSelectionRange(edit.caret, edit.caret);
+    return true;
+  }
+
   return {
     openFile,
+    applyQuickFix,
     closeViewer,
     closeActive: () => closeTab(active),
     closeTab: (path) => closeTab(tabs.find((tab) => tab.path === path)),

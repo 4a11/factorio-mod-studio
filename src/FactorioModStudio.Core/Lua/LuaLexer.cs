@@ -5,7 +5,11 @@ namespace FactorioModStudio.Core.Lua;
 
 internal enum TokenKind { Name, String, Number, Symbol }
 
-internal readonly record struct Token(TokenKind Kind, string Text, int Line);
+internal readonly record struct Token(TokenKind Kind, string Text, int Line)
+{
+    // Only simple, closed quoted strings have a direct editable span in the source.
+    public int? LiteralOffset { get; init; }
+}
 
 /// <summary>
 /// A tolerant Lua tokenizer: enough to read table literals and spot call patterns in mod sources.
@@ -67,6 +71,7 @@ internal static class LuaLexer
                 var startLine = line;
                 var sb = new StringBuilder();
                 i++;
+                var contentStart = i;
                 while (i < n && s[i] != c && s[i] != '\n')
                 {
                     if (s[i] != '\\' || i + 1 >= n)
@@ -102,8 +107,11 @@ internal static class LuaLexer
                             break;
                     }
                 }
-                if (i < n && s[i] == c) i++;
-                tokens.Add(new Token(TokenKind.String, sb.ToString(), startLine));
+                var text = sb.ToString();
+                var closed = i < n && s[i] == c;
+                var literalOffset = closed && s.AsSpan(contentStart, i - contentStart).SequenceEqual(text) ? contentStart : (int?)null;
+                if (closed) i++;
+                tokens.Add(new Token(TokenKind.String, text, startLine) { LiteralOffset = literalOffset });
                 continue;
             }
 

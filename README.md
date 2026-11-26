@@ -57,17 +57,21 @@ Where the project stands and what comes next. Versions are goals, not dates; the
 - [x] translations of new blocks: their keys added to every language of the mod, marked as untranslated in the Localization tab; *in 0.3.0*
 
 **0.4: a comfortable editor**
-- [ ] Lua hints in the editor: completion, hover documentation and parameter help for the Factorio API (`data.raw`, prototype fields, `game`, `script`, `defines`, events), read from the API description the installed game ships (`doc-html/*-api.json`), so they match its version
-- [ ] Problems in the new style: grouped by file and rule (*done in 0.3.0*), safe quick fixes (add a missing locale key, fix the letter case of a path)
-- [ ] icons for ingredients and results that come from the base game or a dependency
-- [ ] dependencies at a glance: required, optional, incompatible, and which of them are available in `modsSource`
-- [ ] a recipe and technology editor: ingredients picked with their icons from the game and the dependencies, and the technology that unlocks the recipe
+- [ ] First: verify saving, external changes, and Undo/Redo. Then add Ctrl+Space for one installed Factorio API version, followed by hover and parameter hints. [Editor implementation plan (Russian)](docs/editor-plan.md)
+- [x] Dependency status for the default profile is in place (PR #2). The full dependency graph belongs to the mod collections plan.
+- [ ] Safe quick fixes: correct path casing only when there is one match, then add missing locale keys.
+- [ ] If time allows: show base-game and dependency icons in the existing recipe view.
+
+After 0.4: show recipe unlocks and uses first, then edit recipes and technologies through a patch mod. [→](docs/modpack-plan.md)
 
 **0.5: release workflow**
 - [ ] version bump and changelog entry in one step (`fmstudio bump patch|minor|major`)
 - [ ] upload to the Factorio mod portal (opt-in, with your own API key)
 - [ ] a ready GitHub Actions workflow (`fmstudio init --ci`): validate, pack and smoke-test on every push
 - [ ] Build: choose the profile, extra mods and a save; a history of runs to compare
+
+**Mod collections and balance (planned, no release assigned)**
+- [ ] Manage existing third-party mod sets; visually explore mod dependencies and technology/recipe progression; apply balance changes through a separate, inspectable patch mod. Start with collection profiles and read-only graphs. [Staged plan (Russian)](docs/modpack-plan.md).
 
 **0.6: graphics**
 - [ ] a sprite editor in the studio: create and edit icons and sprites, and build animations (frames, sprite sheet, live preview) without leaving the studio

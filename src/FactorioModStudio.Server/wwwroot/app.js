@@ -107,11 +107,20 @@ function formatSize(bytes) {
   return t('size.mb', { value: formatNumber(bytes / 1024 / 1024, one) });
 }
 
-// What the main content area currently shows when it is a plain message (so a language switch can redraw it).
+// What the main content area currently shows when it is a message (so a language switch can redraw it).
 let contentMessage = null;
 function showMessage(key, params) {
+  if (key === 'content.loading') {
+    renderContent(el('div', { class: 'empty mod-loading', role: 'status' },
+      el('div', { class: 'mod-loader-belt', 'aria-hidden': 'true' },
+        el('span', { class: 'mod-loader-track' }),
+        el('span', { class: 'mod-loader-crate' }),
+        el('span', { class: 'mod-loader-crate' })),
+      el('span', { text: t(key, params) })));
+  } else {
+    renderContent(el('div', { class: 'empty', text: t(key, params) }));
+  }
   contentMessage = { key, params };
-  renderContent(el('div', { class: 'empty', text: t(key, params) }));
 }
 
 // ---------------------------------------------------------------- routing
@@ -562,7 +571,7 @@ function renderProblems(o) {
 // ---------------------------------------------------------------- file viewer / editor (tabs live in editor-tabs.js)
 
 const editorTabs = createEditorTabs({
-  api, el, fileUrl,
+  api, el, fileUrl, installation: chosenInstallation,
   getModId: () => state.currentId,
   isEditable: () => !!currentMod()?.editable,
   onChange: () => onEditorTabsChanged(),
@@ -572,7 +581,25 @@ const editorTabs = createEditorTabs({
 const closeViewer = (force = false) => editorTabs.closeViewer(force);
 
 // The Problems tab (problems-view.js): filter, severity toggles, grouping by rule / file, copy for bug reports.
-const problemsView = createProblemsView({ el, getModId: () => state.currentId, openFile: (path, line) => openFile(path, line) });
+const problemsView = createProblemsView({ el, getModId: () => state.currentId, openFile,
+  canQuickFix: () => !!currentMod()?.editable, quickFix: applyProblemFix });
+
+async function applyProblemFix(issue) {
+  const id = state.currentId;
+  if (!id || !currentMod()?.editable) return;
+  const kind = issue.pathCaseFix ? 'pathCaseFix' : 'localeKeyFix';
+  const current = await api(`/api/mods/${encodeURIComponent(id)}`);
+  if (id !== state.currentId) return;
+  const wanted = JSON.stringify(issue[kind]);
+  const fix = current.issues.find(candidate => candidate.code === issue.code && candidate.file === issue.file &&
+    JSON.stringify(candidate[kind]) === wanted);
+  if (!fix) throw new Error(t('problems.fixStale'));
+  const path = fix.localeKeyFix?.file ?? fix.file;
+  if (editorTabs.dirtyPaths().includes(path)) throw new Error(t('problems.fixDirty'));
+  if (!await openFile(path, fix.pathCaseFix ? fix.line : undefined) || !editorTabs.applyQuickFix(id, path, fix)) {
+    throw new Error(t('problems.fixStale'));
+  }
+}
 
 const filesView = createFilesView({
   api, el, editorTabs, formatSize,

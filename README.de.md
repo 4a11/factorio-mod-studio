@@ -59,17 +59,21 @@ also [eröffnen Sie ein Issue](https://github.com/4a11/factorio-mod-studio/issue
 - [x] Übersetzungen neuer Bausteine: ihre Schlüssel kommen in alle Sprachen des Mods, im Lokalisierungs-Tab als unübersetzt markiert; *in 0.3.0*
 
 **0.4: ein komfortabler Editor**
-- [ ] Lua-Hilfen im Editor: Vervollständigung, Dokumentation beim Überfahren und Parameterhilfe für die Factorio-API (`data.raw`, Prototyp-Felder, `game`, `script`, `defines`, Ereignisse), gelesen aus der API-Beschreibung, die das installierte Spiel mitbringt (`doc-html/*-api.json`), also passend zu dessen Version
-- [ ] Probleme im neuen Stil: nach Datei und Regel gruppiert (*erledigt in 0.3.0*), sichere Schnellkorrekturen (fehlenden Übersetzungsschlüssel anlegen, Groß-/Kleinschreibung eines Pfads korrigieren)
-- [ ] Symbole für Zutaten und Ergebnisse aus dem Basisspiel oder einer Abhängigkeit
-- [ ] Abhängigkeiten auf einen Blick: erforderlich, optional, inkompatibel, und welche davon in `modsSource` verfügbar sind
-- [ ] ein Editor für Rezepte und Technologien: Zutaten mit ihren Symbolen aus dem Spiel und den Abhängigkeiten, dazu die Technologie, die das Rezept freischaltet
+- [ ] Zuerst Speichern, externe Änderungen und Rückgängig/Wiederholen prüfen. Danach Strg+Leertaste für eine installierte Factorio-API-Version, gefolgt von Kurzinfos und Parameterhilfe. [Entwicklungsplan für den Editor (Russisch)](docs/editor-plan.md)
+- [x] Abhängigkeitsstatus für das Standardprofil ist verfügbar (PR #2). Der vollständige Graph gehört zum Sammlungsplan.
+- [ ] Sichere Schnellkorrekturen: zuerst eindeutige Groß-/Kleinschreibung von Pfaden, dann fehlende Lokalisierungsschlüssel.
+- [ ] Optional: Symbole aus dem Basisspiel und Abhängigkeiten in der Rezeptansicht.
+
+Nach 0.4: zuerst Freischaltung und Verwendung von Rezepten anzeigen, danach Rezepte und Technologien per Patch-Mod bearbeiten. [→](docs/modpack-plan.md)
 
 **0.5: Release-Ablauf**
 - [ ] Version erhöhen und Changelog-Eintrag in einem Schritt (`fmstudio bump patch|minor|major`)
 - [ ] Upload auf das Factorio-Mod-Portal (optional, mit Ihrem eigenen API-Schlüssel)
 - [ ] ein fertiger GitHub-Actions-Workflow (`fmstudio init --ci`): bei jedem Push prüfen, packen und smoke-testen
 - [ ] Build: Profil, zusätzliche Mods und einen Spielstand wählen; ein Verlauf der Läufe zum Vergleichen
+
+**Mod-Sammlungen und Balance (geplant, ohne Versionsziel)**
+- [ ] Bestehende Mod-Sammlungen verwalten, Abhängigkeiten und Technologie-/Rezeptketten visualisieren und Balance über einen separaten Patch-Mod ändern. Zuerst Profile und lesende Graphansichten. [Stufenplan (Russisch)](docs/modpack-plan.md).
 
 **0.6: Grafik**
 - [ ] ein Sprite-Editor im Studio: Icons und Sprites erstellen und bearbeiten, Animationen bauen (Frames, Spritesheet, Live-Vorschau), ohne das Studio zu verlassen
